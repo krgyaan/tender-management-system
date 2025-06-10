@@ -1,0 +1,10 @@
+/images
+/uploads
+/upload
+/images/*
+/uploads/*
+/upload/*
+/ra_results
+/ra_results/*
+/bid_submissions
+/bid_submissions/*

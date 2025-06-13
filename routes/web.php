@@ -10,22 +10,28 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Route;
 use App\Exports\EmployeeImprestExport;
+use App\Http\Controllers\FixedExpenseController;
 use App\Http\Controllers\TQController;
 use App\Http\Controllers\RFQController;
 use App\Http\Controllers\EmdsController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Gst3BController;
+use App\Http\Controllers\GstR1Controller;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\RaMgmtController;
 use App\Http\Controllers\ReqExtController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\PhyDocsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TdsFormController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\IndustryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\WebsitesController;
 use App\Http\Controllers\ChecklistController;
@@ -55,7 +61,7 @@ use App\Http\Controllers\CourierDashboardController;
 use App\Http\Controllers\BatteryPriceSheetController;
 use App\Http\Controllers\ContractAgreementController;
 use App\Http\Controllers\DocumentSubmittedController;
-use App\Http\Controllers\IndustryController;
+
 
 Route::view('/', 'auth.login')->name('/');
 
@@ -70,6 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::any('/employee/performance', [PerformanceController::class, 'performance'])->name('employee/performance');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     Route::middleware('role:admin,coordinator')->group(function () {
         Route::controller(AdminController::class)->group(function () {
             Route::get('/dashboard/admin', 'index')->name('dashboard.admin');
@@ -125,6 +132,7 @@ Route::middleware('auth')->group(function () {
             });
         });
     });
+
     Route::prefix('admin')->group(function () {
         Route::resource('projects', ProjectController::class);
         Route::get('download-projects', function (Request $request) {
@@ -150,6 +158,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:team-leader')->group(function () {
         Route::get('/dashboard/team-leader', [TeamLeaderController::class, 'index'])->name('dashboard.team-leader');
     });
+
+    Route::get('/tender/data/{type}', [TenderInfoController::class, 'getTenderData'])->name('tender.data');
 
     Route::prefix('tender')->group(function () {
         Route::resource('courier', CourierDashboardController::class);
@@ -247,6 +257,14 @@ Route::middleware('auth')->group(function () {
         Route::resource('followups', FollowUpsController::class);
         Route::delete('followups/person-delete/{id}', [FollowUpsController::class, 'deletePerson'])->name('followups.person-delete');
         Route::post('followups/status-update/{id}', [FollowUpsController::class, 'updateFollowup'])->name('updateFollowup');
+    });
+
+    Route::prefix('accounts')->group(function () {
+        Route::resource('gstr1', GstR1Controller::class);
+        Route::resource('gst3b', Gst3BController::class);
+        Route::resource('tds', TdsFormController::class);
+        Route::resource('acc-checklist', AccountController::class);
+        Route::resource('fixed-expenses', FixedExpenseController::class);
     });
 
     Route::resource('tender/rfq', RFQController::class)->except('create');

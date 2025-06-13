@@ -7,11 +7,11 @@ use App\Models\Emds;
 use App\Models\Item;
 use App\Models\User;
 use App\Models\Status;
-use App\Models\VendorOrg;
 use App\Mail\TlApproval;
 use App\Models\Location;
 use App\Models\Websites;
 use App\Models\TenderDoc;
+use App\Models\VendorOrg;
 use App\Models\WorkOrder;
 use App\Mail\TenderUpdate;
 use App\Models\TenderInfo;
@@ -21,16 +21,16 @@ use App\Mail\TenderCreated;
 use App\Models\EligibleDoc;
 use App\Mail\TenderRejected;
 use App\Models\Organization;
-use App\Models\WorkEligible;
+use App\Models\TenderClient;
 use Illuminate\Http\Request;
 use App\Mail\TenderinfoFilled;
 use App\Models\Clintdirectory;
 use App\Services\TimerService;
+use Yajra\DataTables\DataTables;
 use App\Models\TenderInformation;
 use PHPMailer\PHPMailer\Exception;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TenderStatusUpdateMail;
-use App\Models\TenderClient;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
@@ -38,7 +38,6 @@ use Illuminate\Support\Facades\Config;
 class TenderInfoController extends Controller
 {
     protected $timerService;
-
     public function __construct(TimerService $timerService)
     {
         $this->timerService = $timerService;
@@ -102,73 +101,148 @@ class TenderInfoController extends Controller
     {
         $user = Auth::user();
         $permissions = explode(',', $user->permissions);
-        $commonEagerLoad = ['organizations', 'users', 'itemName', 'statuses'];
-        $prepTenders = TenderInfo::with($commonEagerLoad)
-            ->where('deleteStatus', '0')
-            ->whereIn('status', ['1', '2', '3', '4', '5', '6', '7', '29', '30'])
-            ->orderBy('due_date', 'DESC')->get();
 
-        $dnbTenders = TenderInfo::with($commonEagerLoad)
-            ->where('deleteStatus', '0')
-            ->whereIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '16', '31', '32'])
-            ->orderBy('due_date', 'DESC')->get();
+        return view('tender.index', compact('permissions'));
+    }
 
-        $tbTenders = TenderInfo::with($commonEagerLoad)
-            ->where('deleteStatus', '0')
-            ->whereIn('status', ['17', '19', '20', '23'])
-            ->orderBy('due_date', 'DESC')->get();
+    public function getTenderData(Request $request, $type)
+    {
+        try {
+            if (!in_array($type, ['prep', 'dnb', 'bid', 'won', 'lost'])) {
+                throw new \InvalidArgumentException('Invalid tender type');
+            }
+            Log::info("Fetching $type tenders");
+            $query = TenderInfo::with([
+                'organizations:id,name',
+                'users:id,name',
+                'itemName:id,name',
+                'statuses:id,name'
+            ])
+                ->select('tender_infos.*')
+                ->where('tender_infos.deleteStatus', '0');
 
-        $tlTenders = TenderInfo::with($commonEagerLoad)
-            ->where('deleteStatus', '0')
-            ->whereIn('status', ['18', '21', '22', '24'])
-            ->orderBy('due_date', 'DESC')->get();
+            // Handle search - fixed search logic
+            if ($request->has('search') && !empty($request->search['value'])) {
+                $searchValue = $request->search['value'];
+                $query->where(function ($q) use ($searchValue) {
+                    $q->where('tender_infos.tender_no', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('tender_infos.tender_name', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('tender_infos.organisation', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('tender_infos.gst_values', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('tender_infos.emd', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('tender_infos.due_date', 'LIKE', "%{$searchValue}%")
+                        ->orWhereHas('users', function ($subQ) use ($searchValue) {
+                            $subQ->where('users.name', 'LIKE', "%{$searchValue}%");
+                        })
+                        ->orWhereHas('organizations', function ($subQ) use ($searchValue) {
+                            $subQ->where('organizations.name', 'LIKE', "%{$searchValue}%");
+                        })
+                        ->orWhereHas('statuses', function ($subQ) use ($searchValue) {
+                            $subQ->where('statuses.name', 'LIKE', "%{$searchValue}%");
+                        });
+                });
+            }
 
-        $twTenders = TenderInfo::with($commonEagerLoad)
-            ->where('deleteStatus', '0')
-            ->whereIn('status', ['25', '26', '27', '28'])
-            ->orderBy('due_date', 'DESC')->get();
+            switch ($type) {
+                case 'prep':
+                    $query->whereIn('status', ['1', '2', '3', '4', '5', '6', '7', '29', '30']);
+                    break;
+                case 'dnb':
+                    $query->whereIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '16', '31', '32']);
+                    break;
+                case 'bid':
+                    $query->whereIn('status', ['17', '19', '20', '23']);
+                    break;
+                case 'won':
+                    $query->whereIn('status', ['25', '26', '27', '28']);
+                    break;
+                case 'lost':
+                    $query->whereIn('status', ['18', '21', '22', '24']);
+                    break;
+            }
 
-
-        return view('tender.index', compact('prepTenders', 'dnbTenders', 'tbTenders', 'twTenders', 'tlTenders', 'permissions'));
+            Log::info('Fetching tenders query: ' . $query->toSql());
+            return DataTables::of($query)
+                ->addColumn('action', function ($tender) {
+                    return view('partials.tender-actions', compact('tender'))->render();
+                })
+                ->addColumn('timer', function ($tender) {
+                    return view('partials.timer', compact('tender'))->render();
+                })
+                ->editColumn('due_date', function ($tender) {
+                    return $tender->due_date . '<br>' . date('h:i A', strtotime($tender->due_time));
+                })
+                ->editColumn('gst_values', function ($tender) {
+                    return format_inr($tender->gst_values);
+                })
+                ->rawColumns(['action', 'timer', 'due_date'])
+                ->make(true);
+        } catch (\Exception $e) {
+            Log::error('DataTables Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => 'Error loading data',
+                'details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
     public function create()
     {
-        $users = User::all()->where('role', '!=', 'admin')->where('status', 1);
-        $statuses = Status::all();
-        $items = Item::all();
-        $organisations = Organization::all();
-        $locations = Location::all();
-        $websites = Websites::all();
-        $teams = $this->teams;
-        return view('tender.create', compact('users', 'statuses', 'organisations', 'items', 'locations', 'websites', 'teams'));
+        try {
+            $users = User::where('role', '!=', 'admin')->where('status', 1)->get();
+            $statuses = Status::all();
+            $items = Item::all();
+            $organisations = Organization::all();
+            $locations = Location::all();
+            $websites = Websites::all();
+            $teams = $this->teams;
+
+            if (!$users || !$statuses || !$items || !$organisations || !$locations || !$websites || !$teams) {
+                throw new \Exception('One or more resources could not be loaded');
+            }
+
+            return view('tender.create', compact('users', 'statuses', 'organisations', 'items', 'locations', 'websites', 'teams'));
+        } catch (\Exception $e) {
+            Log::error('Error loading data for create: ' . $e->getMessage());
+            return response()->view('errors.general', ['message' => 'Error loading resources. Please try again later.'], 500);
+        }
     }
 
     public function infoCreate($id)
     {
-        $tenderInfo = TenderInfo::find($id);
-        $items = Item::all();
-        $tender = TenderInformation::where('tender_id', $id)->first();
-        $reason = $this->reason;
-        $commercial = $this->commercial;
-        $maf = $this->maf;
-        $tenderFees = $this->tenderFees;
-        $emdReq = $this->emdReq;
-        $emdOpt = $this->emdOpt;
-        $revAuction = $this->revAuction;
+        try {
+            $tenderInfo = TenderInfo::findOrFail($id);
+            $items = Item::all();
+            $tender = TenderInformation::where('tender_id', $id)->first();
+            $reason = $this->reason;
+            $commercial = $this->commercial;
+            $maf = $this->maf;
+            $tenderFees = $this->tenderFees;
+            $emdReq = $this->emdReq;
+            $emdOpt = $this->emdOpt;
+            $revAuction = $this->revAuction;
 
-        return view('tender.info', compact(
-            'tenderInfo',
-            'items',
-            'tender',
-            'reason',
-            'commercial',
-            'maf',
-            'tenderFees',
-            'emdReq',
-            'emdOpt',
-            'revAuction'
-        ));
+            if (!$items || !$tender || !$reason || !$commercial || !$maf || !$tenderFees || !$emdReq || !$emdOpt || !$revAuction) {
+                throw new \Exception('One or more resources could not be loaded');
+            }
+
+            return view('tender.info', compact(
+                'tenderInfo',
+                'items',
+                'tender',
+                'reason',
+                'commercial',
+                'maf',
+                'tenderFees',
+                'emdReq',
+                'emdOpt',
+                'revAuction'
+            ));
+        } catch (\Exception $e) {
+            Log::error('Error loading data for info create: ' . $e->getMessage());
+            return response()->view('errors.general', ['message' => 'Error loading resources. Please try again later.'], 500);
+        }
     }
 
     public function store(Request $request)
@@ -358,303 +432,6 @@ class TenderInfoController extends Controller
             return redirect()->back()->with('success', $message);
         } catch (\Throwable $th) {
             Log::error("Tender Update Error: " . $th->getMessage());
-            return redirect()->back()->with('error', $th->getMessage());
-        }
-    }
-
-    public function infoUpdate11(Request $request, TenderInfo $tenderInfo, $id)
-    {
-        // dd($request->all());
-        $request->validate([
-            'is_rejectable' => 'nullable|string',
-            'reject_reason' => 'nullable|string',
-            'reject_remarks' => 'nullable|string',
-            'tender_fee' => 'nullable|array',
-            'emd_req' => 'nullable|string',
-            'emd_opt' => 'nullable|array',
-            'rev_auction' => 'nullable|string',
-            'pt_supply' => 'nullable|string',
-            'pt_ic' => 'nullable|string',
-            'pbg' => 'nullable|string',
-            'pbg_duration' => 'nullable|string',
-            'bid_valid' => 'nullable|string',
-            'comm_eval' => 'nullable|string',
-            'maf_req' => 'nullable|string',
-            'supply' => 'nullable|string',
-            'installation' => 'nullable|string',
-            'ldperweek' => 'nullable|string',
-            'maxld' => 'nullable|string',
-            'phyDocs' => 'nullable|string',
-            'dead_date' => 'nullable|string',
-            'dead_time' => 'nullable|string',
-            'tech_eligible' => 'nullable|string',
-            'tecv[order1]' => 'nullable|string',
-            'tecv[order2]' => 'nullable|string',
-            'tecv[order3]' => 'nullable|string',
-            'aat' => 'nullable|string',
-            'aat_amt' => 'nullable|string',
-            'wc' => 'nullable|string',
-            'wc_amt' => 'nullable|string',
-            'sc' => 'nullable|string',
-            'sc_amt' => 'nullable|string',
-            'nw' => 'nullable|string',
-            'nw_amt' => 'nullable|string',
-            'wo[*][wo_name]' => 'nullable|string',
-            'doc[*][doc_name]' => 'nullable|string',
-            'client_name' => 'nullable|string',
-            'client_designation' => 'nullable|string',
-            'client_email' => 'nullable|string',
-            'client_mobile' => 'nullable|string',
-            'client_organisation' => 'nullable|string',
-            'courier_address' => 'nullable|string',
-            'te_remark' => 'nullable|string',
-        ]);
-
-        try {
-            $pt = TenderInformation::where('tender_id', $id)->first();
-            if (isset($pt)) {
-                Log::info("Tender Info Update: found existing tender info record");
-                if ($request->has('tecv')) {
-                    $order1 = $request->tecv['order1'];
-                    $order2 = $request->tecv['order2'];
-                    $order3 = $request->tecv['order3'];
-                }
-                Log::info("TECV: " . json_encode($request->tecv));
-                if ($request->tender_fee) {
-                    $tender_fees = implode(',', $request->tender_fee);
-                } else {
-                    $tender_fees = $pt->tender_fees;
-                }
-                if ($request->emd_opt) {
-                    $emd_opt = implode(',', $request->emd_opt);
-                } else {
-                    $emd_opt = $pt->emd_opt;
-                }
-
-                $pt->update([
-                    'is_rejectable' => $request->is_rejectable,
-                    'reject_reason' => $request->reject_reason,
-                    'reject_remarks' => $request->reject_remarks,
-                    'tender_fees' => $tender_fees,
-                    'emd_req' => $request->emd_req,
-                    'emd_opt' => $emd_opt,
-                    'rev_auction' => $request->rev_auction,
-                    'pt_supply' => $request->pt_supply,
-                    'pt_ic' => $request->pt_ic,
-                    'pbg' => $request->pbg,
-                    'pbg_duration' => $request->pbg_duration,
-                    'bid_valid' => $request->bid_valid,
-                    'comm_eval' => $request->comm_eval,
-                    'maf_req' => $request->maf_req,
-                    'supply' => $request->supply,
-                    'installation' => $request->installation,
-                    'ldperweek' => $request->ldperweek,
-                    'maxld' => $request->maxld,
-                    'phyDocs' => $request->phyDocs,
-                    'dead_date' => $request->dead_date,
-                    'dead_time' => $request->dead_time,
-                    'tech_eligible' => $request->tech_eligible,
-                    'order1' => $order1,
-                    'order2' => $order2,
-                    'order3' => $order3,
-                    'aat' => $request->aat,
-                    'aat_amt' => $request->aat_amt,
-                    'wc' => $request->wc,
-                    'wc_amt' => $request->wc_amt,
-                    'sc' => $request->sc,
-                    'sc_amt' => $request->sc_amt,
-                    'nw' => $request->nw,
-                    'nw_amt' => $request->nw_amt,
-                    'te_remark' => $request->te_remark,
-                ]);
-                // dd($tender_fees);
-                $tender = TenderInfo::where('id', $id)->first();
-                $tender->client_name = $request->client_name;
-                $tender->client_designation = $request->client_designation;
-                $tender->client_email = $request->client_email;
-                $tender->client_mobile = $request->client_mobile;
-                $tender->client_organisation = $request->client_organisation;
-                $tender->courier_address = $request->courier_address;
-                if ($request->reject_reason) {
-                    $tender->status = $request->reject_reason;
-                } else {
-                    $tender->status = 2;
-                }
-                $tender->save();
-
-                if ($request->has('wo')) {
-                    WorkOrder::where('info_id', $pt->id)->delete();
-                    foreach ($request->wo as $key => $value) {
-                        WorkOrder::create([
-                            'tender_id' => $id,
-                            'info_id' => $pt->id,
-                            'wo_name' => $value['wo_name'],
-                        ]);
-                    }
-                }
-                if ($request->has('docs')) {
-                    EligibleDoc::where('info_id', $pt->id)->delete();
-                    foreach ($request->docs as $key => $value) {
-                        EligibleDoc::create([
-                            'tender_id' => $id,
-                            'info_id' => $pt->id,
-                            'doc_name' => $value['doc_name'],
-                        ]);
-                    }
-                }
-                // dd(EligibleDoc::all());
-            } else {
-                Log::info("Tender Info Update: no existing tender info record found, creating new one");
-                $pt = new TenderInformation();
-
-                $tender = TenderInfo::where('id', $id)->first();
-                $tender->client_name = $request->client_name;
-                $tender->client_designation = $request->client_designation;
-                $tender->client_email = $request->client_email;
-                $tender->client_mobile = $request->client_mobile;
-                $tender->client_organisation = $request->client_organisation;
-                $tender->courier_address = $request->courier_address;
-                if ($request->reject_reason) {
-                    $tender->status = $request->reject_reason;
-                } else {
-                    $tender->status = 2;
-                }
-                $tender->save();
-
-                $pt->tender_id = $id;
-                $pt->is_rejectable = $request->is_rejectable;
-                $pt->reject_reason = $request->reject_reason;
-                $pt->tender->status = $request->reject_reason ? $request->reject_reason : $pt->tender->status;
-                $pt->reject_remarks = $request->reject_remarks;
-
-                $tender_fees = $request->tender_fee ? implode(',', $request->tender_fee) : null;
-
-                if ($request->emd_opt) {
-                    $emd_opt = implode(',', $request->emd_opt);
-                }
-
-                $pt->tender_id = $id;
-                $pt->tender_fees = $tender_fees;
-                $pt->emd_req = $request->emd_req;
-                $pt->emd_opt = $emd_opt;
-                $pt->rev_auction = $request->rev_auction;
-                $pt->pt_supply = $request->pt_supply;
-                $pt->pt_ic = $request->pt_ic;
-                $pt->pbg = $request->pbg;
-                $pt->pbg_duration = $request->pbg_duration;
-                $pt->bid_valid = $request->bid_valid;
-                $pt->comm_eval = $request->comm_eval;
-                $pt->maf_req = $request->maf_req;
-                $pt->supply = $request->supply;
-                $pt->installation = $request->installation;
-                $pt->ldperweek = $request->ldperweek;
-                $pt->maxld = $request->maxld;
-                $pt->phyDocs = $request->phyDocs;
-                $pt->dead_date = $request->dead_date;
-                $pt->dead_time = $request->dead_time;
-                $pt->tech_eligible = $request->tech_eligible;
-                $pt->order1 = $request->order1;
-                $pt->order2 = $request->order2;
-                $pt->order3 = $request->order3;
-                $pt->aat = $request->aat;
-                $pt->aat_amt = $request->aat_amt;
-                $pt->wc = $request->wc;
-                $pt->wc_amt = $request->wc_amt;
-                $pt->sc = $request->sc;
-                $pt->sc_amt = $request->sc_amt;
-                $pt->nw = $request->nw;
-                $pt->nw_amt = $request->nw_amt;
-                $pt->te_remark = $request->te_remark;
-
-                $pt->save();
-
-                // Stop 'tender_info_sheet' timer and start 'tl_approval' timer
-                $this->timerService->stopTimer($tender, 'tender_info_sheet');
-                $this->timerService->startTimer($tender, 'tender_approval', 24);
-
-                if ($request->has('wo')) {
-                    foreach ($request->wo as $key => $value) {
-                        WorkOrder::create([
-                            'tender_id' => $id,
-                            'info_id' => $pt->id,
-                            'wo_name' => $value['wo_name'] ?? 'NA',
-                        ]);
-                    }
-                }
-
-                if ($request->has('doc')) {
-                    foreach ($request->doc as $key => $value) {
-                        EligibleDoc::create([
-                            'tender_id' => $id,
-                            'info_id' => $pt->id,
-                            'doc_name' => $value['doc_name'],
-                        ]);
-                    }
-                }
-
-                if ($request->has('we')) {
-                    foreach ($request->we as $key => $value) {
-                        WorkEligible::create([
-                            'tender_id' => $id,
-                            'info_id' => $pt->id,
-                            'worktype' => $value['worktype'],
-                            'value' => $value['value'],
-                            'availablity' => $value['availablity'],
-                        ]);
-                    }
-                }
-            }
-
-            // Check if client with same email or phone exists
-            $existingClient = Clintdirectory::where('email', $request->client_email)
-                ->orWhere('phone_no', $request->client_mobile)
-                ->first();
-
-            if ($existingClient) {
-                // Update existing client record
-                $existingClient->name = $request->client_name;
-                $existingClient->designation = $request->client_designation;
-                $existingClient->organization = $request->client_organisation;
-                $existingClient->courier_addr = $request->courier_address;
-                $existingClient->ip = $_SERVER['REMOTE_ADDR'];
-                $existingClient->strtotime = Carbon::now('Asia/Kolkata')->timestamp;
-                $existingClient->save();
-            } else {
-                // Create new client record
-                $clintdata = new Clintdirectory();
-                $clintdata->name = $request->client_name;
-                $clintdata->designation = $request->client_designation;
-                $clintdata->email = $request->client_email;
-                $clintdata->phone_no = $request->client_mobile;
-                $clintdata->organization = $request->client_organisation;
-                $clintdata->courier_addr = $request->courier_address;
-                $clintdata->ip = $_SERVER['REMOTE_ADDR'];
-                $clintdata->strtotime = Carbon::now('Asia/Kolkata')->timestamp;
-                $clintdata->save();
-            }
-
-            // last inserted id
-            $last_id = $id;
-            $tenderInfo = $pt->tender;
-
-            // if ($request->is_rejectable == 1) {
-            //     if ($this->sendMailRej($tenderInfo, $last_id)) {
-            //         return redirect()->route('tender.index')->with('success', 'Tender Info updated and Mail Sent successfully');
-            //     } else {
-            //         return redirect()->route('tender.index')->with('success', 'Tender Info updated successfully');
-            //     }
-            // } else {
-            // }
-
-            if ($this->sendMailAcc($tenderInfo, $last_id)) {
-                return redirect()->route('tender.index')->with('success', 'Tender Info updated and Mail Sent successfully');
-            } else {
-                return redirect()->route('tender.index')->with('success', 'Tender Info updated successfully');
-            }
-
-            // return redirect()->route('tender.index')->with('success', 'Tender Info updated successfully');
-        } catch (\Throwable $th) {
-            Log::error("Tender Info Update Error: " . $th->getMessage());
             return redirect()->back()->with('error', $th->getMessage());
         }
     }

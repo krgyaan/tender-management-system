@@ -88,13 +88,25 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('admin')->group(function () {
             Route::resource('statuses', StatusController::class);
-            Route::resource('organizations', OrganizationController::class);
             Route::resource('industries', IndustryController::class);
 
+            Route::controller(OrganizationController::class)->group(function () {
+                Route::match(['get', 'post'], 'org-industries/add', 'addIndustry')->name('org-industries.add');
+                Route::get('org-industries/edit/{id}', 'editIndustry')->name('org-industries.edit');
+                Route::put('org-industries/update/{id}', 'updateIndustry')->name('org-industries.update');
+                Route::post('org-industries/delete/{id}', 'deleteIndustry')->name('org-industries.delete');
+                Route::resource('organizations', OrganizationController::class);
+            });
+
             Route::controller(ItemController::class)->group(function () {
-                Route::resource('items', ItemController::class);
                 Route::post('items/approve/{id}', 'approve')->name('items.approve');
                 Route::post('items/delete/{id}', 'delete')->name('items.delete');
+                Route::match(['get', 'post'], 'items/add-heading', 'addHeading')->name('items.add-heading');
+                Route::get('headings/edit/{id}', 'editHeading')->name('headings.edit');
+                Route::put('headings/update/{id}', 'updateHeading')->name('headings.update');
+                Route::post('headings/delete/{id}', 'deleteHeading')->name('headings.delete');
+                Route::get('items/get-headings', [ItemController::class, 'getHeadings'])->name('items.get-headings');
+                Route::resource('items', ItemController::class);
             });
             Route::controller(VendorController::class)->group(function () {
                 Route::resource('vendors', VendorController::class)->except(['edit', 'update']);
@@ -104,9 +116,10 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/vendors/delete-gst/{id}', 'deleteGst')->name('vendors.delete-gst');
                 Route::delete('/vendors/delete-contact/{id}', 'deleteContact')->name('vendors.delete-contact');
             });
+            
+            Route::resource('locations', LocationController::class);
 
             Route::resource('websites', WebsitesController::class);
-            Route::resource('locations', LocationController::class);
             Route::resource('submitteddocs', DocumentSubmittedController::class);
             Route::controller(EmployeeImprestController::class)->group(function () {
                 Route::get('categories', 'categories')->name('categories');

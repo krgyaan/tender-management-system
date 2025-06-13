@@ -53,14 +53,16 @@
                                                             data-heading="{{ $item->heading }}">
                                                             <i class="fa fa-edit"></i>
                                                         </button>
-                                                        <form action="{{ route('items.delete', $item->id) }}" method="POST">
+                                                        <form action="{{ route('items.delete', $item->id) }}"
+                                                            method="POST">
                                                             @csrf
                                                             <button type="submit" class="btn btn-danger btn-xs">
                                                                 <i class="fa fa-trash"></i>
                                                             </button>
                                                         </form>
                                                         @if (Auth::user()->designation == 'CEO' && $item->status != '1')
-                                                            <form action="{{ route('items.approve', $item->id) }}" method="POST">
+                                                            <form action="{{ route('items.approve', $item->id) }}"
+                                                                method="POST">
                                                                 @csrf
                                                                 <button type="submit" class="btn btn-success btn-xs">
                                                                     <i class="fa fa-check"></i> Approve
@@ -106,14 +108,16 @@
                                                             data-heading="{{ $item->heading }}">
                                                             <i class="fa fa-edit"></i>
                                                         </button>
-                                                        <form action="{{ route('items.delete', $item->id) }}" method="POST">
+                                                        <form action="{{ route('items.delete', $item->id) }}"
+                                                            method="POST">
                                                             @csrf
                                                             <button type="submit" class="btn btn-danger btn-xs">
                                                                 <i class="fa fa-trash"></i>
                                                             </button>
                                                         </form>
                                                         @if (Auth::user()->designation == 'CEO' && $item->status != '1')
-                                                            <form action="{{ route('items.approve', $item->id) }}" method="POST" class="d-inline">
+                                                            <form action="{{ route('items.approve', $item->id) }}"
+                                                                method="POST" class="d-inline">
                                                                 @csrf
                                                                 <button type="submit" class="btn btn-success btn-xs">
                                                                     <i class="fa fa-check"></i> Approve
@@ -160,9 +164,17 @@
                         </div>
                         <div class="form-group">
                             <label for="heading">Heading</label>
-                            <select class="form-control" id="heading" name="heading" required>
-                                <option value="" selected disabled>Select Heading</option>
-                            </select>
+                            <div class="input-group">
+                                <select class="form-control" id="heading" name="heading" required>
+                                    <option value="" selected disabled>Select Heading</option>
+                                </select>
+                                <div class="input-group-append">
+                                    <a class="btn btn-primary" href="{{ route('items.add-heading') }}"
+                                        id="addHeadingBtn">
+                                        <i class="fa fa-plus"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="item_name">Item Name</label>
@@ -182,40 +194,26 @@
 @push('scripts')
     <script>
         function changeHeading(team) {
-            var options = {
-                "DC": [
-                    "Pipeline",
-                    "Ni-Cd Battery",
-                    "VRLA",
-                    "OPZs",
-                    "SMF",
-                    "Charger",
-                    "UPS",
-                    "Solar",
-                    "BESS",
-                    "Spares",
-                    "AMC"
-                ],
-                "AC": [
-                    "Precision",
-                    "Package-Ductable",
-                    "VRV",
-                    "Unitary",
-                    "AHU",
-                    "Service",
-                    "Chiller & VAM",
-                    "FLP",
-                    "Space Maker",
-                    "Spares",
-                    "Misc"
-                ]
-            };
-            $('#heading').empty().append('<option value="" selected disabled>Select Heading</option>');
-            $.each(options[team], function(index, option) {
-                $('#heading').append($('<option>', {
-                    value: option,
-                    text: option
-                }));
+            console.log('Fetching headings for team:', team);
+            $.ajax({
+                url: "{{ route('items.get-headings') }}",
+                type: 'GET',
+                data: {
+                    team: team
+                },
+                success: function(headings) {
+                    $('#heading').empty().append('<option value="" selected disabled>Select Heading</option>');
+                    headings.forEach(function(heading) {
+                        $('#heading').append($('<option>', {
+                            value: heading,
+                            text: heading
+                        }));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching headings:', error);
+                    alert('Error loading headings. Please try again.');
+                }
             });
         }
 
@@ -228,6 +226,7 @@
             });
 
             $('#team').on('change', function() {
+                console.log('Team changed:', this.value);
                 changeHeading(this.value);
             });
 
@@ -236,13 +235,16 @@
                 var itemName = $(this).data('name');
                 var team = $(this).data('team');
                 var heading = $(this).data('heading');
+
                 $('#itemModalLabel').text('Edit Item');
                 $('#itemForm').attr('action', '/admin/items/' + itemId);
                 $('#update-method').html('<input type="hidden" name="_method" value="PUT">');
                 $('#item_name').val(itemName);
                 $('#team option[value="' + team + '"]').prop('selected', true);
                 changeHeading(team);
-                $('#heading option[value="' + heading + '"]').prop('selected', true);
+                setTimeout(function() {
+                    $('#heading option[value="' + heading + '"]').prop('selected', true);
+                }, 500);
                 $('#itemModal').modal('show');
             });
         });

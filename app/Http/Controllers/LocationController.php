@@ -7,30 +7,29 @@ use Illuminate\Http\Request;
 
 class LocationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
+        $states = Location::$indianStatesAndUTs;
+        $regions = Location::$regions;
         $locations = Location::orderBy('address')->get();
-        return view('master.locations', compact('locations'));
+        return view('master.locations', compact('locations', 'states', 'regions'));
     }
 
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         try {
             $request->validate([
                 'address' => 'required|string|max:255',
                 'acronym' => 'required|string|max:255',
+                'state' => 'required|string|max:255',
+                'region' => 'required|string|max:255',
             ]);
 
             Location::create([
                 'address' => $request->address,
-                'acronym' => $request->acronym
+                'acronym' => $request->acronym,
+                'state' => $request->state,
+                'region' => $request->region
             ]);
 
             return redirect()->back()->with('success', 'Location added successfully.');
@@ -39,20 +38,21 @@ class LocationController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Location $location)
     {
         try {
             $request->validate([
                 'address' => 'required|string|max:255',
                 'acronym' => 'required|string|max:255',
+                'state' => 'required|string|max:255',
+                'region' => 'required|string|max:255',
             ]);
 
             $location->update([
                 'address' => $request->address,
-                'acronym' => $request->acronym
+                'acronym' => $request->acronym,
+                'state' => $request->state,
+                'region' => $request->region
             ]);
 
             return redirect()->back()->with('success', 'Location updated successfully.');
@@ -61,9 +61,6 @@ class LocationController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Location $location)
     {
         try {

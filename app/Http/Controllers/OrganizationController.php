@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OrgIndustry;
 use App\Models\Organization;
 use Illuminate\Http\Request;
 
@@ -11,13 +12,14 @@ class OrganizationController extends Controller
     {
         try {
             $organizations = Organization::all();
+            $industries = OrgIndustry::where('status', 1)->get();
 
             if ($organizations->isEmpty()) {
                 return redirect()->route('organizations.index')
                     ->with('error', 'No organizations found.');
             }
 
-            return view('master.organization', compact('organizations'));
+            return view('master.organization', compact('organizations', 'industries'));
         } catch (\Exception $e) {
             return redirect()->route('organizations.index')
                 ->with('error', 'Failed to retrieve organizations: ' . $e->getMessage());
@@ -100,6 +102,84 @@ class OrganizationController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('organizations.index')
                 ->with('error', 'An error occurred while deleting the organization.');
+        }
+    }
+
+    public function addIndustry(Request $request)
+    {
+        if ($request->isMethod('get')) {
+            $industries = OrgIndustry::orderBy('status')->get();
+            return view('master.org-industries', compact('industries'));
+        }
+
+        if ($request->isMethod('post')) {
+            try {
+                $request->validate([
+                    'name' => 'required|unique:org_industries,name',
+                    'description' => 'nullable'
+                ]);
+
+                OrgIndustry::create([
+                    'name' => $request->name,
+                    'description' => $request->description,
+                    'status' => 1
+                ]);
+
+                return redirect()->back()->with('success', 'Industry added successfully.');
+            } catch (\Exception $e) {
+                return redirect()->back()->with('error', 'Failed to add industry: ' . $e->getMessage());
+            }
+        }
+    }
+
+    public function editIndustry($id)
+    {
+        try {
+            $editIndustry = OrgIndustry::findOrFail($id);
+            $industries = OrgIndustry::orderBy('status')->get();
+
+            return view('master.org-industries', compact('editIndustry', 'industries'));
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Industry not found.');
+        }
+    }
+
+    public function updateIndustry(Request $request, $id)
+    {
+        try {
+            $industry = OrgIndustry::findOrFail($id);
+
+            $request->validate([
+                'name' => 'required|unique:org_industries,name,' . $id,
+                'description' => 'nullable'
+            ]);
+
+            $industry->update([
+                'name' => $request->name,
+                'description' => $request->description
+            ]);
+
+            return redirect()->route('industries.add')->with('success', 'Industry updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to update industry: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteIndustry($id)
+    {
+        try {
+            $industry = OrgIndustry::findOrFail($id);
+
+            if (!$industry) {
+                return redirect()->back()->with('error', 'Industry not found.');
+            }
+
+            $industry->status = 0;
+            $industry->save();
+
+            return redirect()->back()->with('success', 'Industry inactivated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'An error occurred while deleting the industry.');
         }
     }
 }

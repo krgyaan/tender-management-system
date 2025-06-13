@@ -62,9 +62,9 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header m-0 py-0 border-0">
-                    <h5 class="modal-title text-white" id="orgModalLabel"></h5>
+                    <h5 class="modal-title" id="orgModalLabel"></h5>
                     <button type="button" class="close btn" data-bs-dismiss="modal" aria-label="Close">
-                        <span class="text-white fs-4" aria-hidden="true">&times;</span>
+                        <span class="fs-4" aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <form id="orgForm" method="POST">
@@ -81,12 +81,20 @@
                         </div>
                         <div class="form-group">
                             <label for="industry">Industry</label>
-                            <select name="industry" id="industry" class="form-control" required>
-                                <option value="" disabled selected>Select Industry</option>
-                                @foreach ($industries as $industry)
-                                    <option value="{{ $industry->name }}">{{ $industry->name }}</option>
-                                @endforeach
-                            </select>
+                            <div class="input-group">
+                                <select name="industry" id="industry" class="form-control" required>
+                                    <option value="" disabled selected>Select Industry</option>
+                                    @foreach ($industries as $industry)
+                                        <option value="{{ $industry->name }}">{{ $industry->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="input-group-append">
+                                    <a href="{{ route('org-industries.add') }}" class="btn btn-outline-info"
+                                        id="addIndustryBtn">
+                                        <i class="fa fa-plus"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer border-0">

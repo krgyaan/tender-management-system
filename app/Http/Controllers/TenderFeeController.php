@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Emds;
 use App\Models\BtTenderFee;
 use App\Models\DdTenderFee;
 use App\Models\PopTenderFee;
 use App\Models\TenderFee;
 use App\Models\TenderInfo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TenderFeeController extends Controller
 {
@@ -22,60 +24,60 @@ class TenderFeeController extends Controller
 
     public function index()
     {
-        $btTenderFeesOld = BtTenderFee::where('tender_id', '0')->get();
-        $btTenderFees = BtTenderFee::where('tender_id', '!=', '0')->get();
-        $ddTenderFeesOld = DdTenderFee::where('tender_id', '0')->get();
-        $ddTenderFees = DdTenderFee::where('tender_id', '!=', '0')->get();
-        $popTenderFeesOld = PopTenderFee::where('tender_id', '0')->get();
-        $popTenderFees = PopTenderFee::where('tender_id', '!=', '0')->get();
-        return view('tender-fees.index', compact('btTenderFeesOld', 'btTenderFees', 'ddTenderFeesOld', 'ddTenderFees', 'popTenderFeesOld', 'popTenderFees'));
+        $fees = [
+            'btTenderFees' => BtTenderFee::with('tender')->get(),
+            'ddTenderFees' => DdTenderFee::with('tender')->get(),
+            'popTenderFees' => PopTenderFee::with('tender')->get(),
+        ];
+
+        if (in_array(null, $fees, true)) {
+            Log::error('TenderFeeController: index() method failed. Returned null.');
+            return redirect()->back()->withErrors(['error' => 'Something went wrong. Please try again.']);
+        }
+
+        return view('tender-fees.index', $fees);
     }
 
-    public function create($id)
-    {
-        $instrumentType = $this->instrumentType;
-        $tender = TenderInfo::where('id', $id)->first();
-        return view('tender-fees.create-direct', compact('instrumentType', 'tender'));
-    }
-
-    public function store(Request $request)
+    public function create($id = null)
     {
         try {
-            Log::info('TenderFeeController: store() method started.');
+            $emd = null;
+            $instrumentType = request('type');
+            if (!$instrumentType && $id) {
+                $query = Emds::where('id', $id);
 
-            $validated = $request->validate([
-                "tender_no" => 'required',
-                "tender_name" => 'required',
-                "purpose" => 'required',
-                "account_name" => 'required',
-                "account_number" => 'required',
-                "ifsc" => 'required',
-                "amount" => 'required',
-            ]);
+                $emd = $query->first();
 
-            Log::info('TenderFeeController: store() validation passed.');
+                if (!$emd) {
+                    throw new \Exception('EMD not found.');
+                }
 
-            TenderFee::create($validated);
+                $instrumentType = $emd->instrument_type;
 
-            Log::info('TenderFeeController: store() TenderFee created.');
+                $emd = Emds::where('id', $id)
+                    ->when($instrumentType == '1', fn($q) => $q->with(
+                        ['emdDemandDrafts', 'tender:id,tender_fees,due_date,due_time']
+                    ))
+                    ->when($instrumentType == '5', fn($q) => $q->with(
+                        ['emdBankTransfers', 'tender:id,tender_fees,due_date,due_time']
+                    ))
+                    ->when($instrumentType == '6', fn($q) => $q->with(
+                        ['emdPayOnPortals', 'tender:id,tender_fees,due_date,due_time']
+                    ))
+                    ->first();
 
-            return redirect()->back()->with('success', 'Tender Fee Added Successfully');
+                if (!in_array($instrumentType, ['1', '5', '6'])) {
+                    throw new \Exception('Invalid BI type for tender fees.');
+                }
+            } else if (!in_array($instrumentType, ['1', '5', '6'])) {
+                throw new \Exception('Invalid BI type.');
+            }
 
-        } catch (\Throwable $th) {
-            Log::error('TenderFeeController: store() exception occurred: ' . $th->getMessage());
-            return redirect()->back()->with('error', $th->getMessage());
+            return view('tender-fees.create', compact('instrumentType', 'emd'));
+        } catch (\Exception $e) {
+            Log::error('create() exception: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
-    }
-
-    public function BTcreate($id = null)
-    {
-        $instrumentType = $this->instrumentType;
-        $tender = TenderInfo::where('tender_no', base64_decode($id))->first();
-        $tenders = TenderInfo::where('emd', '>', '0')
-            ->where('deleteStatus', '0')
-            ->where('tlStatus', '1')
-            ->get();
-        return view('tender-fees.bt.create', compact('instrumentType', 'tender', 'tenders'));
     }
 
     public function BTstore(Request $request)
@@ -83,46 +85,117 @@ class TenderFeeController extends Controller
         try {
             Log::info('TenderFeeController: BTstore() method started.');
 
-            $request->validate([
-                'tender_id' => '',
-                'emd_id' => '',
-                'tender_name' => '',
-                'due_date' => '',
-                'purpose' => '',
-                'account_name' => '',
-                'account_number' => '',
-                'ifsc' => '',
-                'amount' => '',
+            $validated = $request->validate([
+                'tender_id' => 'required|numeric',
+                'emd_id' => 'required|numeric',
+                'tender_name' => 'required|string|max:255',
+                'due_date_time' => 'required|date',
+                'purpose' => 'required|string|max:255',
+                'account_name' => 'required|string|max:255',
+                'account_number' => 'required|string|max:50',
+                'ifsc' => 'required|string|max:11',
+                'amount' => 'required|numeric|min:0',
             ]);
 
             Log::info('TenderFeeController: BTstore() validation passed.');
 
-            $btTenderFee = new BtTenderFee();
-            $btTenderFee->type = $request->type ?? 'Other Than TMS';
-            $btTenderFee->tender_id = $request->tender_id ?? '0';
-            $btTenderFee->emd_id = $request->emd_id ?? '0';
-            $btTenderFee->tender_name = $request->tender_name ?? '';
-            $btTenderFee->due_date = $request->due_date_time ?? '';
-            $btTenderFee->purpose = $request->purpose;
-            $btTenderFee->account_name = $request->account_name;
-            $btTenderFee->account_number = $request->account_number;
-            $btTenderFee->ifsc = $request->ifsc;
-            $btTenderFee->amount = $request->amount;
-            $btTenderFee->save();
+            $btTenderFee = BtTenderFee::create([
+                'tender_id' => $request->tender_id ?? '0',
+                'emd_id' => $request->emd_id ?? '0',
+                'type' => $request->tender_id == '0' ? 'Other Than TMS' : 'TMS',
+                'tender_name' => $validated['tender_name'],
+                'due_date' => $validated['due_date_time'],
+                'purpose' => $validated['purpose'],
+                'account_name' => $validated['account_name'],
+                'account_number' => $validated['account_number'],
+                'ifsc' => $validated['ifsc'],
+                'amount' => $validated['amount'],
+            ]);
 
-            Log::info('TenderFeeController: BTstore() TenderFee created.');
-
-            return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Added Successfully');
-        } catch (\Throwable $th) {
-            Log::error('TenderFeeController: BTstore() exception occurred: ' . $th->getMessage());
-            return redirect()->back()->with('error', $th->getMessage());
+            Log::info('TenderFeeController: BTstore() TenderFee created.', ['id' => $btTenderFee->id]);
+            return redirect()->route('tender-fees.index')->with('success', 'Bank Transfer Tender Fee Added Successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('TenderFeeController: BTstore() validation exception: ' . $e->getMessage());
+            return redirect()->back()->withErrors($e->validator)->withInput();
+        } catch (\Exception $e) {
+            Log::error('TenderFeeController: BTstore() exception: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred while adding the Tender Fee.')->withInput();
         }
     }
 
-    public function BTedit($id)
+    public function DDstore(Request $request)
     {
-        $btTenderFee = BtTenderFee::find($id);
-        return view('tender-fees.bt.edit', compact('btTenderFee'));
+        // dd($request->all());
+        try {
+            $validated = $request->validate([
+                'tender_id' => 'required|numeric',
+                'emd_id' => 'required|numeric',
+                'tender_name' => 'required|string|max:255',
+                'dd_needs' => 'required|string|in:due,24,36,48',
+                'purpose_of_dd' => 'required|string|max:255',
+                'in_favour_of' => 'required|string|max:255',
+                'dd_payable_at' => 'required|string|max:255',
+                'amount' => 'required|numeric|min:0',
+                'courier_address' => 'required|string',
+                'courier_deadline' => 'required|numeric|min:1',
+            ]);
+
+            $ddTenderFee = DdTenderFee::create([
+                'tender_id' => $request->tender_id ?? '0',
+                'emd_id' => $request->emd_id ?? '0',
+                'type' => $request->tender_id == '0' ? 'Other Than TMS' : 'TMS',
+                'tender_name' => $validated['tender_name'],
+                'dd_needed_in' => $validated['dd_needs'],
+                'purpose_of_dd' => $validated['purpose_of_dd'],
+                'in_favour_of' => $validated['in_favour_of'],
+                'dd_payable_at' => $validated['dd_payable_at'],
+                'dd_amount' => $validated['amount'],
+                'courier_address' => $validated['courier_address'],
+                'delivery_date_time' => $validated['courier_deadline'],
+            ]);
+
+            Log::info('TenderFeeController: DDstore() TenderFee created.', ['id' => $ddTenderFee->id]);
+            return redirect()->route('tender-fees.index')->with('success', 'Demand Draft Tender Fee Added Successfully');
+        } catch (\Exception $e) {
+            Log::error('TenderFeeController: DDstore() exception: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
+
+    public function Popstore(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'tender_id' => 'required|numeric',
+                'emd_id' => 'required|numeric',
+                'tender_name' => 'required|string|max:255',
+                'due_date_time' => 'required|date',
+                'purpose' => 'required|string|max:255',
+                'portal_name' => 'required|string|max:255',
+                'netbanking_available' => 'required|string|in:yes,no',
+                'bank_debit_card' => 'required|string|in:yes,no',
+                'amount' => 'required|numeric|min:0',
+            ]);
+
+            $popTenderFee = PopTenderFee::create([
+                'tender_id' => $request->tender_id ?? '0',
+                'emd_id' => $request->emd_id ?? '0',
+                'type' => $request->tender_id == '0' ? 'Other Than TMS' : 'TMS',
+                'tender_name' => $validated['tender_name'],
+                'due_date_time' => $validated['due_date_time'],
+                'purpose' => $validated['purpose'],
+                'portal_name' => $validated['portal_name'],
+                'netbanking_available' => $validated['netbanking_available'],
+                'bank_debit_card' => $validated['bank_debit_card'],
+                'amount' => $validated['amount'],
+            ]);
+
+            Log::info('TenderFeeController: Popstore() TenderFee created.', ['id' => $popTenderFee->id]);
+            return redirect()->route('tender-fees.index')->with('success', 'Pay on Portal Tender Fee Added Successfully');
+        } catch (\Exception $e) {
+            Log::error('TenderFeeController: Popstore() exception: ' . $e->getMessage());
+            return redirect()->back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
     }
 
     public function BTupdate(Request $request, $id)
@@ -136,56 +209,6 @@ class TenderFeeController extends Controller
         }
     }
 
-    public function Popcreate($id = null)
-    {
-        return view('tender-fees.pop.create');
-    }
-
-    public function Popstore(Request $request)
-    {
-        try {
-            Log::info('TenderFeeController: Popstore() method started.');
-
-            $request->validate([
-                'tender_id' => '',
-                'emd_id' => '',
-                'tender_name' => 'required',
-                'due_date_time' => 'required',
-                'purpose' => 'required',
-                'portal_name' => 'required',
-                'netbanking_available' => 'required',
-                'bank_debit_card' => 'required',
-                'amount' => 'required',
-            ]);
-
-            Log::info('TenderFeeController: Popstore() validation passed.');
-
-            $popTenderFee = new PopTenderFee();
-            $popTenderFee->tender_id = 0;
-            $popTenderFee->tender_name = $request->tender_name;
-            $popTenderFee->due_date_time = $request->due_date_time;
-            $popTenderFee->purpose = $request->purpose;
-            $popTenderFee->portal_name = $request->portal_name;
-            $popTenderFee->netbanking_available = $request->netbanking_available;
-            $popTenderFee->bank_debit_card = $request->bank_debit_card;
-            $popTenderFee->amount = $request->amount;
-            $popTenderFee->save();
-
-            Log::info('TenderFeeController: Popstore() TenderFee created.');
-
-            return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Added Successfully');
-        } catch (\Throwable $th) {
-            Log::error('TenderFeeController: Popstore() exception occurred: ' . $th->getMessage());
-            return redirect()->back()->with('error', $th->getMessage());
-        }
-    }
-
-    public function Popedit($id)
-    {
-        $popTenderFee = PopTenderFee::find($id);
-        return view('tender-fees.pop.edit', compact('popTenderFee'));
-    }
-
     public function Popupdate(Request $request, $id)
     {
         try {
@@ -195,48 +218,6 @@ class TenderFeeController extends Controller
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }
-    }
-
-    public function DDcreate($id = null)
-    {
-        return view('tender-fees.dd.create');
-    }
-
-    public function DDstore(Request $request)
-    {
-        try {
-            $request->validate([
-                'tender_id' => '',
-                'tender_name' => 'required',
-                'dd_needed_in' => 'required',
-                'purpose_of_dd' => 'required',
-                'in_favour_of' => 'required',
-                'dd_payable_at' => 'required',
-                'dd_amount' => 'required',
-                'courier_address' => 'required',
-                'delivery_date_time' => 'required',
-            ]);
-            $ddTenderFee = new DdTenderFee();
-            $ddTenderFee->tender_id = 0;
-            $ddTenderFee->tender_name = $request->tender_name;
-            $ddTenderFee->dd_needed_in = $request->dd_needed_in;
-            $ddTenderFee->purpose_of_dd = $request->purpose_of_dd;
-            $ddTenderFee->in_favour_of = $request->in_favour_of;
-            $ddTenderFee->dd_payable_at = $request->dd_payable_at;
-            $ddTenderFee->dd_amount = $request->dd_amount;
-            $ddTenderFee->courier_address = $request->courier_address;
-            $ddTenderFee->delivery_date_time = $request->delivery_date_time;
-            $ddTenderFee->save();
-            return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Added Successfully');
-        } catch (\Throwable $th) {
-            return redirect()->back()->with('error', $th->getMessage());
-        }
-    }
-
-    public function DDedit($id)
-    {
-        $ddTenderFee = DdTenderFee::find($id);
-        return view('tender-fees.dd.edit', compact('ddTenderFee'));
     }
 
     public function DDupdate(Request $request, $id)

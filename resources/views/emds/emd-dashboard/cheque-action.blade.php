@@ -93,15 +93,17 @@
                                     <label class="form-label" for="handover">
                                         Receiving of the cheque handed over:
                                     </label>
-                                    <input type="text" name="handover" class="form-control" id="handover"
-                                        value="{{ $cheque->handover }}">
+                                    <input type="file" name="handover" class="form-control" id="handover">
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('handover') }}</span>
                                     </small>
+                                    @if ($cheque->handover)
+                                        <a href="{{ asset('uploads/accounts/' . $cheque->handover) }}"
+                                            class="text-primary me-3" target="_blank">View</a>
+                                    @endif
                                 </div>
                                 <div class="form-group col-md-4">
-                                    <label class="form-label" for="cheq_img">Upload soft copy of Cheque (both
-                                        sides):</label>
+                                    <label class="form-label" for="cheq_img">Upload soft copy of Cheque (both sides):</label>
                                     <input type="file" name="cheq_img[]" class="form-control" id="cheq_img" multiple>
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('cheq_img') }}</span>
@@ -344,7 +346,7 @@
             handleOptionChange('#chqaction', [{
                     val: '1',
                     selectorsToShow: ['#chqaccount'],
-                    reqFld: ['#status', '#cheq_img', '#handover']
+                    reqFld: ['#status', '#cheq_img', '#handover', '#cheq_no']
                 },
                 {
                     val: '2',

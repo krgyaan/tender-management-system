@@ -94,30 +94,11 @@
                                                                     {!! $remained !!}
                                                                 @endif
                                                             </td>
-                                                            <td @class(['d-flex', 'flex-wrap', 'gap-2'])>
-                                                                @if ($tender->emds->count() > 0)
-                                                                    <a href="{{ route('emds.edit', $tender->id) }}"
-                                                                        class="btn btn-primary btn-xs">
-                                                                        <i class="fa fa-edit"></i>
-                                                                    </a>
-                                                                    <a href="{{ route('emds.show', $tender->id) }}"
-                                                                        class="btn btn-xs btn-primary">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </a>
-                                                                @else
-                                                                    <a href="{{ route('emds.create', base64_encode($tender->tender_no)) }}"
-                                                                        class="btn btn-info btn-xs">
-                                                                        Request EMD
-                                                                    </a>
-                                                                @endif
-                                                                @if (
-                                                                    $tender->gst_values > 0 &&
-                                                                        ($tender->emds->count() > 0 ? in_array($tender->emds->first()->instrument_type, [1, 5, 6]) : false))
-                                                                    <a class="btn btn-secondary btn-xs"
-                                                                        href="{{ route('tender-fees.create-direct', $tender->id) }}">
-                                                                        Tender Fees
-                                                                    </a>
-                                                                @endif
+                                                            <td>
+                                                                <a href="{{ route('emds.create', base64_encode($tender->tender_no)) }}"
+                                                                    class="btn btn-info btn-xs">
+                                                                    Request EMD
+                                                                </a>
                                                             </td>
                                                         </tr>
                                                     @endif
@@ -178,30 +159,33 @@
                                                                     {!! $remained !!}
                                                                 @endif
                                                             </td>
-                                                            <td @class(['d-flex', 'flex-wrap', 'gap-2'])>
-                                                                @if ($tender->emds->count() > 0)
-                                                                    <a href="{{ route('emds.edit', $tender->id) }}"
-                                                                        class="btn btn-primary btn-xs">
-                                                                        <i class="fa fa-edit"></i>
-                                                                    </a>
-                                                                    <a href="{{ route('emds.show', $tender->id) }}"
-                                                                        class="btn btn-xs btn-primary">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </a>
-                                                                @else
-                                                                    <a href="{{ route('emds.create', base64_encode($tender->tender_no)) }}"
-                                                                        class="btn btn-info btn-xs">
-                                                                        Request EMD
-                                                                    </a>
-                                                                @endif
-                                                                @if (
-                                                                    $tender->gst_values > 0 &&
-                                                                        ($tender->emds->count() > 0 ? in_array($tender->emds->first()->instrument_type, [1, 5, 6]) : false))
-                                                                    <a class="btn btn-secondary btn-xs"
-                                                                        href="{{ route('tender-fees.create-direct', $tender->id) }}">
-                                                                        Tender Fees
-                                                                    </a>
-                                                                @endif
+                                                            <td>
+                                                                <div @class(['d-flex', 'flex-wrap', 'gap-2'])>
+                                                                    @if ($tender->emds->count() > 0)
+                                                                        <a href="{{ route('emds.edit', $tender->id) }}"
+                                                                            class="btn btn-primary btn-xs">
+                                                                            <i class="fa fa-edit"></i>
+                                                                        </a>
+                                                                        <a href="{{ route('emds.show', $tender->id) }}"
+                                                                            class="btn btn-xs btn-primary">
+                                                                            <i class="fa fa-eye"></i>
+                                                                        </a>
+                                                                    @else
+                                                                        <a href="{{ route('emds.create', base64_encode($tender->tender_no)) }}"
+                                                                            class="btn btn-info btn-xs">
+                                                                            Request EMD
+                                                                        </a>
+                                                                    @endif
+                                                                    @if (
+                                                                        $tender->gst_values > 0 &&
+                                                                            $tender->emds->isNotEmpty() &&
+                                                                            in_array($tender->emds->first()->instrument_type, [1, 5, 6]))
+                                                                        <a class="btn btn-secondary btn-xs"
+                                                                            href="{{ route('tender-fees.create', $tender->emds->first()->id) }}">
+                                                                            Tender Fees
+                                                                        </a>
+                                                                    @endif
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     @endif
@@ -288,13 +272,13 @@
                                 <h4 class="text-center">Select Tender Fees Format</h4>
                             </div>
                             <div class="col-md-12 d-flex justify-content-center flex-wrap gap-2">
-                                <a href="{{ route('tender-fees.dd.create') }}" class="btn btn-sm btn-info">
+                                <a href="{{ route('tender-fees.create', ['type' => '1']) }}" class="btn btn-sm btn-info">
                                     Demand Draft (DD)
                                 </a>
-                                <a href="{{ route('tender-fees.bt.create') }}" class="btn btn-sm btn-info">
+                                <a href="{{ route('tender-fees.create', ['type' => '5']) }}" class="btn btn-sm btn-info">
                                     Bank Transfer
                                 </a>
-                                <a href="{{ route('tender-fees.pop.create') }}" class="btn btn-sm btn-info">
+                                <a href="{{ route('tender-fees.create', ['type' => '6']) }}" class="btn btn-sm btn-info">
                                     Pay on Portal
                                 </a>
                             </div>
@@ -304,158 +288,10 @@
             </div>
         </div>
     </section>
-
-
-    <div class="modal fade" id="tenderBtFeeModal" tabindex="-1" aria-labelledby="tenderBtFeeModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="tenderBtFeeModalLabel">Bank Transfer Tender Fees</h5>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="{{ route('tender-fees.bt.store') }}">
-                        @csrf
-                        <div class="row" id="bank_transfer">
-                            <div class="col-md-12 form-group">
-                                <input type="hidden" name="tender_id" value="">
-                                <input type="hidden" name="emd_id" value="">
-                                <label class="form-label" for="purpose">Purpose</label>
-                                <input type="text" name="purpose" id="purpose" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('purpose') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="bt_acc_name">
-                                    Account Name
-                                </label>
-                                <input type="text" name="account_name" id="account_name" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('account_name') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="account_number">Account Number</label>
-                                <input type="text" name="account_number" id="account_number" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('account_number') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="ifsc">IFSC</label>
-                                <input type="text" name="ifsc" id="ifsc" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('ifsc') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="amount">Amount</label>
-                                <input type="number" step="any" name="amount" id="amount"
-                                    class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('amount') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group text-end">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="tenderPopFeeModal" tabindex="-1" aria-labelledby="tenderPopFeeModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="tenderPopFeeModalLabel">Pop Tender Fees</h5>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="{{ route('tender-fees.pop.store') }}">
-                        @csrf
-                        <div class="row" id="bank_transfer">
-                            <div class="col-md-12 form-group">
-                                <input type="hidden" name="tender_id" value="">
-                                <input type="hidden" name="emd_id" value="">
-                                <label class="form-label" for="purpose">Purpose</label>
-                                <input type="text" name="purpose" id="purpose" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('purpose') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="portal_name">Name of Portal</label>
-                                <input type="text" name="portal_name" id="portal_name" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('portal_name') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="netbanking">Netbanking available</label>
-                                <select name="netbanking" id="netbanking" class="form-control">
-                                    <option value="">Select</option>
-                                    <option value="1">Yes</option>
-                                    <option value="0">No</option>
-                                </select>
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('netbanking') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="bank_debit_card">Yes Bank Debit card</label>
-                                <select name="bank_debit_card" id="bank_debit_card" class="form-control">
-                                    <option value="">Select</option>
-                                    <option value="1">Yes</option>
-                                    <option value="0">No</option>
-                                </select>
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('bank_debit_card') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="amount">Amount</label>
-                                <input type="number" step="any" name="amount" id="amount"
-                                    class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('amount') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group text-end">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @push('scripts')
     <script>
-        $(document).ready(function() {
-            $('#tenderBtFeeModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var tenderId = button.data('tender_id');
-                var emdId = button.data('emd_id');
-                $(this).find('input[name="tender_id"]').val(tenderId);
-                $(this).find('input[name="emd_id"]').val(emdId);
-            });
-        });
-        $(document).ready(function() {
-            $('#tenderPopFeeModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var tenderId = button.data('tender_id');
-                var emdId = button.data('emd_id');
-                $(this).find('input[name="tender_id"]').val(tenderId);
-                $(this).find('input[name="emd_id"]').val(emdId);
-            });
-        });
-
         document.addEventListener('DOMContentLoaded', function() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(startCountdown);

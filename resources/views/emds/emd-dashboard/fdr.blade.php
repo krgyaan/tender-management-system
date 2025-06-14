@@ -30,7 +30,7 @@
                             <table class="table" id="fdr">
                                 <thead>
                                     <tr>
-                                        <th>FDR Date</th>
+                                        <th style="white-space: nowrap; max-width: 150px;">FDR Date</th>
                                         <th>FDR No.</th>
                                         <th>Beneficiary name</th>
                                         <th>Tender/WO Name</th>
@@ -45,11 +45,9 @@
                                 <tbody>
                                     @if (count($emdFdr) > 0)
                                         @foreach ($emdFdr as $fdr)
-                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator']) ||
-                                                    Str::startsWith('account', Auth::user()->role) ||
-                                                    Auth::user()->name == $fdr->emds->requested_by)
+                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator','account-executive','accountant','account-leader']) || Auth::user()->name == $fdr->emds->requested_by)
                                                 <tr>
-                                                    <td>
+                                                    <td style="white-space: nowrap; max-width: 150px;">
                                                         {{ $fdr->fdr_date ? date('d-m-Y', strtotime($fdr->fdr_date)) : '' }}
                                                     </td>
                                                     <td>{{ $fdr->fdr_no ?? '' }}</td>
@@ -123,23 +121,22 @@
                                                     </td>
                                                     <td>
                                                         @php
-                                                            $tender = $fdr->emds->tender;
-                                                            if ($tender) {
-                                                                $timer = $tender->getTimer('fdr_ac_form');
+                                                            if ($fdr) {
+                                                                $timer = $fdr->getTimer('fdr_ac_form');
                                                                 if ($timer) {
                                                                     $start = $timer->start_time;
                                                                     $hrs = $timer->duration_hours;
                                                                     $end = strtotime($start) + $hrs * 60 * 60;
                                                                     $remaining = $end - time();
                                                                 } else {
-                                                                    $remained = $tender->remainedTime('fdr_ac_form');
+                                                                    $remained = $fdr->remainedTime('fdr_ac_form');
                                                                 }
                                                             }
                                                         @endphp
-                                                        @if (isset($tender) && $tender && isset($timer) && $timer)
-                                                            <span class="timer" id="timer-{{ $tender->id }}"
+                                                        @if (isset($fdr) && $fdr && isset($timer) && $timer)
+                                                            <span class="timer" id="timer-{{ $fdr->id }}"
                                                                 data-remaining="{{ $remaining }}"></span>
-                                                        @elseif (isset($tender) && $tender && isset($remained))
+                                                        @elseif (isset($fdr) && $fdr && isset($remained))
                                                             {!! $remained !!}
                                                         @endif
                                                     </td>
@@ -166,3 +163,11 @@
         </div>
     </section>
 @endsection
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const timers = document.querySelectorAll('.timer');
+        timers.forEach(startCountdown);
+    });
+</script>
+@endpush

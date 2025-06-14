@@ -10,11 +10,15 @@ class BtTenderFee extends Model
     use HasFactory;
     protected $fillable = [
         'tender_id',
+        'emd_id',
+        'type',
+        'tender_name',
+        'due_date',
         'purpose',
         'account_name',
         'account_number',
         'ifsc',
-        'amount',
+        'amount'
     ];
 
     public function tender()

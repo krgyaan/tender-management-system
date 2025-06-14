@@ -40,7 +40,7 @@
                     <div class="card-body">
                         @include('partials.messages')
                         <div class="new-user-info">
-                            <form method="POST" action="{{ route('emds-dashboard.update', $emd->id) }}">
+                            <form method="POST" action="{{ route('emds-dashboard.update', $emd->id) }}" enctype="multipart/form-data">
                                 @csrf
                                 @method('PUT')
                                 <div class="row">
@@ -294,6 +294,20 @@
                                                     <small class="text-muted">
                                                         <span
                                                             class="text-danger">{{ $errors->first('cheque_favour') }}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="col-md-4 form-group">
+                                                    <label class="form-label" for="cheque_needs">Cheque Needed in</label>
+                                                    <select name="cheque_needs" id="cheque_needs" class="form-control">
+                                                        <option value="">Select</option>
+                                                        <option {{ $allData->cheque_needs == '3' ? 'selected' : '' }} value="3">3 Hours</option>
+                                                        <option {{ $allData->cheque_needs == '6' ? 'selected' : '' }} value="6">6 Hours</option>
+                                                        <option {{ $allData->cheque_needs == '12' ? 'selected' : '' }} value="12">12 Hours</option>
+                                                        <option {{ $allData->cheque_needs == '24' ? 'selected' : '' }} value="24">24 Hours</option>
+                                                    </select>
+                                                    <small class="text-muted">
+                                                        <span
+                                                            class="text-danger">{{ $errors->first('cheque_needs') }}</span>
                                                     </small>
                                                 </div>
                                                 <div class="col-md-4 form-group">

@@ -57,9 +57,9 @@
                                                         <tr>
                                                             <td>{{ $dd->created_at->format('d-m-Y') }}</td>
                                                             <td>{{ $dd->dd_no }}</td>
-                                                            <td>{{ $dd->payee_name }}</td>
-                                                            <td>{{ $dd->tender->tender_name }}</td>
-                                                            <td>{{ format_inr($dd->amount) }}</td>
+                                                            <td>{{ $dd->in_favour_of }}</td>
+                                                            <td>{{ $dd->tender?->tender_name }}</td>
+                                                            <td>{{ format_inr($dd->dd_amount) }}</td>
                                                             <td>{{ $dd->expiry_date }}</td>
                                                             <td>{{ $dd->status }}</td>
                                                             <td>
@@ -73,29 +73,8 @@
                                                                     data-remaining="{{ $timeRemaining }}">
                                                                 </span>
                                                             </td>
-                                                            <td class="d-flex flex-wrap gap-2">
-                                                                <a href="{{ route('tender-fees.dd.edit', $dd->id) }}"
-                                                                    class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                @endif
-                                                @if ($ddTenderFeesOld && count($ddTenderFeesOld) > 0)
-                                                    @foreach ($ddTenderFeesOld as $ddOld)
-                                                        <tr>
-                                                            <td>{{ $ddOld->created_at->format('d-m-Y') }}</td>
-                                                            <td>{{ $ddOld->dd_no }}</td>
-                                                            <td>{{ $ddOld->payee_name }}</td>
-                                                            <td>{{ $ddOld->tender_name }}</td>
-                                                            <td>{{ format_inr($ddOld->amount) }}</td>
-                                                            <td>{{ $ddOld->expiry_date }}</td>
-                                                            <td>{{ $ddOld->status }}</td>
-                                                            <td></td>
                                                             <td>
-                                                                <a href="{{ route('tender-fees.dd.edit', $ddOld->id) }}"
-                                                                    class="btn btn-xs btn-info">
+                                                                <a href="" class="btn btn-xs btn-info">
                                                                     Edit
                                                                 </a>
                                                             </td>
@@ -129,9 +108,9 @@
                                                             <td>{{ $bt->created_at->format('d-m-Y') }}</td>
                                                             <td>{{ $bt->utr_no }}</td>
                                                             <td>{{ $bt->account_name }}</td>
-                                                            <td>{{ $bt->tender->tender_name }}</td>
+                                                            <td>{{ $bt->tender?->tender_name }}</td>
                                                             <td>{{ format_inr($bt->amount) }}</td>
-                                                            <td>{{ $bt->tender->statuses->first()->name }}</td>
+                                                            <td>{{ $bt->tender?->statuses->first()->name }}</td>
                                                             <td>{{ $bt->status }}</td>
                                                             <td>
                                                                 @php
@@ -144,29 +123,8 @@
                                                                     data-remaining="{{ $timeRemaining }}">
                                                                 </span>
                                                             </td>
-                                                            <td class="d-flex flex-wrap gap-2">
-                                                                <a href="{{ route('tender-fees.bt.edit', $bt->id) }}"
-                                                                    class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                @endif
-                                                @if ($btTenderFeesOld && count($btTenderFeesOld) > 0)
-                                                    @foreach ($btTenderFeesOld as $btOld)
-                                                        <tr>
-                                                            <td>{{ $btOld->created_at->format('d-m-Y') }}</td>
-                                                            <td>{{ $btOld->utr_no }}</td>
-                                                            <td>{{ $btOld->account_name }}</td>
-                                                            <td>{{ $btOld->tender_name }}</td>
-                                                            <td>{{ format_inr($btOld->amount) }}</td>
-                                                            <td>{{ $btOld->status }}</td>
-                                                            <td>{{ $btOld->emd_status }}</td>
-                                                            <td></td>
                                                             <td>
-                                                                <a href="{{ route('tender-fees.bt.edit', $btOld->id) }}"
-                                                                    class="btn btn-xs btn-info">
+                                                                <a href="" class="btn btn-xs btn-info">
                                                                     Edit
                                                                 </a>
                                                             </td>
@@ -200,10 +158,10 @@
                                                             <td>{{ $pop->created_at->format('d-m-Y') }}</td>
                                                             <td>{{ $pop->utr_no }}</td>
                                                             <td>{{ $pop->portal_name }}</td>
-                                                            <td>{{ $pop->tender->tender_name }}</td>
+                                                            <td>{{ $pop->tender?->tender_name }}</td>
                                                             <td>{{ format_inr($pop->amount) }}</td>
-                                                            <td>{{ $pop->tender->statuses->first()->name }}</td>
-                                                            <td>{{ $pop->tender->emd_status }}</td>
+                                                            <td>{{ $pop->tender?->statuses->first()->name }}</td>
+                                                            <td>{{ $pop->tender?->emd_status }}</td>
                                                             <td>
                                                                 @php
                                                                     $timer = strtotime($pop->created_at);
@@ -215,29 +173,8 @@
                                                                     data-remaining="{{ $timeRemaining }}">
                                                                 </span>
                                                             </td>
-                                                            <td class="d-flex flex-wrap gap-2">
-                                                                <a href="{{ route('tender-fees.pop.edit', $pop->id) }}"
-                                                                    class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                @endif
-                                                @if ($popTenderFeesOld && count($popTenderFeesOld) > 0)
-                                                    @foreach ($popTenderFeesOld as $popOld)
-                                                        <tr>
-                                                            <td>{{ $popOld->created_at->format('d-m-Y') }}</td>
-                                                            <td>{{ $popOld->utr_no }}</td>
-                                                            <td>{{ $popOld->portal_name }}</td>
-                                                            <td>{{ $popOld->tender_name }}</td>
-                                                            <td>{{ format_inr($popOld->amount) }}</td>
-                                                            <td>{{ $popOld->status }}</td>
-                                                            <td>{{ $popOld->emd_status }}</td>
-                                                            <td></td>
                                                             <td>
-                                                                <a href="{{ route('tender-fees.pop.edit', $popOld->id) }}"
-                                                                    class="btn btn-xs btn-info">
+                                                                <a href="" class="btn btn-xs btn-info">
                                                                     Edit
                                                                 </a>
                                                             </td>

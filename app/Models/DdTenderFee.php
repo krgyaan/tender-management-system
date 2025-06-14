@@ -11,6 +11,7 @@ class DdTenderFee extends Model
 
     protected $fillable = [
         'tender_id',
+        'emd_id',
         'tender_name',
         'dd_needed_in',
         'purpose_of_dd',
@@ -18,6 +19,16 @@ class DdTenderFee extends Model
         'dd_payable_at',
         'dd_amount',
         'courier_address',
-        'delivery_date_time',
+        'delivery_date_time'
     ];
+
+    public function tender()
+    {
+        return $this->belongsTo(TenderInfo::class, 'tender_id', 'id');
+    }
+
+    public function emd()
+    {
+        return $this->hasOne(Emds::class, 'tender_id', 'tender_id');
+    }
 }

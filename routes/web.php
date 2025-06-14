@@ -116,7 +116,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/vendors/delete-gst/{id}', 'deleteGst')->name('vendors.delete-gst');
                 Route::delete('/vendors/delete-contact/{id}', 'deleteContact')->name('vendors.delete-contact');
             });
-            
+
             Route::resource('locations', LocationController::class);
 
             Route::resource('websites', WebsitesController::class);
@@ -196,37 +196,14 @@ Route::middleware('auth')->group(function () {
         Route::any('emds/dd-status/{id}', [EmdsController::class, 'DDStatus'])->name('dd-status');
         Route::any('emds/pop-status/{id}', [EmdsController::class, 'PopStatus'])->name('pop-status');
 
-        Route::resource('tender-fees', TenderFeeController::class);
-        Route::get('tender-fees/create/{id?}', [TenderFeeController::class, 'create'])->name('tender-fees.create-direct');
-        Route::get('tender-fees/bt/create/{id?}', [TenderFeeController::class, 'BTcreate'])->name('tender-fees.bt.create');
-        Route::post('tender-fees/bt/store', [TenderFeeController::class, 'BTstore'])->name('tender-fees.bt.store');
-        Route::get('tender-fees/bt/edit/{id}', [TenderFeeController::class, 'BTedit'])->name('tender-fees.bt.edit');
-        Route::post('tender-fees/bt/update/{id}', [TenderFeeController::class, 'BTupdate'])->name('tender-fees.bt.update');
-
-        Route::get('tender-fees/pop/create/{id?}', [TenderFeeController::class, 'Popcreate'])->name('tender-fees.pop.create');
-        Route::post('tender-fees/pop/store', [TenderFeeController::class, 'Popstore'])->name('tender-fees.pop.store');
-        Route::get('tender-fees/pop/edit/{id}', [TenderFeeController::class, 'Popedit'])->name('tender-fees.pop.edit');
-        Route::post('tender-fees/pop/update/{id}', [TenderFeeController::class, 'Popupdate'])->name('tender-fees.pop.update');
-
-        Route::get('tender-fees/dd/create/{id?}', [TenderFeeController::class, 'DDcreate'])->name('tender-fees.dd.create');
-        Route::post('tender-fees/dd/store', [TenderFeeController::class, 'DDstore'])->name('tender-fees.dd.store');
-        Route::get('tender-fees/dd/edit/{id}', [TenderFeeController::class, 'DDedit'])->name('tender-fees.dd.edit');
-        Route::post('tender-fees/dd/update/{id}', [TenderFeeController::class, 'DDupdate'])->name('tender-fees.dd.update');
-
-        Route::get('tender-fees/cheque/create/{id?}', [TenderFeeController::class, 'ChequeCreate'])->name('tender-fees.cheque.create');
-        Route::post('tender-fees/cheque/store', [TenderFeeController::class, 'ChequeStore'])->name('tender-fees.cheque.store');
-        Route::get('tender-fees/cheque/edit/{id}', [TenderFeeController::class, 'ChequeEdit'])->name('tender-fees.cheque.edit');
-        Route::post('tender-fees/cheque/update/{id}', [TenderFeeController::class, 'ChequeUpdate'])->name('tender-fees.cheque.update');
-
-        Route::get('tender-fees/fdr/create/{id?}', [TenderFeeController::class, 'FDRcreate'])->name('tender-fees.fdr.create');
-        Route::post('tender-fees/fdr/store', [TenderFeeController::class, 'FDRstore'])->name('tender-fees.fdr.store');
-        Route::get('tender-fees/fdr/edit/{id}', [TenderFeeController::class, 'FDRedit'])->name('tender-fees.fdr.edit');
-        Route::post('tender-fees/fdr/update/{id}', [TenderFeeController::class, 'FDRupdate'])->name('tender-fees.fdr.update');
-
-        Route::get('tender-fees/bg/create/{id?}', [TenderFeeController::class, 'BGcreate'])->name('tender-fees.bg.create');
-        Route::post('tender-fees/bg/store', [TenderFeeController::class, 'BGstore'])->name('tender-fees.bg.store');
-        Route::get('tender-fees/bg/edit/{id}', [TenderFeeController::class, 'BGedit'])->name('tender-fees.bg.edit');
-        Route::post('tender-fees/bg/update/{id}', [TenderFeeController::class, 'BGupdate'])->name('tender-fees.bg.update');
+        Route::controller(TenderFeeController::class)->group(function () {
+            Route::get('tender-fees/create/{id?}',  'create')->name('tender-fees.create');
+            Route::match(['get', 'put', 'patch'], 'tender-fees/update/{id}',  'update')->name('tender-fees.edit');
+            Route::post('tender-fees/bt/store',  'BTstore')->name('tender-fees.bt.store');
+            Route::post('tender-fees/pop/store',  'Popstore')->name('tender-fees.pop.store');
+            Route::post('tender-fees/dd/store',  'DDstore')->name('tender-fees.dd.store');
+            Route::resource('tender-fees', TenderFeeController::class)->except('create');
+        });
 
         Route::get('emds-dashboard', [EmdDashboardController::class, 'dashboard'])->name('emds-dashboard.index');
         Route::get('emds-dashboard/bank-gurantee', [EmdDashboardController::class, 'BG'])->name('emds-dashboard.bg');

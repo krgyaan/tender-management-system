@@ -31,7 +31,6 @@
             <div class="col-md-12 m-auto">
                 <div class="card">
                     <div class="card-body">
-                        {{ $pop->followups }}
                         @include('partials.messages')
                         <form action="{{ route('pop-action', $pop->id) }}" method="post" enctype="multipart/form-data"
                             id="updateStatusForm">
@@ -82,6 +81,14 @@
                                         value="{{ $pop->reason }}">
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('reason') }}</span>
+                                    </small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label class="form-label" for="date_time">Date and Time of Payment:</label>
+                                    <input type="datetime-local" name="date_time" class="form-control" id="date_time"
+                                        value="">
+                                    <small class="text-muted">
+                                        <span class="text-danger">{{ $errors->first('date_time') }}</span>
                                     </small>
                                 </div>
                                 <div class="form-group col-md-4">

@@ -44,7 +44,7 @@
                             <table class="table" id="dd">
                                 <thead>
                                     <tr>
-                                        <th>DD Date</th>
+                                        <th style="white-space: nowrap; max-width: 150px;">DD Date</th>
                                         <th>DD No</th>
                                         <th>Beneficiary name</th>
                                         <th>Tender Name</th>
@@ -59,11 +59,9 @@
                                 <tbody>
                                     @if (count($emdDd) > 0)
                                         @foreach ($emdDd as $dd)
-                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator']) ||
-                                                    Str::startsWith('account', Auth::user()->role) ||
-                                                    Auth::user()->name == $dd->emds->requested_by)
+                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator','account-executive','accountant','account-leader']) || Auth::user()->name == $dd->emd->requested_by)
                                                 <tr>
-                                                    <td>{{ date('d-m-Y', strtotime($dd->created_at)) }}</td>
+                                                    <td style="white-space: nowrap; max-width: 150px;">{{ date('d-m-Y', strtotime($dd->created_at)) }}</td>
                                                     <td>{{ $dd->dd_no ?? '' }}</td>
                                                     <td>{{ $dd->dd_favour ?? '' }}</td>
                                                     <td>
@@ -135,23 +133,22 @@
                                                     </td>
                                                     <td>
                                                         @php
-                                                            $tender = $dd->emd->tender;
-                                                            if ($tender) {
-                                                                $timer = $tender->getTimer('dd_ac_form');
+                                                            if ($dd) {
+                                                                $timer = $dd->getTimer('dd_ac_form');
                                                                 if ($timer) {
                                                                     $start = $timer->start_time;
                                                                     $hrs = $timer->duration_hours;
                                                                     $end = strtotime($start) + $hrs * 60 * 60;
                                                                     $remaining = $end - time();
                                                                 } else {
-                                                                    $remained = $tender->remainedTime('dd_ac_form');
+                                                                    $remained = $dd->remainedTime('dd_ac_form');
                                                                 }
                                                             }
                                                         @endphp
-                                                        @if (isset($tender) && $tender && isset($timer) && $timer)
-                                                            <span class="timer" id="timer-{{ $tender->id }}"
+                                                        @if (isset($dd) && $dd && isset($timer) && $timer)
+                                                            <span class="timer" id="timer-{{ $dd->id }}"
                                                                 data-remaining="{{ $remaining }}"></span>
-                                                        @elseif (isset($tender) && $tender && isset($remained))
+                                                        @elseif (isset($dd) && $dd && isset($remained))
                                                             {!! $remained !!}
                                                         @endif
                                                     </td>
@@ -164,6 +161,20 @@
                                                             class="btn btn-xs btn-info">
                                                             View
                                                         </a>
+                                                        <a href="{{ route('emds-dashboard.edit', $dd->emd->id) }}" class="btn btn-xs btn-warning">
+                                                            Edit
+                                                        </a>
+                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
+                                                            <form action="{{ route('emds-dashboard.destroy', $dd->emd->id) }}"
+                                                                method="POST" class="d-inline">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-xs btn-danger"
+                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
+                                                                    Delete
+                                                                </button>
+                                                            </form>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             @endif
@@ -178,3 +189,11 @@
         </div>
     </section>
 @endsection
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const timers = document.querySelectorAll('.timer');
+        timers.forEach(startCountdown);
+    });
+</script>
+@endpush

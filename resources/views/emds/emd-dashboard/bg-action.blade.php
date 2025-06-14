@@ -107,8 +107,7 @@
                                 <div class="form-group col-md-4">
                                     <label class="form-label" for="prefilled_signed_bg">Prefilled Bank Formats, Signed by
                                         CEO</label>
-                                    <input type="file" name="prefilled_signed_bg[]" class="form-control"
-                                        id="prefilled_signed_bg" multiple>
+                                    <input type="file" name="prefilled_signed_bg[]" class="form-control" id="prefilled_signed_bg" multiple>
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('prefilled_signed_bg') }}</span>
                                     </small>
@@ -234,10 +233,7 @@
                                     <label class="form-label" for="fdr_no">
                                         FDR No
                                     </label>
-                                    <input type="text" name="fdr_no" class="form-control" id="fdr_no"
-                                        pattern="[A-Za-z0-9_]{1,50}"
-                                        title="Only alphanumeric characters and underscores are allowed"
-                                        value="{{ $bg->fdr_no }}">
+                                    <input type="text" name="fdr_no" class="form-control" id="fdr_no" value="{{ $bg->fdr_no }}">
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('fdr_no') }}</span>
                                     </small>
@@ -510,12 +506,12 @@
                             <div class="row" style="display: {{ $bg->action == '7' ? 'flex' : 'none' }}"
                                 id="reqcancel">
                                 <div class="col-md-4">
+                                    <small>{{ $bg->bg_bank }}</small>
                                     <div class="form-group">
                                         <label class="form-label" for="ext_letter">
                                             Upload a Signed, Stamped Covering Letter from Client
                                         </label>
-                                        <input type="file" name="stamp_covering_letter" class="form-control"
-                                            id="stamp_covering_letter"
+                                        <input type="file" name="stamp_covering_letter" class="form-control" id="stamp_covering_letter"
                                             accept=".pdf,.jpeg,.jpg,.png,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
                                         @if ($bg->stamp_covering_letter)
                                             <a href="{{ asset('uploads/accounts/' . $bg->stamp_covering_letter) }}"

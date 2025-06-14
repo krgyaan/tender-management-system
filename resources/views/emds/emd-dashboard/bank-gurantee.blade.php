@@ -48,7 +48,7 @@
                         @foreach ($bankStats as $bankName => $stats)
                             <div class="p-3 rounded shadow border position-relative">
                                 <h5 class="">
-                                    {{ $banks[$bankName] }}
+                                    {{ $banks[$bankName] }} 
                                 </h5>
                                 <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-info">
                                     BG Created: {{ $stats['count'] }}
@@ -57,8 +57,7 @@
                                 <p class="my-0 text-success">FDR (10%): ₹ {{ format_inr($stats['fdrAmount10']) }}</p>
                                 <p class="my-0 text-success">FDR (15%): ₹ {{ format_inr($stats['fdrAmount15']) }}</p>
                                 <p class="my-0 text-success">FDR (100%): ₹ {{ format_inr($stats['fdrAmount100']) }}</p>
-                                <span
-                                    class="position-absolute top-100 start-50 translate-middle badge rounded-pill bg-dark border border-light">
+                                <span class="position-absolute top-100 start-50 translate-middle badge rounded-pill bg-dark border border-light">
                                     {{ number_format($stats['percentage'], 2) }}% of BG
                                 </span>
                             </div>
@@ -98,9 +97,7 @@
                                 <tbody>
                                     @if ($emdBg && count($emdBg) > 0)
                                         @foreach ($emdBg as $bg)
-                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator']) ||
-                                                    Str::startsWith('account', Auth::user()->role) ||
-                                                    Auth::user()->name == $bg->emds->requested_by)
+                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator','account-executive','accountant','account-leader']) || Auth::user()->name == $bg->emds->requested_by)
                                                 <tr>
                                                     <td>{{ $bg->created_at->format('d-m-Y') }}</td>
                                                     <td>{{ $bg->bg_no ?? '' }}</td>
@@ -108,11 +105,11 @@
                                                     <td>{{ $bg->emds->project_name }}</td>
                                                     <td>{{ format_inr($bg->bg_amt) ?? 0 }}</td>
                                                     <td>
-                                                        <span class="d-none">{{ $bg->bg_expiry }}</span>
+                                                        <span class="d-none">{{$bg->bg_expiry}}</span>
                                                         {{ date('d-m-Y', strtotime($bg->bg_expiry)) }}
                                                     </td>
                                                     <td>
-                                                        <span class="d-none">{{ $bg->bg_claim }}</span>
+                                                        <span class="d-none">{{$bg->bg_claim}}</span>
                                                         {{ date('d-m-Y', strtotime($bg->bg_claim)) }}
                                                     </td>
                                                     <td>
@@ -144,8 +141,8 @@
                                                                 $stampPaper +
                                                                 $bgStampPaperValue +
                                                                 $sfmsCharges;
-
-                                                            echo format_inr($totalValue);
+                                                                
+                                                                echo format_inr($totalValue);
                                                         @endphp
                                                     </td>
                                                     <td>{{ $bg->fdr_no ?? '' }}</td>
@@ -217,44 +214,36 @@
                                                     </td>
                                                     <td>
                                                         @php
-                                                            $tender = $bg->emds->tender;
-                                                            $timer = $tender ? $tender->getTimer('bg_acc_form') : '';
+                                                            $timer = $bg ? $bg->getTimer('bg_acc_form') : '';
                                                             if ($timer) {
                                                                 $start = $timer->start_time;
                                                                 $hrs = $timer->duration_hours;
                                                                 $end = strtotime($start) + $hrs * 60 * 60;
                                                                 $remaining = $end - time();
                                                             } else {
-                                                                $remained = $tender
-                                                                    ? $tender->remainedTime('bg_acc_form')
-                                                                    : '';
+                                                                $remained = $bg ? $bg->remainedTime('bg_acc_form') : '';
                                                             }
                                                         @endphp
                                                         @if ($timer)
-                                                            <span class="timer" id="timer-{{ $tender->id }}"
-                                                                data-remaining="{{ $remaining }}"></span>
+                                                            <span class="timer" id="timer-{{ $bg->id }}" data-remaining="{{ $remaining }}"></span>
                                                         @else
                                                             {!! $remained !!}
                                                         @endif
                                                     </td>
                                                     <td class="d-flex flex-wrap gap-2">
-                                                        @if ($bg->emds->type != 'Old Entries')
-                                                            <a href="{{ route('bg-action', $bg->id) }}"
-                                                                class="btn btn-xs btn-primary">
-                                                                Status
-                                                            </a>
-                                                        @endif
+                                                        <a href="{{ route('bg-action', $bg->id) }}"
+                                                            class="btn btn-xs btn-primary">
+                                                            Status
+                                                        </a>
                                                         <a href="{{ route('emds-dashboard.show', $bg->emds->id) }}"
                                                             class="btn btn-xs btn-info">
                                                             View
                                                         </a>
-                                                        <a href="{{ route('emds-dashboard.edit', $bg->emds->id) }}"
-                                                            class="btn btn-xs btn-warning">
+                                                        <a href="{{ route('emds-dashboard.edit', $bg->emds->id) }}" class="btn btn-xs btn-warning">
                                                             Edit
                                                         </a>
                                                         @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                            <form
-                                                                action="{{ route('emds-dashboard.destroy', $bg->emds->id) }}"
+                                                            <form action="{{ route('emds-dashboard.destroy', $bg->emds->id) }}"
                                                                 method="POST" class="d-inline">
                                                                 @csrf
                                                                 @method('DELETE')
@@ -284,10 +273,10 @@
     </section>
 @endsection
 @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
-        });
-    </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const timers = document.querySelectorAll('.timer');
+        timers.forEach(startCountdown);
+    });
+</script>
 @endpush

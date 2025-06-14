@@ -10,8 +10,6 @@ class Emds extends Model
     use HasFactory;
     protected $fillable = [
         'tender_id',
-        'tender_no',
-        'due_date',
         'instrument_type',
         'project_name',
         'requested_by',

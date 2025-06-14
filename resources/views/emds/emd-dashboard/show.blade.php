@@ -32,12 +32,12 @@
         7 => 'DD cancelled at Branch',
     ];
     $banks = [
-        '1' => 'State Bank of India',
-        '2' => 'HDFC Bank',
-        '3' => 'ICICI Bank',
-        '4' => 'Yes Bank 2011',
-        '5' => 'Yes Bank 0771',
-        '6' => 'Punjab National Bank',
+        'SBI' => 'State Bank of India',
+        'HDFC_0026' => 'HDFC Bank',
+        'ICICI' => 'ICICI Bank',
+        'YESBANK_2011' => 'Yes Bank 2011',
+        'YESBANK_0771' => 'Yes Bank 0771',
+        'PNB_6011' => 'Punjab National Bank',
     ];
 @endphp
 @push('styles')
@@ -269,9 +269,16 @@
                                                     </tr>
                                                     <tr>
                                                         <th>Receiving of the cheque handed over:</th>
-                                                        <td>{{ optional($emd->emdCheques->first())->handover ?? '' }}</td>
+                                                        <td><a href="{{ asset('uploads/accounts/' . optional($emd->emdCheques->first())->handover ?? '') }}">View Document</a></td>
                                                         <th>Soft copy of Cheque (both sides):</th>
-                                                        <td>{{ optional($emd->emdCheques->first())->cheq_img ?? '' }}</td>
+                                                        <td>
+                                                            @if($emd->emdCheques->first())
+                                                                @php $cheques = explode(',', $emd->emdCheques->first()->cheq_img); @endphp
+                                                                @foreach($cheques as $cheque)
+                                                                    <a href="{{ asset('uploads/accounts/' . $cheque) }}">View Cheque</a>
+                                                                @endforeach
+                                                            @endif
+                                                        </td>
                                                     </tr>
                                                     <tr>
                                                         <th>Positive pay confirmation copy:</th>
@@ -359,7 +366,7 @@
                                                 <th>Prefilled forms (unsigned)</th>
                                                 <td>
                                                     @foreach (json_decode(optional($emd->emdBgs->first())->generated_pdfs ?? '[]') as $pdfPath)
-                                                        <a href="{{ asset('storage/' . $pdfPath) }}" target="_blank">
+                                                        <a href="{{ asset('uploads/bgpdfs/' . $pdfPath) }}" target="_blank">
                                                             {{ basename($pdfPath) }}
                                                         </a><br>
                                                     @endforeach
@@ -386,8 +393,8 @@
                                                 <td>{{ optional($emd->emdBgs->first())->reason_req ?? 'N/A' }}</td>
                                                 <th>BG format by Accounts</th>
                                                 <td>
-                                                    @if (optional($emd->emdBgs->first())->bg_po)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->bg_po) }}"
+                                                    @if (optional($emd->emdBgs->first())->bg_format_imran)
+                                                        <a href="{{ asset('uploads/accounts/' . optional($emd->emdBgs->first())->bg_format_imran) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
@@ -422,8 +429,8 @@
                                                 <td>{{ optional($emd->emdBgs->first())->bg_bank_ifsc ?? 'N/A' }}</td>
                                                 <th>Soft copy of BG</th>
                                                 <td>
-                                                    @if (optional($emd->emdBgs->first())->bg_po)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->bg_po) }}"
+                                                    @if (optional($emd->emdBgs->first())->courier)
+                                                        <a href="{{ asset('uploads/courier_docs/' . optional($emd->emdBgs->first())->courier->courier_docs) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
@@ -432,7 +439,7 @@
                                             </tr>
                                             <tr>
                                                 <th>BG Courier Address</th>
-                                                <td>{{ optional($emd->emdBgs->first())->bg_courier_addr ?? 'N/A' }}</td>
+                                                <td>{!! nl2br(wordwrap(optional($emd->emdBgs->first())->bg_courier_addr, 40, "\n")) !!}</td>
                                                 <th>Courier Request No.</th>
                                                 <td>{{ optional($emd->emdBgs->first())->courier_no ?? 'N/A' }}</td>
                                             </tr>
@@ -444,7 +451,7 @@
                                                 <th>Courier Docket Slip</th>
                                                 <td>
                                                     @if (optional($emd->emdBgs->first())->docket_slip)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->docket_slip) }}"
+                                                        <a href="{{ asset('uploads/accounts/' . optional($emd->emdBgs->first())->docket_slip) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
@@ -455,7 +462,7 @@
                                                 <th>SFMS</th>
                                                 <td>
                                                     @if (optional($emd->emdBgs->first())->sfms_conf)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->bg_po) }}"
+                                                        <a href="{{ asset('uploads/accounts/' . optional($emd->emdBgs->first())->sfms_conf) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
@@ -464,7 +471,7 @@
                                                 <th>FDR Copy</th>
                                                 <td>
                                                     @if (optional($emd->emdBgs->first())->fdr_copy)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->bg_po) }}"
+                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->fdr_copy) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
@@ -475,11 +482,11 @@
                                                 <th>BG Charges</th>
                                                 <td>{{ optional($emd->emdBgs->first())->bg_charge_deducted ?? 'N/A' }}</td>
                                                 <th>SFMS Charges</th>
-                                                <td>{{ optional($emd->emdBgs->first())->stamp_charge_deducted ?? 'N/A' }}</td>
+                                                <td>{{ optional($emd->emdBgs->first())->sfms_charge_deducted ?? 'N/A' }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Stamp Paper Charges</th>
-                                                <td>{{ format_inr(optional($emd->emdBgs->first())->bg_stamp ?? 0) }}</td>
+                                                <td>{{ format_inr(optional($emd->emdBgs->first())->stamp_charge_deducted ?? 0) }}</td>
                                                 <th>Returned via Courier Docket No.</th>
                                                 <td>{{ optional($emd->emdBgs->first())->docket_no ?? 'N/A' }}</td>
                                             </tr>
@@ -487,14 +494,14 @@
                                                 <th>Returned via Courier Docket Slip</th>
                                                 <td>
                                                     @if (optional($emd->emdBgs->first())->docket_slip)
-                                                        <a href="{{ asset('uploads/emds/' . optional($emd->emdBgs->first())->docket_slip) }}"
+                                                        <a href="{{ asset('uploads/accounts/' . optional($emd->emdBgs->first())->docket_slip) }}"
                                                             target="_blank">View</a>
                                                     @else
                                                         Not Uploaded
                                                     @endif
                                                 </td>
                                                 <th>BG cancellation confirmation</th>
-                                                <td>{{ optional($emd->emdBgs->first())->stamp_charge_deducted ?? 'N/A' }}</td>
+                                                <td>{{ '' }}</td>
                                             </tr>
                                             <tr>
                                                 <th>FDR Cancellation Date</th>
@@ -512,6 +519,8 @@
                                             </tr>
                                             <tr>
                                                 <th>Followup objective reached proof image</th>
+                                                <td></td>
+                                                <th></th>
                                                 <td></td>
                                             </tr>
                                         </table>

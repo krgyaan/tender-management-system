@@ -54,7 +54,7 @@
                                 id="popaccount">
                                 <div class="form-group col-md-4">
                                     <label class="form-label" for="status">
-                                        Pay on Portal request:
+                                        Bank Transfer request:
                                     </label>
                                     <select name="status" class="form-control" id="status">
                                         <option value="">-- Select --</option>
@@ -75,6 +75,14 @@
                                         value="{{ $emd->reason }}">
                                     <small class="text-muted">
                                         <span class="text-danger">{{ $errors->first('reason') }}</span>
+                                    </small>
+                                </div>
+                                <div class="form-group col-md-4">
+                                    <label class="form-label" for="date_time">Date and Time of Payment:</label>
+                                    <input type="datetime-local" name="date_time" class="form-control" id="date_time"
+                                        value="{{ $emd->date_time }}">
+                                    <small class="text-muted">
+                                        <span class="text-danger">{{ $errors->first('date_time') }}</span>
                                     </small>
                                 </div>
                                 <div class="form-group col-md-4">

@@ -1,7 +1,8 @@
 @extends('layouts.app')
-@section('page-title', 'All EMD Dashboard')
+@section('page-title', 'Pay On Portal Dashboard')
 @section('content')
     @php
+        use Illuminate\Support\Str;
         $ferq = [
             '1' => 'Daily',
             '2' => 'Alternate Days',
@@ -51,6 +52,7 @@
                                             <thead>
                                                 <tr>
                                                     <th style="white-space: nowrap; max-width: 150px;">Date</th>
+                                                    <th>Requested By</th>
                                                     <th>UTR No</th>
                                                     <th>Portal Name</th>
                                                     <th>Tender Name</th>
@@ -62,15 +64,16 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @if (count($emdPop) > 0)
-                                                    @foreach ($emdPop as $pop)
+                                                @if (count($emdPopPending) > 0)
+                                                    @foreach ($emdPopPending as $pop)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $pop->emd->requested_by)
                                                             <tr>
-                                                                <td style="white-space: nowrap; max-width: 150px5">
-                                                                    {{ date('d-m-Y', strtotime($pop->created_at)) }}</td>
-                                                                <td>{{ $pop->utr ?? '' }}
+                                                                <td style="white-space: nowrap; max-width: 150px;">
+                                                                    {{ date('d-m-Y', strtotime($pop->created_at)) }}
                                                                 </td>
+                                                                <td>{{ $pop->emd->requested_by ?? '' }}</td>
+                                                                <td>{{ $pop->utr ?? '' }}</td>
                                                                 <td>
                                                                     <a href="{{ Str::startsWith($pop->portal ?? '', ['http://', 'https://']) ? $pop->portal : 'https://' . $pop->portal }}"
                                                                         target="_blank">
@@ -78,16 +81,14 @@
                                                                     </a>
                                                                 </td>
                                                                 <td>{{ $pop->emd->project_name }}</td>
-                                                                <td>{{ format_inr($pop->amount) }}
+                                                                <td>{{ format_inr($pop->amount) }}</td>
+                                                                <td>{{ $pop->emd->tender->statuses->name ?? $pop->emd->type }}
                                                                 </td>
-                                                                <td>{{ $pop->emd->tender->statuses->name ?? '' }}</td>
-                                                                <td>{{ $pop->status ?? '' }}
-                                                                </td>
+                                                                <td>{{ $pop->status ?? '' }}</td>
                                                                 <td>
                                                                     @php
-                                                                        $tender = $pop->emd->tender;
-                                                                        if ($tender) {
-                                                                            $timer = $tender->getTimer('pop_acc_form');
+                                                                        if ($pop) {
+                                                                            $timer = $pop->getTimer('pop_acc_form');
                                                                             if ($timer) {
                                                                                 $start = $timer->start_time;
                                                                                 $hrs = $timer->duration_hours;
@@ -95,45 +96,47 @@
                                                                                     strtotime($start) + $hrs * 60 * 60;
                                                                                 $remaining = $end - time();
                                                                             } else {
-                                                                                $remained = $tender->remainedTime(
+                                                                                $remained = $pop->remainedTime(
                                                                                     'pop_acc_form',
                                                                                 );
                                                                             }
                                                                         }
                                                                     @endphp
-                                                                    @if (isset($tender) && $timer)
-                                                                        <span class="timer" id="timer-{{ $tender->id }}"
+                                                                    @if (isset($pop) && $timer)
+                                                                        <span class="timer" id="timer-{{ $pop->id }}"
                                                                             data-remaining="{{ $remaining }}"></span>
-                                                                    @elseif (isset($tender) && isset($remained))
+                                                                    @elseif (isset($pop) && isset($remained))
                                                                         {!! $remained !!}
                                                                     @endif
                                                                 </td>
-                                                                <td class="d-flex flex-wrap gap-2">
-                                                                    <a class="btn btn-xs btn-primary"
-                                                                        href="{{ route('pop-action', $pop->id) }}">
-                                                                        Status
-                                                                    </a>
-                                                                    <a href="{{ route('emds-dashboard.show', $pop->emd->id) }}"
-                                                                        class="btn btn-xs btn-info">
-                                                                        View
-                                                                    </a>
-                                                                    <a href="{{ route('emds-dashboard.edit', $pop->emd->id) }}"
-                                                                        class="btn btn-xs btn-warning">
-                                                                        Edit
-                                                                    </a>
-                                                                    @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                                        <form
-                                                                            action="{{ route('emds-dashboard.destroy', $pop->emd->id) }}"
-                                                                            method="POST" class="d-inline">
-                                                                            @csrf
-                                                                            @method('DELETE')
-                                                                            <button type="submit"
-                                                                                class="btn btn-xs btn-danger"
-                                                                                onclick="return confirm('Are you sure you want to delete this emd?');">
-                                                                                Delete
-                                                                            </button>
-                                                                        </form>
-                                                                    @endif
+                                                                <td>
+                                                                    <div class="d-flex flex-wrap gap-2">
+                                                                        <a class="btn btn-xs btn-primary"
+                                                                            href="{{ route('pop-action', $pop->id) }}">
+                                                                            Status
+                                                                        </a>
+                                                                        <a href="{{ route('emds-dashboard.show', $pop->emd->id) }}"
+                                                                            class="btn btn-xs btn-info">
+                                                                            View
+                                                                        </a>
+                                                                        <a href="{{ route('emds-dashboard.edit', $pop->emd->id) }}"
+                                                                            class="btn btn-xs btn-warning">
+                                                                            Edit
+                                                                        </a>
+                                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
+                                                                            <form
+                                                                                action="{{ route('emds-dashboard.destroy', $pop->emd->id) }}"
+                                                                                method="POST" class="d-inline">
+                                                                                @csrf
+                                                                                @method('DELETE')
+                                                                                <button type="submit"
+                                                                                    class="btn btn-xs btn-danger"
+                                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
+                                                                                    Delete
+                                                                                </button>
+                                                                            </form>
+                                                                        @endif
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         @endif
@@ -150,6 +153,7 @@
                                             <thead>
                                                 <tr>
                                                     <th style="white-space: nowrap; max-width: 150px;">Date</th>
+                                                    <th>Requested By</th>
                                                     <th>UTR No</th>
                                                     <th>Portal Name</th>
                                                     <th>Tender Name</th>
@@ -161,15 +165,16 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @if (count($emdPop) > 0)
-                                                    @foreach ($emdPop as $pop)
+                                                @if (count($emdPopDone) > 0)
+                                                    @foreach ($emdPopDone as $pop)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $pop->emd->requested_by)
                                                             <tr>
-                                                                <td style="white-space: nowrap; max-width: 150px5">
-                                                                    {{ date('d-m-Y', strtotime($pop->created_at)) }}</td>
-                                                                <td>{{ $pop->utr ?? '' }}
+                                                                <td style="white-space: nowrap; max-width: 150px;">
+                                                                    {{ date('d-m-Y', strtotime($pop->created_at)) }}
                                                                 </td>
+                                                                <td>{{ $pop->emd->requested_by ?? '' }}</td>
+                                                                <td>{{ $pop->utr ?? '' }}</td>
                                                                 <td>
                                                                     <a href="{{ Str::startsWith($pop->portal ?? '', ['http://', 'https://']) ? $pop->portal : 'https://' . $pop->portal }}"
                                                                         target="_blank">
@@ -177,16 +182,14 @@
                                                                     </a>
                                                                 </td>
                                                                 <td>{{ $pop->emd->project_name }}</td>
-                                                                <td>{{ format_inr($pop->amount) }}
+                                                                <td>{{ format_inr($pop->amount) }}</td>
+                                                                <td>{{ $pop->emd->tender->statuses->name ?? $pop->emd->type }}
                                                                 </td>
-                                                                <td>{{ $pop->emd->tender->statuses->name ?? '' }}</td>
-                                                                <td>{{ $pop->status ?? '' }}
-                                                                </td>
+                                                                <td>{{ $pop->status ?? '' }}</td>
                                                                 <td>
                                                                     @php
-                                                                        $tender = $pop->emd->tender;
-                                                                        if ($tender) {
-                                                                            $timer = $tender->getTimer('pop_acc_form');
+                                                                        if ($pop) {
+                                                                            $timer = $pop->getTimer('pop_acc_form');
                                                                             if ($timer) {
                                                                                 $start = $timer->start_time;
                                                                                 $hrs = $timer->duration_hours;
@@ -194,45 +197,47 @@
                                                                                     strtotime($start) + $hrs * 60 * 60;
                                                                                 $remaining = $end - time();
                                                                             } else {
-                                                                                $remained = $tender->remainedTime(
+                                                                                $remained = $pop->remainedTime(
                                                                                     'pop_acc_form',
                                                                                 );
                                                                             }
                                                                         }
                                                                     @endphp
-                                                                    @if (isset($tender) && $timer)
-                                                                        <span class="timer" id="timer-{{ $tender->id }}"
+                                                                    @if (isset($pop) && $timer)
+                                                                        <span class="timer" id="timer-{{ $pop->id }}"
                                                                             data-remaining="{{ $remaining }}"></span>
-                                                                    @elseif (isset($tender) && isset($remained))
+                                                                    @elseif (isset($pop) && isset($remained))
                                                                         {!! $remained !!}
                                                                     @endif
                                                                 </td>
-                                                                <td class="d-flex flex-wrap gap-2">
-                                                                    <a class="btn btn-xs btn-primary"
-                                                                        href="{{ route('pop-action', $pop->id) }}">
-                                                                        Status
-                                                                    </a>
-                                                                    <a href="{{ route('emds-dashboard.show', $pop->emd->id) }}"
-                                                                        class="btn btn-xs btn-info">
-                                                                        View
-                                                                    </a>
-                                                                    <a href="{{ route('emds-dashboard.edit', $pop->emd->id) }}"
-                                                                        class="btn btn-xs btn-warning">
-                                                                        Edit
-                                                                    </a>
-                                                                    @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                                        <form
-                                                                            action="{{ route('emds-dashboard.destroy', $pop->emd->id) }}"
-                                                                            method="POST" class="d-inline">
-                                                                            @csrf
-                                                                            @method('DELETE')
-                                                                            <button type="submit"
-                                                                                class="btn btn-xs btn-danger"
-                                                                                onclick="return confirm('Are you sure you want to delete this emd?');">
-                                                                                Delete
-                                                                            </button>
-                                                                        </form>
-                                                                    @endif
+                                                                <td>
+                                                                    <div class="d-flex flex-wrap gap-2">
+                                                                        <a class="btn btn-xs btn-primary"
+                                                                            href="{{ route('pop-action', $pop->id) }}">
+                                                                            Status
+                                                                        </a>
+                                                                        <a href="{{ route('emds-dashboard.show', $pop->emd->id) }}"
+                                                                            class="btn btn-xs btn-info">
+                                                                            View
+                                                                        </a>
+                                                                        <a href="{{ route('emds-dashboard.edit', $pop->emd->id) }}"
+                                                                            class="btn btn-xs btn-warning">
+                                                                            Edit
+                                                                        </a>
+                                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
+                                                                            <form
+                                                                                action="{{ route('emds-dashboard.destroy', $pop->emd->id) }}"
+                                                                                method="POST" class="d-inline">
+                                                                                @csrf
+                                                                                @method('DELETE')
+                                                                                <button type="submit"
+                                                                                    class="btn btn-xs btn-danger"
+                                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
+                                                                                    Delete
+                                                                                </button>
+                                                                            </form>
+                                                                        @endif
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         @endif
@@ -335,51 +340,8 @@
                 $(this).find('input[name="tender_id"]').val(tenderId);
                 $(this).find('input[name="emd_id"]').val(emdId);
             });
-
-            let buttons = document.querySelectorAll('button.nav-link');
-            let tabContents = document.querySelectorAll('.tab-pane');
-
-            function activateTab(button) {
-                buttons.forEach(function(btn) {
-                    btn.classList.remove('active');
-                });
-
-                tabContents.forEach(function(content) {
-                    content.classList.remove('active');
-                    content.classList.remove('show');
-                });
-
-                button.classList.add('active');
-                let tabId = button.getAttribute('id');
-
-                let activeContent = document.querySelector(`#${tabId}-content`);
-                if (activeContent) {
-                    activeContent.classList.add('active');
-                    activeContent.classList.add('show');
-                }
-
-                localStorage.setItem('activeTab', tabId);
-            }
-
-            buttons.forEach(function(button) {
-                button.addEventListener('click', function(e) {
-                    activateTab(button);
-                });
-            });
-
-            window.addEventListener('load', function() {
-                let activeTabId = localStorage.getItem('activeTab');
-                if (activeTabId) {
-                    let activeButton = document.getElementById(activeTabId);
-                    if (activeButton) {
-                        activateTab(activeButton);
-                    }
-                } else {
-                    let firstButton = buttons[0];
-                    activateTab(firstButton);
-                }
-            });
         });
+
         document.addEventListener('DOMContentLoaded', function() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(startCountdown);

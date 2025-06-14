@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Emds;
 use App\Models\User;
 use App\Models\EmdBg;
@@ -14,6 +15,7 @@ use App\Models\TenderInfo;
 use App\Helpers\MailHelper;
 use App\Mail\PopStatusMail;
 use App\Models\PayOnPortal;
+use App\Mail\BgRejectedMail;
 use App\Mail\BgReminderMail;
 use App\Mail\ChequeStopMail;
 use App\Models\BankTransfer;
@@ -21,15 +23,17 @@ use Illuminate\Http\Request;
 use App\Mail\DdChqAcceptMail;
 use App\Models\EmdDemandDraft;
 use App\Services\TimerService;
+use App\Mail\BgClaimPeriodMail;
 use App\Mail\DdAccountFormMail;
 use App\Models\FollowUpPersons;
-use App\Mail\BgRejectedMail;
 use App\Mail\BankTransferStatus;
 use App\Mail\BgAccountForm1Mail;
 use App\Mail\BgAccountForm2Mail;
 use App\Mail\BgAccountForm3Mail;
 use App\Mail\BgCancellationMail;
 use App\Mail\DdCancellationMail;
+use App\Exports\PayOnPortalExport;
+use App\Exports\BankTransferExport;
 use App\Mail\BgFDRCancellationMail;
 use App\Mail\BgReturnedCourierMail;
 use App\Mail\ChequeDueDateReminder;
@@ -37,13 +41,12 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\BgRequestExtensionMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\Config;
 use App\Mail\BgRequestCancellationMail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use App\Mail\BgClaimPeriodMail;
-use Carbon\Carbon;
 
 class EmdDashboardController extends Controller
 {
@@ -1822,6 +1825,18 @@ class EmdDashboardController extends Controller
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }
+    }
+
+    public function export_bt()
+    {
+        $bt = BankTransfer::all();
+        return Excel::download(new BankTransferExport($bt), 'bank_transfers.xlsx');
+    }
+
+    public function export_pop()
+    {
+        $pop = PayOnPortal::all();
+        return Excel::download(new PayOnPortalExport($pop), 'pay_on_portals.xlsx');
     }
 
     // ===================== MAILS =====================

@@ -3,23 +3,6 @@
 @section('content')
     @php
         use Illuminate\Support\Str;
-        $ferq = [
-            '1' => 'Daily',
-            '2' => 'Alternate Days',
-            '3' => '2 times a day',
-            '4' => 'Weekly (every Mon)',
-            '5' => 'Twice a Week (every Mon & Thu)',
-            '6' => 'Stop',
-        ];
-        $instrumentType = [
-            '0' => 'NA',
-            '1' => 'Demand Draft',
-            '2' => 'FDR',
-            '3' => 'Cheque',
-            '4' => 'BG',
-            '5' => 'Bank Transfer',
-            '6' => 'Pay on Portal',
-        ];
         $popStatus = [
             1 => 'Accounts Form',
             2 => 'Initiate Followup',
@@ -30,6 +13,11 @@
     <section>
         <div class="row">
             <div class="col-md-12 m-auto">
+                <div class="d-flex justify-content-between">
+                    @if (Auth::user()->role == 'admin')
+                        <a href="{{ route('emds.export.pop') }}" class="btn btn-outline-success btn-sm">Export</a>
+                    @endif
+                </div>
                 <div class="card">
                     <div class="card-body">
                         @include('partials.messages')
@@ -51,8 +39,9 @@
                                         <table class="table" id="pop">
                                             <thead>
                                                 <tr>
-                                                    <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Requested By</th>
+                                                    <th style="min-width: 100px;">Date</th>
+                                                    <th>Team</th>
+                                                    <th>Member</th>
                                                     <th>UTR No</th>
                                                     <th>Portal Name</th>
                                                     <th>Tender Name</th>
@@ -68,9 +57,18 @@
                                                     @foreach ($emdPopPending as $pop)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $pop->emd->requested_by)
+                                                            @php
+                                                                $team =
+                                                                    \App\Models\User::where(
+                                                                        'name',
+                                                                        $pop->emd->requested_by,
+                                                                    )->first()->team ?? '';
+                                                            @endphp
                                                             <tr>
-                                                                <td style="white-space: nowrap; max-width: 150px;">
+                                                                <td style="max-width: 100px;">
                                                                     {{ date('d-m-Y', strtotime($pop->created_at)) }}
+                                                                </td>
+                                                                <td>{{ $pop->emd->tender->team ?? $team }}
                                                                 </td>
                                                                 <td>{{ $pop->emd->requested_by ?? '' }}</td>
                                                                 <td>{{ $pop->utr ?? '' }}</td>
@@ -152,8 +150,9 @@
                                         <table class="table" id="pop">
                                             <thead>
                                                 <tr>
-                                                    <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Requested By</th>
+                                                    <th style="min-width: 100px;">Date</th>
+                                                    <th>Team</th>
+                                                    <th>Member</th>
                                                     <th>UTR No</th>
                                                     <th>Portal Name</th>
                                                     <th>Tender Name</th>
@@ -169,9 +168,18 @@
                                                     @foreach ($emdPopDone as $pop)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $pop->emd->requested_by)
+                                                            @php
+                                                                $team =
+                                                                    \App\Models\User::where(
+                                                                        'name',
+                                                                        $pop->emd->requested_by,
+                                                                    )->first()->team ?? '';
+                                                            @endphp
                                                             <tr>
-                                                                <td style="white-space: nowrap; max-width: 150px;">
+                                                                <td style="min-width: 100px;">
                                                                     {{ date('d-m-Y', strtotime($pop->created_at)) }}
+                                                                </td>
+                                                                <td>{{ $pop->emd->tender->team ?? $team }}
                                                                 </td>
                                                                 <td>{{ $pop->emd->requested_by ?? '' }}</td>
                                                                 <td>{{ $pop->utr ?? '' }}</td>

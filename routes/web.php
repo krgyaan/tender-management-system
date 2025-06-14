@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Route;
 use App\Exports\EmployeeImprestExport;
-use App\Http\Controllers\FixedExpenseController;
 use App\Http\Controllers\TQController;
 use App\Http\Controllers\RFQController;
 use App\Http\Controllers\EmdsController;
@@ -48,6 +47,7 @@ use App\Http\Controllers\CoordinatorController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SubmitQueryController;
 use App\Http\Controllers\EmdDashboardController;
+use App\Http\Controllers\FixedExpenseController;
 use App\Http\Controllers\LoanAdvancesController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PricingSheetController;
@@ -223,6 +223,9 @@ Route::middleware('auth')->group(function () {
             Log::info('Collected All BGs ' . count($bgs));
             return Excel::download(new BgExport($bgs), 'allbgs.xlsx');
         })->name('download-bgs');
+
+        Route::get('emds/export/bt', [EmdDashboardController::class, 'export_bt'])->name('emds.export.bt');
+        Route::get('emds/export/pop', [EmdDashboardController::class, 'export_pop'])->name('emds.export.pop');
 
         Route::any('dd-status/update/{id}', [EmdDashboardController::class, 'DemandDraftDashboard'])->name('dd-status.update');
         Route::any('cheque-status/update/{id}', [EmdDashboardController::class, 'ChequeDashboard'])->name('cheque-status.update');

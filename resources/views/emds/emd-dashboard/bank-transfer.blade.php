@@ -2,23 +2,6 @@
 @section('page-title', 'Bank Transfer Dashboard')
 @section('content')
     @php
-        $ferq = [
-            '1' => 'Daily',
-            '2' => 'Alternate Days',
-            '3' => '2 times a day',
-            '4' => 'Weekly (every Mon)',
-            '5' => 'Twice a Week (every Mon & Thu)',
-            '6' => 'Stop',
-        ];
-        $instrumentType = [
-            '0' => 'NA',
-            '1' => 'Demand Draft',
-            '2' => 'FDR',
-            '3' => 'Cheque',
-            '4' => 'BG',
-            '5' => 'Bank Transfer',
-            '6' => 'Pay on Portal',
-        ];
         $popStatus = [
             1 => 'Accounts Form',
             2 => 'Initiate Followup',
@@ -29,6 +12,11 @@
     <section>
         <div class="row">
             <div class="col-md-12 m-auto">
+                <div class="d-flex justify-content-between">
+                    @if (Auth::user()->role == 'admin')
+                        <a href="{{ route('emds.export.bt') }}" class="btn btn-outline-success btn-sm">Export</a>
+                    @endif
+                </div>
                 <div class="card">
                     <div class="card-body">
                         @include('partials.messages')
@@ -51,13 +39,14 @@
                                             <thead>
                                                 <tr>
                                                     <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Requested By</th>
+                                                    <th>Team</th>
+                                                    <th>Member</th>
                                                     <th>UTR No</th>
                                                     <th>Account Name</th>
                                                     <th>Tender Name</th>
                                                     <th>Tender Status</th>
                                                     <th>Amount</th>
-                                                    <th>Bank Transfer Status</th>
+                                                    <th>BT Status</th>
                                                     <th>Timer</th>
                                                     <th>Action</th>
                                                 </tr>
@@ -67,8 +56,18 @@
                                                     @foreach ($emdBtPending as $bt)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $bt->emd->requested_by)
+                                                            @php
+                                                                $team =
+                                                                    \App\Models\User::where(
+                                                                        'name',
+                                                                        $bt->emd->requested_by,
+                                                                    )->first()->team ?? '';
+                                                            @endphp
                                                             <tr style="white-space: nowrap; max-width: 150px;">
-                                                                <td>{{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
+                                                                <td style="min-width: 100px;">
+                                                                    {{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
+                                                                <td>{{ $bt->emd->tender->team ?? $team }}
+                                                                </td>
                                                                 <td>{{ $bt->emd->requested_by ?? '' }}</td>
                                                                 <td>{{ $bt->utr ?? '' }}</td>
                                                                 <td>{{ $bt->bt_acc_name ?? '' }}</td>
@@ -146,13 +145,14 @@
                                             <thead>
                                                 <tr>
                                                     <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Requested By</th>
+                                                    <th>Team</th>
+                                                    <th>Member</th>
                                                     <th>UTR No</th>
                                                     <th>Account Name</th>
                                                     <th>Tender Name</th>
                                                     <th>Tender Status</th>
                                                     <th>Amount</th>
-                                                    <th>Bank Transfer Status</th>
+                                                    <th>BT Status</th>
                                                     <th>Timer</th>
                                                     <th>Action</th>
                                                 </tr>
@@ -162,8 +162,18 @@
                                                     @foreach ($emdBtDone as $bt)
                                                         @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
                                                                 Auth::user()->name == $bt->emd->requested_by)
+                                                            @php
+                                                                $team =
+                                                                    \App\Models\User::where(
+                                                                        'name',
+                                                                        $bt->emd->requested_by,
+                                                                    )->first()->team ?? '';
+                                                            @endphp
                                                             <tr style="white-space: nowrap; max-width: 150px;">
-                                                                <td>{{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
+                                                                <td style="min-width: 100px;">
+                                                                    {{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
+                                                                <td>{{ $bt->emd->tender->team ?? $team }}
+                                                                </td>
                                                                 <td>{{ $bt->emd->requested_by ?? '' }}</td>
                                                                 <td>{{ $bt->utr ?? '' }}</td>
                                                                 <td>{{ $bt->bt_acc_name ?? '' }}</td>
@@ -241,87 +251,9 @@
             </div>
         </div>
     </section>
-
-    <div class="modal fade" id="tenderBtFeeModal" tabindex="-1" aria-labelledby="tenderBtFeeModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="tenderBtFeeModalLabel">Bank Transfer Tender Fees</h5>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="{{ route('tender-fees.bt.store') }}">
-                        @csrf
-                        <div class="row" id="bank_transfer">
-                            <div class="col-md-12 form-group">
-                                <input type="hidden" name="tender_id" value="">
-                                <input type="hidden" name="emd_id" value="">
-                                <label class="form-label" for="purpose">Purpose</label>
-                                <input type="text" name="purpose" id="purpose" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('purpose') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="bt_acc_name">
-                                    Account Name
-                                </label>
-                                <input type="text" name="account_name" id="account_name" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('account_name') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="account_number">Account Number</label>
-                                <input type="text" name="account_number" id="account_number" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('account_number') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="ifsc">IFSC</label>
-                                <input type="text" name="ifsc" id="ifsc" class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('ifsc') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group">
-                                <label class="form-label" for="amount">Amount</label>
-                                <input type="number" step="any" name="amount" id="amount"
-                                    class="form-control">
-                                <small class="text-muted">
-                                    <span class="text-danger">{{ $errors->first('amount') }}</span>
-                                </small>
-                            </div>
-                            <div class="col-md-12 form-group text-end">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 @push('scripts')
     <script>
-        $(document).ready(function() {
-            $('#tenderBtFeeModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var tenderId = button.data('tender_id');
-                var emdId = button.data('emd_id');
-                $(this).find('input[name="tender_id"]').val(tenderId);
-                $(this).find('input[name="emd_id"]').val(emdId);
-            });
-
-            $('#tenderPopFeeModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var tenderId = button.data('tender_id');
-                var emdId = button.data('emd_id');
-                $(this).find('input[name="tender_id"]').val(tenderId);
-                $(this).find('input[name="emd_id"]').val(emdId);
-            });
-        });
-
         document.addEventListener('DOMContentLoaded', function() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(startCountdown);

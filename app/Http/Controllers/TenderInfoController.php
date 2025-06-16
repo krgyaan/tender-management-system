@@ -100,18 +100,22 @@ class TenderInfoController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $teams = $this->teams;
         $permissions = explode(',', $user->permissions);
-
-        return view('tender.index', compact('permissions'));
+        return view('tender.index', compact('permissions', 'teams'));
     }
 
     public function getTenderData(Request $request, $type)
     {
         try {
+            $user = Auth::user();
+            $team = $request->input('team');
             if (!in_array($type, ['prep', 'dnb', 'bid', 'won', 'lost'])) {
                 throw new \InvalidArgumentException('Invalid tender type');
             }
+
             Log::info("Fetching $type tenders");
+
             $query = TenderInfo::with([
                 'organizations:id,name',
                 'users:id,name',
@@ -119,49 +123,61 @@ class TenderInfoController extends Controller
                 'statuses:id,name'
             ])
                 ->select('tender_infos.*')
+                ->leftJoin('users', 'users.id', '=', 'tender_infos.team_member')
+                ->leftJoin('organizations', 'organizations.id', '=', 'tender_infos.organisation')
+                ->leftJoin('statuses', 'statuses.id', '=', 'tender_infos.status')
+                ->leftJoin('items as item_name', 'item_name.id', '=', 'tender_infos.item')
                 ->where('tender_infos.deleteStatus', '0');
 
-            // Handle search - fixed search logic
+            if ($team) {
+                $query->where('tender_infos.team', $team);
+            }
+
+            if (!in_array($user->role, ['admin'])) {
+                if (in_array($user->role, ['team-leader', 'coordinator'])) {
+                    $query->where('tender_infos.team', $user->team);
+                } else {
+                    $query->where('tender_infos.team_member', $user->id);
+                }
+            }
+
+            // Handle search
             if ($request->has('search') && !empty($request->search['value'])) {
                 $searchValue = $request->search['value'];
+
                 $query->where(function ($q) use ($searchValue) {
                     $q->where('tender_infos.tender_no', 'LIKE', "%{$searchValue}%")
                         ->orWhere('tender_infos.tender_name', 'LIKE', "%{$searchValue}%")
-                        ->orWhere('tender_infos.organisation', 'LIKE', "%{$searchValue}%")
                         ->orWhere('tender_infos.gst_values', 'LIKE', "%{$searchValue}%")
                         ->orWhere('tender_infos.emd', 'LIKE', "%{$searchValue}%")
                         ->orWhere('tender_infos.due_date', 'LIKE', "%{$searchValue}%")
-                        ->orWhereHas('users', function ($subQ) use ($searchValue) {
-                            $subQ->where('users.name', 'LIKE', "%{$searchValue}%");
-                        })
-                        ->orWhereHas('organizations', function ($subQ) use ($searchValue) {
-                            $subQ->where('organizations.name', 'LIKE', "%{$searchValue}%");
-                        })
-                        ->orWhereHas('statuses', function ($subQ) use ($searchValue) {
-                            $subQ->where('statuses.name', 'LIKE', "%{$searchValue}%");
-                        });
+                        ->orWhere('users.name', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('organizations.name', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('statuses.name', 'LIKE', "%{$searchValue}%");
                 });
             }
 
+            // Type-based filtering
             switch ($type) {
                 case 'prep':
-                    $query->whereIn('status', ['1', '2', '3', '4', '5', '6', '7', '29', '30']);
+                    $query->whereIn('tender_infos.status', ['1', '2', '3', '4', '5', '6', '7', '29', '30']);
                     break;
                 case 'dnb':
-                    $query->whereIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '16', '31', '32']);
+                    $query->whereIn('tender_infos.status', ['8', '9', '10', '11', '12', '13', '14', '15', '16', '31', '32']);
                     break;
                 case 'bid':
-                    $query->whereIn('status', ['17', '19', '20', '23']);
+                    $query->whereIn('tender_infos.status', ['17', '19', '20', '23']);
                     break;
                 case 'won':
-                    $query->whereIn('status', ['25', '26', '27', '28']);
+                    $query->whereIn('tender_infos.status', ['25', '26', '27', '28']);
                     break;
                 case 'lost':
-                    $query->whereIn('status', ['18', '21', '22', '24']);
+                    $query->whereIn('tender_infos.status', ['18', '21', '22', '24']);
                     break;
             }
 
-            Log::info('Fetching tenders query: ' . $query->toSql());
+            Log::info('Fetching tenders SQL: ' . $query->toSql());
+
             return DataTables::of($query)
                 ->addColumn('action', function ($tender) {
                     return view('partials.tender-actions', compact('tender'))->render();

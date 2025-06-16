@@ -58,7 +58,7 @@
                                                             <td>{{ $dd->created_at->format('d-m-Y') }}</td>
                                                             <td>{{ $dd->dd_no }}</td>
                                                             <td>{{ $dd->in_favour_of }}</td>
-                                                            <td>{{ $dd->tender?->tender_name }}</td>
+                                                            <td>{{ $dd->tender_name }}</td>
                                                             <td>{{ format_inr($dd->dd_amount) }}</td>
                                                             <td>{{ $dd->expiry_date }}</td>
                                                             <td>{{ $dd->status }}</td>
@@ -74,9 +74,12 @@
                                                                 </span>
                                                             </td>
                                                             <td>
-                                                                <a href="" class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
+                                                                <button type="button" data-id="{{ $dd->id }}"
+                                                                    data-bs-target="#demandDraftModal"
+                                                                    data-bs-toggle="modal" data-type="demandDraft"
+                                                                    class="btn btn-xs btn-info feeStatusBtn">
+                                                                    Status
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -106,9 +109,9 @@
                                                     @foreach ($btTenderFees as $bt)
                                                         <tr>
                                                             <td>{{ $bt->created_at->format('d-m-Y') }}</td>
-                                                            <td>{{ $bt->utr_no }}</td>
+                                                            <td>{{ $bt->utr }}</td>
                                                             <td>{{ $bt->account_name }}</td>
-                                                            <td>{{ $bt->tender?->tender_name }}</td>
+                                                            <td>{{ $bt->tender_name }}</td>
                                                             <td>{{ format_inr($bt->amount) }}</td>
                                                             <td>{{ $bt->tender?->statuses->first()->name }}</td>
                                                             <td>{{ $bt->status }}</td>
@@ -124,9 +127,12 @@
                                                                 </span>
                                                             </td>
                                                             <td>
-                                                                <a href="" class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
+                                                                <button type="button" data-id="{{ $bt->id }}"
+                                                                    data-bs-target="#bankTransferModal"
+                                                                    data-bs-toggle="modal" data-type="bankTransfer"
+                                                                    class="btn btn-xs btn-info feeStatusBtn">
+                                                                    Status
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -156,9 +162,9 @@
                                                     @foreach ($popTenderFees as $pop)
                                                         <tr>
                                                             <td>{{ $pop->created_at->format('d-m-Y') }}</td>
-                                                            <td>{{ $pop->utr_no }}</td>
+                                                            <td>{{ $pop->utr }}</td>
                                                             <td>{{ $pop->portal_name }}</td>
-                                                            <td>{{ $pop->tender?->tender_name }}</td>
+                                                            <td>{{ $pop->tender_name }}</td>
                                                             <td>{{ format_inr($pop->amount) }}</td>
                                                             <td>{{ $pop->tender?->statuses->first()->name }}</td>
                                                             <td>{{ $pop->tender?->emd_status }}</td>
@@ -174,9 +180,12 @@
                                                                 </span>
                                                             </td>
                                                             <td>
-                                                                <a href="" class="btn btn-xs btn-info">
-                                                                    Edit
-                                                                </a>
+                                                                <button type="button" data-id="{{ $pop->id }}"
+                                                                    data-bs-target="#payOnPortalModal"
+                                                                    data-bs-toggle="modal" data-type="payOnPortal"
+                                                                    class="btn btn-xs btn-info feeStatusBtn">
+                                                                    Status
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -191,11 +200,81 @@
                 </div>
             </div>
         </div>
+
+        {{-- Status Modal Template --}}
+        @foreach (['bankTransfer', 'payOnPortal', 'demandDraft'] as $type)
+            <div class="modal fade" id="{{ $type }}Modal" tabindex="-1" role="dialog"
+                aria-labelledby="{{ $type }}ModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="{{ $type }}ModalLabel">
+                                {{ ucfirst($type) == 'DemandDraft' ? 'Demand Draft' : (ucfirst($type) == 'PayOnPortal' ? 'Pay on Portal' : 'Bank Transfer') }}
+                                Tender Fees
+                            </h5>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ route('tender-fees.status') }}" method="post">
+                                @csrf
+                                <input type="hidden" name="id" value="">
+                                <input type="hidden" name="type" value="{{ $type }}">
+                                <div class="form-group">
+                                    <label for="status">Request Status</label>
+                                    <select name="status" id="status" class="form-select" required>
+                                        <option value="">Select Status</option>
+                                        <option value="Paid">Paid</option>
+                                        <option value="Rejected">Rejected</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reason">Reason for Rejection</label>
+                                    <textarea name="reason" id="reason" class="form-control"></textarea>
+                                </div>
+                                @if ($type == 'demandDraft')
+                                    <div class="form-group">
+                                        <label for="dd_no">DD Number</label>
+                                        <input type="text" name="dd_no" id="dd_no" class="form-control">
+                                    </div>
+                                @else
+                                    <div class="form-group">
+                                        <label for="utr">UTR Number</label>
+                                        <input type="text" name="utr" id="utr" class="form-control">
+                                    </div>
+                                @endif
+                                <div class="form-group">
+                                    <label for="utr_msg">UTR Message</label>
+                                    <textarea name="utr_msg" id="utr_msg" class="form-control"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="remark">Remark</label>
+                                    <textarea name="remark" id="remark" class="form-control"></textarea>
+                                </div>
+                                <div class="modal-footer border-0">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
     </section>
 @endsection
 
 @push('scripts')
     <script>
+        $(document).ready(function() {
+            $('.feeStatusBtn').on('click', function() {
+                var id = $(this).data('id');
+                var type = $(this).data('type');
+                var modal = $('#' + type + 'Modal');
+                modal.find('input[name="id"]').val(id);
+                modal.modal('show');
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(startCountdown);

@@ -18,7 +18,12 @@ class BtTenderFee extends Model
         'account_name',
         'account_number',
         'ifsc',
-        'amount'
+        'amount',
+        'status',
+        'reason',
+        'utr',
+        'utr_msg',
+        'remark',
     ];
 
     public function tender()

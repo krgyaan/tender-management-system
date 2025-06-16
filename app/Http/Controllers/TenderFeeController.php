@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Emds;
+use App\Models\User;
+use App\Helpers\MailHelper;
 use App\Models\BtTenderFee;
 use App\Models\DdTenderFee;
 use App\Models\PopTenderFee;
-use App\Models\TenderFee;
-use App\Models\TenderInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Config;
 
 class TenderFeeController extends Controller
 {
@@ -131,6 +134,7 @@ class TenderFeeController extends Controller
                 'tender_id' => 'required|numeric',
                 'emd_id' => 'required|numeric',
                 'tender_name' => 'required|string|max:255',
+                'due_date_time' => 'required|date',
                 'dd_needs' => 'required|string|in:due,24,36,48',
                 'purpose_of_dd' => 'required|string|max:255',
                 'in_favour_of' => 'required|string|max:255',
@@ -145,6 +149,7 @@ class TenderFeeController extends Controller
                 'emd_id' => $request->emd_id ?? '0',
                 'type' => $request->tender_id == '0' ? 'Other Than TMS' : 'TMS',
                 'tender_name' => $validated['tender_name'],
+                'due_date_time' => $validated['due_date_time'],
                 'dd_needed_in' => $validated['dd_needs'],
                 'purpose_of_dd' => $validated['purpose_of_dd'],
                 'in_favour_of' => $validated['in_favour_of'],
@@ -228,6 +233,115 @@ class TenderFeeController extends Controller
             return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Updated Successfully');
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
+        }
+    }
+
+    public function tender_fee_status(Request $request)
+    {
+        try {
+            $request->validate([
+                'type' => 'required|string',
+                'id' => 'required|numeric',
+                'status' => 'required',
+                'reason' => '',
+                'dd_no' => '',
+                'utr' => '',
+                'utr_msg' => '',
+                'remark' => '',
+            ]);
+
+            $type = $request->type;
+
+            switch ($type) {
+                case 'bankTransfer':
+                    // dd($request->all());
+                    $btTenderFee = BtTenderFee::find($request->id);
+                    $btTenderFee->update([
+                        'status' => $request->status,
+                        'reason' => $request->reason,
+                        'utr' => $request->utr,
+                        'utr_msg' => $request->utr_msg,
+                        'remark' => $request->remark,
+                    ]);
+                    return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Updated Successfully');
+                    break;
+                case 'payOnPortal':
+                    // dd($request->all());
+                    $popTenderFee = PopTenderFee::find($request->id);
+                    $popTenderFee->update([
+                        'status' => $request->status,
+                        'reason' => $request->reason,
+                        'utr' => $request->utr,
+                        'utr_msg' => $request->utr_msg,
+                        'remark' => $request->remark,
+                    ]);
+                    return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Updated Successfully');
+                    break;
+                case 'demandDraft':
+                    // dd($request->all());
+                    $ddTenderFee = DdTenderFee::find($request->id);
+                    $ddTenderFee->update([
+                        'status' => $request->status,
+                        'reason' => $request->reason,
+                        'dd_no' => $request->dd_no,
+                        'utr_msg' => $request->utr_msg,
+                        'remark' => $request->remark,
+                    ]);
+                    return redirect()->route('tender-fees.index')->with('success', 'Tender Fee Updated Successfully');
+                    break;
+                default:
+                    break;
+            }
+        } catch (\Throwable $th) {
+            return redirect()->back()->with('error', $th->getMessage());
+        }
+    }
+
+
+    // ====== MAILS ====== //
+
+    public function requestTenderFeeMail($id, $type)
+    {
+        try {
+            $tender_fee = match ($type) {
+                'bankTransfer' => BtTenderFee::find($id),
+                'payOnPortal' => PopTenderFee::find($id),
+                'demandDraft' => DdTenderFee::find($id),
+            };
+
+            $user = $tender_fee->requested_by;
+            $te = User::where('name', 'LIKE', "{$user}%")->first();
+
+            if (!$te) {
+                $te = Auth::user();
+            }
+
+            $admin = User::where('role', 'admin')->where('team', $te->team);
+            $coordinator = User::where('role', 'coordinator')->where('team', $te->team);
+            $teamLeader = User::where('role', 'team-leader')->where('team', $te->team);
+            $cc = [$admin->email, $coordinator->email, $teamLeader->email, 'accounts@volksenergie.in'];
+
+            $data = [
+                'type' => $type,
+                'purpose' => 'Tender Fee',
+                'tenderNo' => $tender_fee->tender_id ? $tender_fee->tender->tender_no : '',
+                'tenderName' => $tender_fee->tender_name,
+                'dueDate' => date('d-M-Y h:i A', strtotime($tender_fee->due_date_time)),
+                'link' => route('tender-fees.index'),
+                'assignee' => $te->name,
+                'tlName' => $teamLeader->name,
+            ];
+            if ($type == 'payOnPortal') {
+                $data['portal'] = $tender_fee->portal;
+            }
+            // From: <<Tender Executive>>
+            // To: Shivani@volksenergie (Account Executive - Sale)
+            // CC: <<coordinator>>, <<CEO>>, accounts@volksenergie.in, <<TL>>
+            // Subject: Bank Transfer -<<Purpose (EMD/Tender fees)>>
+            $to = 'shivani@volksenergie.in';
+            return true;
+        } catch (\Throwable $th) {
+            return false;
         }
     }
 }

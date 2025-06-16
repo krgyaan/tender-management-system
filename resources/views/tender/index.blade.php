@@ -6,6 +6,13 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body">
+                    <div class="mb-3 d-flex justify-content-center" style="max-width: 200px">
+                        <select id="team-filter" class="form-select">
+                            <option value="">All Teams</option>
+                            <option value="AC">AC</option>
+                            <option value="DC">DC</option>
+                        </select>
+                    </div>
                     <ul class="nav nav-pills justify-content-center" id="tenderTabs" role="tablist">
                         <li class="nav-item">
                             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#prep" type="button">
@@ -33,7 +40,7 @@
                             </button>
                         </li>
                     </ul>
-
+                    @include('partials.messages')
                     <div class="tab-content mt-3">
                         @foreach (['prep', 'dnb', 'bid', 'won', 'lost'] as $type)
                             <div class="tab-pane fade {{ $type === 'prep' ? 'show active' : '' }}" id="{{ $type }}">
@@ -54,6 +61,30 @@
                                                 <th>Timer</th>
                                                 <th>Action</th>
                                             </tr>
+                                            @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
+                                                <tr class="filter-row">
+                                                    <th><input type="text" class="form-control form-control-sm"
+                                                            placeholder="Search Tender No" /></th>
+                                                    <th><input type="text" class="form-control form-control-sm"
+                                                            placeholder="Search Org" /></th>
+                                                    <th><input type="text" class="form-control form-control-sm"
+                                                            placeholder="Search Name" /></th>
+                                                    <th><input type="text" class="form-control form-control-sm"
+                                                            placeholder="Search Item" /></th>
+                                                    <th></th>
+                                                    <th></th>
+                                                    <th></th>
+                                                    <th><select class="form-select form-select-sm">
+                                                            <option value="">TE</option>
+                                                        </select></th> <!-- Team Member -->
+                                                    <th></th>
+                                                    <th><select class="form-select form-select-sm">
+                                                            <option value="">Status</option>
+                                                        </select></th> <!-- Status -->
+                                                    <th></th>
+                                                    <th></th>
+                                                </tr>
+                                            @endif
                                         </thead>
                                     </table>
                                 </div>
@@ -64,10 +95,41 @@
             </div>
         </div>
     </div>
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Change Status</h5>
+                </div>
+                <form action="{{ route('tender.updateStatus') }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="id" @class(['form-conttol'])>
+                        <select name="status" id="status" @class(['form-control'])>
+                            @php
+                                $statuses = App\Models\Status::all();
+                            @endphp
+                            @foreach ($statuses as $status)
+                                <option value="{{ $status->id }}">
+                                    {{ $status->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
     <script>
+        // window.alert = function(msg) { console.log("Intercepted alert:", msg); }
+
         const tables = {};
         const tableTypes = ['prep', 'dnb', 'bid', 'won', 'lost'];
 
@@ -76,14 +138,13 @@
 
             tables[type] = $(`#${type}Table`).DataTable({
                 serverSide: true,
+                orderCellsTop: true,
                 processing: true,
                 ajax: {
                     url: `/tender/data/${type}`,
                     method: 'GET',
                     data: function(d) {
-                        d.search = {
-                            value: d.search.value
-                        };
+                        d.team = $('#team-filter').val();
                     },
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -118,32 +179,14 @@
                     {
                         data: 'gst_values',
                         name: 'gst_values',
-                        render: function(data) {
-                            return data ? parseFloat(data).toLocaleString('en-IN', {
-                                style: 'currency',
-                                currency: 'INR'
-                            }) : 'N/A';
-                        }
                     },
                     {
                         data: 'tender_fees',
-                        name: 'tender_fees',
-                        render: function(data) {
-                            return data ? parseFloat(data).toLocaleString('en-IN', {
-                                style: 'currency',
-                                currency: 'INR'
-                            }) : 'N/A';
-                        }
+                        name: 'tender_fees'
                     },
                     {
                         data: 'emd',
-                        name: 'emd',
-                        render: function(data) {
-                            return data ? parseFloat(data).toLocaleString('en-IN', {
-                                style: 'currency',
-                                currency: 'INR'
-                            }) : 'N/A';
-                        }
+                        name: 'emd'
                     },
                     {
                         data: 'users.name',
@@ -176,7 +219,7 @@
                     [8, 'desc']
                 ],
                 search: {
-                    return: true
+                    return: true,
                 },
                 pageLength: 25,
                 language: {
@@ -192,24 +235,69 @@
                 responsive: true,
                 stateSave: true,
                 drawCallback: function() {
-                    const timers = document.querySelectorAll('.timer');
-                    timers.forEach(startCountdown);
+                    handleTimers();
+                    handleModalEvents();
+                },
+                initComplete: function() {
+                    const api = this.api();
 
-                    $('#exampleModal').on('show.bs.modal', function(event) {
-                        var button = $(event.relatedTarget);
-                        var id = button.data('id');
-                        var name = button.data('name');
-                        var modal = $(this);
-                        modal.find('.modal-body #id').val(id);
-                        // select the option with a matching value
-                        modal.find('.modal-body #status option[value="' + name + '"]').prop('selected',
-                            true);
+                    api.columns().every(function(index) {
+                        const column = this;
+                        const $th = $('.filter-row th').eq(index);
+                        const $input = $th.find('input');
+                        const $select = $th.find('select');
+
+                        if ($input.length) {
+                            $input.on('keyup change clear', function() {
+                                if (column.search() !== this.value) {
+                                    column.search(this.value).draw();
+                                }
+                            });
+                        }
+
+                        if ($select.length) {
+                            const uniqueValues = new Set();
+
+                            column.data().each(function(d) {
+                                // Clean HTML tags if any (like <br>, etc.)
+                                const text = $('<div>').html(d).text().trim();
+                                if (text && text !== 'N/A') {
+                                    uniqueValues.add(text);
+                                }
+                            });
+
+                            // Append to select
+                            Array.from(uniqueValues).sort().forEach(val => {
+                                $select.append(`<option value="${val}">${val}</option>`);
+                            });
+
+                            $select.on('change', function() {
+                                const val = $.fn.dataTable.util.escapeRegex($(this).val());
+                                column.search(val ? '^' + val + '$' : '', true, false).draw();
+                            });
+                        }
                     });
                 }
             });
         }
 
         $(document).ready(function() {
+            const savedTeam = localStorage.getItem('selectedTeam');
+            if (savedTeam) {
+                $('#team-filter').val(savedTeam);
+            }
+            $('#team-filter').on('change', function() {
+                const selectedTeam = $(this).val();
+                localStorage.setItem('selectedTeam', selected);
+
+                // Refresh only the active tab
+                const activeTab = $('#tenderTabs .nav-link.active').attr('data-bs-target').replace('#', '');
+
+                if (tables[activeTab]) {
+                    tables[activeTab].ajax.reload();
+                }
+            });
+
             initializeTable('prep');
 
             $('#tenderTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
@@ -225,5 +313,21 @@
                 });
             }, 300000);
         });
+
+        function handleTimers() {
+            document.querySelectorAll('.timer').forEach(startCountdown);
+        }
+
+        function handleModalEvents() {
+            $('#exampleModal').on('show.bs.modal', function(event) {
+                const button = $(event.relatedTarget);
+                const id = button.data('id');
+                const name = button.data('name');
+                const modal = $(this);
+                modal.find('.modal-body #id').val(id);
+                modal.find('.modal-body #status option').prop('selected', false);
+                modal.find(`.modal-body #status option[value="${name}"]`).prop('selected', true);
+            });
+        }
     </script>
 @endpush

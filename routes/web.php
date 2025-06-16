@@ -201,7 +201,8 @@ Route::middleware('auth')->group(function () {
             Route::match(['get', 'put', 'patch'], 'tender-fees/update/{id}',  'update')->name('tender-fees.edit');
             Route::post('tender-fees/bt/store',  'BTstore')->name('tender-fees.bt.store');
             Route::post('tender-fees/pop/store',  'Popstore')->name('tender-fees.pop.store');
-            Route::post('tender-fees/dd/store',  'DDstore')->name('tender-fees.dd.store');
+            Route::post('tender-fees/status',  'DDstore')->name('tender-fees.dd.store');
+            Route::post('tender-fees/dd/store',  'tender_fee_status')->name('tender-fees.status');
             Route::resource('tender-fees', TenderFeeController::class)->except('create');
         });
 

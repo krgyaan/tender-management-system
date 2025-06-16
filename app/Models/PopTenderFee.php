@@ -17,7 +17,12 @@ class PopTenderFee extends Model
         'portal_name',
         'netbanking_available',
         'bank_debit_card',
-        'amount'
+        'amount',
+        'status',
+        'reason',
+        'utr',
+        'utr_msg',
+        'remark',
     ];
 
     public function tender()

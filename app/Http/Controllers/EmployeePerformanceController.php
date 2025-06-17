@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\TenderingPerformance;
 use Illuminate\Database\Eloquent\Collection;
 
-class PerformanceController extends Controller
+class EmployeePerformanceController extends Controller
 {
     protected TenderingPerformance $tenderingPerformanceService;
 
@@ -153,7 +153,7 @@ class PerformanceController extends Controller
             );
 
             $isResult = true;
-            return view('employeePerformance', compact(
+            return view('performance.employee', compact(
                 'users',
                 'isResult',
                 'team_member',
@@ -179,7 +179,7 @@ class PerformanceController extends Controller
             $mergedDoneStages = [];
             $doableStages = 0;
 
-            return view('employeePerformance', compact(
+            return view('performance.employee', compact(
                 'users',
                 'isResult',
                 'totalTenderCount',

@@ -1,14 +1,6 @@
 @extends('layouts.app')
 @section('page-title', 'Bank Transfer Dashboard')
 @section('content')
-    @php
-        $popStatus = [
-            1 => 'Accounts Form',
-            2 => 'Initiate Followup',
-            3 => 'Returned via Bank Transfer',
-            4 => 'Settled with Project Account',
-        ];
-    @endphp
     <section>
         <div class="row">
             <div class="col-md-12 m-auto">
@@ -23,227 +15,39 @@
                         <div class="bd-example">
                             <nav>
                                 <div class="nav nav-tabs mb-3 justify-content-center" id="nav-tab" role="tablist">
-                                    <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home"
-                                        aria-selected="true">Bank Transfer Pending</button>
-                                    <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-profile" type="button" role="tab"
-                                        aria-controls="nav-profile" aria-selected="false">Bank Transfer Done</button>
+                                    <button class="nav-link active" id="nav-pending-tab" data-bs-toggle="tab"
+                                        data-bs-target="#nav-pending" type="button" role="tab">Pending</button>
+                                    <button class="nav-link" id="nav-accepted-tab" data-bs-toggle="tab"
+                                        data-bs-target="#nav-accepted" type="button" role="tab">Accepted</button>
+                                    <button class="nav-link" id="nav-rejected-tab" data-bs-toggle="tab"
+                                        data-bs-target="#nav-rejected" type="button" role="tab">Rejected</button>
                                 </div>
                             </nav>
                             <div class="tab-content" id="nav-tabContent">
-                                <div class="tab-pane fade show active" id="nav-home" role="tabpanel"
-                                    aria-labelledby="nav-home-tab">
-                                    <div class="table-responsive">
-                                        <table class="table" id="bt">
-                                            <thead>
-                                                <tr>
-                                                    <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Team</th>
-                                                    <th>Member</th>
-                                                    <th>UTR No</th>
-                                                    <th>Account Name</th>
-                                                    <th>Tender Name</th>
-                                                    <th>Tender Status</th>
-                                                    <th>Amount</th>
-                                                    <th>BT Status</th>
-                                                    <th>Timer</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @if (count($emdBtPending) > 0)
-                                                    @foreach ($emdBtPending as $bt)
-                                                        @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
-                                                                Auth::user()->name == $bt->emd->requested_by)
-                                                            @php
-                                                                $team =
-                                                                    \App\Models\User::where(
-                                                                        'name',
-                                                                        $bt->emd->requested_by,
-                                                                    )->first()->team ?? '';
-                                                            @endphp
-                                                            <tr style="white-space: nowrap; max-width: 150px;">
-                                                                <td style="min-width: 100px;">
-                                                                    {{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
-                                                                <td>{{ $bt->emd->tender->team ?? $team }}
-                                                                </td>
-                                                                <td>{{ $bt->emd->requested_by ?? '' }}</td>
-                                                                <td>{{ $bt->utr ?? '' }}</td>
-                                                                <td>{{ $bt->bt_acc_name ?? '' }}</td>
-                                                                <td>{{ optional($bt->emd->tender)->tender_name ?? $bt->emd->project_name }}
-                                                                </td>
-                                                                <td>{{ $bt->emd->tender->statuses->name ?? $bt->emd->type }}
-                                                                </td>
-                                                                <td>{{ format_inr($bt->bt_amount) ?? '' }}</td>
-                                                                <td>{{ $bt->status ?? '' }}</td>
-                                                                <td>
-                                                                    @php
-                                                                        if ($bt) {
-                                                                            $timer = $bt->getTimer('bt_acc_form');
-                                                                            if ($timer) {
-                                                                                $start = $timer->start_time;
-                                                                                $hrs = $timer->duration_hours;
-                                                                                $end =
-                                                                                    strtotime($start) + $hrs * 60 * 60;
-                                                                                $remaining = $end - time();
-                                                                            } else {
-                                                                                $remained = $bt->remainedTime(
-                                                                                    'bt_acc_form',
-                                                                                );
-                                                                            }
-                                                                        }
-                                                                    @endphp
-                                                                    @if (isset($bt) && $timer)
-                                                                        <span class="timer" id="timer-{{ $bt->id }}"
-                                                                            data-remaining="{{ $remaining }}"></span>
-                                                                    @elseif (isset($bt) && isset($remained))
-                                                                        {!! $remained !!}
-                                                                    @endif
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex flex-wrap gap-2">
-                                                                        <a class="btn btn-xs btn-primary"
-                                                                            href="{{ route('bt-action', $bt->id) }}">
-                                                                            Status
-                                                                        </a>
-                                                                        <a href="{{ route('emds-dashboard.show', $bt->emd->id) }}"
-                                                                            class="btn btn-xs btn-info">
-                                                                            View
-                                                                        </a>
-                                                                        <a href="{{ route('emds-dashboard.edit', $bt->emd->id) }}"
-                                                                            class="btn btn-xs btn-warning">
-                                                                            Edit
-                                                                        </a>
-                                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                                            <form
-                                                                                action="{{ route('emds-dashboard.destroy', $bt->emd->id) }}"
-                                                                                method="POST" class="d-inline">
-                                                                                @csrf
-                                                                                @method('DELETE')
-                                                                                <button type="submit"
-                                                                                    class="btn btn-xs btn-danger"
-                                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
-                                                                                    Delete
-                                                                                </button>
-                                                                            </form>
-                                                                        @endif
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        @endif
-                                                    @endforeach
-                                                @endif
-                                            </tbody>
-                                        </table>
+                                @foreach (['pending', 'accepted', 'rejected'] as $status)
+                                    <div class="tab-pane fade {{ $status === 'pending' ? 'show active' : '' }}"
+                                        id="nav-{{ $status }}" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table-hover" id="bt-{{ $status }}-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 100px;">Date</th>
+                                                        <th>Team</th>
+                                                        <th>Member</th>
+                                                        <th>UTR No</th>
+                                                        <th>Account Name</th>
+                                                        <th>Tender Name</th>
+                                                        <th>Tender Status</th>
+                                                        <th>Amount</th>
+                                                        <th>BT Status</th>
+                                                        <th>Timer</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="tab-pane fade" id="nav-profile" role="tabpanel"
-                                    aria-labelledby="nav-profile-tab">
-                                    <div class="table-responsive">
-                                        <table class="table" id="bt">
-                                            <thead>
-                                                <tr>
-                                                    <th style="white-space: nowrap; max-width: 150px;">Date</th>
-                                                    <th>Team</th>
-                                                    <th>Member</th>
-                                                    <th>UTR No</th>
-                                                    <th>Account Name</th>
-                                                    <th>Tender Name</th>
-                                                    <th>Tender Status</th>
-                                                    <th>Amount</th>
-                                                    <th>BT Status</th>
-                                                    <th>Timer</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @if (count($emdBtDone) > 0)
-                                                    @foreach ($emdBtDone as $bt)
-                                                        @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
-                                                                Auth::user()->name == $bt->emd->requested_by)
-                                                            @php
-                                                                $team =
-                                                                    \App\Models\User::where(
-                                                                        'name',
-                                                                        $bt->emd->requested_by,
-                                                                    )->first()->team ?? '';
-                                                            @endphp
-                                                            <tr style="white-space: nowrap; max-width: 150px;">
-                                                                <td style="min-width: 100px;">
-                                                                    {{ date('d-m-Y', strtotime($bt->created_at)) }}</td>
-                                                                <td>{{ $bt->emd->tender->team ?? $team }}
-                                                                </td>
-                                                                <td>{{ $bt->emd->requested_by ?? '' }}</td>
-                                                                <td>{{ $bt->utr ?? '' }}</td>
-                                                                <td>{{ $bt->bt_acc_name ?? '' }}</td>
-                                                                <td>{{ optional($bt->emd->tender)->tender_name ?? $bt->emd->project_name }}
-                                                                </td>
-                                                                <td>{{ $bt->emd->tender->statuses->name ?? $bt->emd->type }}
-                                                                </td>
-                                                                <td>{{ format_inr($bt->bt_amount) ?? '' }}</td>
-                                                                <td>{{ $bt->status ?? '' }}</td>
-                                                                <td>
-                                                                    @php
-                                                                        if ($bt) {
-                                                                            $timer = $bt->getTimer('bt_acc_form');
-                                                                            if ($timer) {
-                                                                                $start = $timer->start_time;
-                                                                                $hrs = $timer->duration_hours;
-                                                                                $end =
-                                                                                    strtotime($start) + $hrs * 60 * 60;
-                                                                                $remaining = $end - time();
-                                                                            } else {
-                                                                                $remained = $bt->remainedTime(
-                                                                                    'bt_acc_form',
-                                                                                );
-                                                                            }
-                                                                        }
-                                                                    @endphp
-                                                                    @if (isset($bt) && $timer)
-                                                                        <span class="timer" id="timer-{{ $bt->id }}"
-                                                                            data-remaining="{{ $remaining }}"></span>
-                                                                    @elseif (isset($bt) && isset($remained))
-                                                                        {!! $remained !!}
-                                                                    @endif
-                                                                </td>
-                                                                <td>
-                                                                    <div class="d-flex flex-wrap gap-2">
-                                                                        <a class="btn btn-xs btn-primary"
-                                                                            href="{{ route('bt-action', $bt->id) }}">
-                                                                            Status
-                                                                        </a>
-                                                                        <a href="{{ route('emds-dashboard.show', $bt->emd->id) }}"
-                                                                            class="btn btn-xs btn-info">
-                                                                            View
-                                                                        </a>
-                                                                        <a href="{{ route('emds-dashboard.edit', $bt->emd->id) }}"
-                                                                            class="btn btn-xs btn-warning">
-                                                                            Edit
-                                                                        </a>
-                                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                                            <form
-                                                                                action="{{ route('emds-dashboard.destroy', $bt->emd->id) }}"
-                                                                                method="POST" class="d-inline">
-                                                                                @csrf
-                                                                                @method('DELETE')
-                                                                                <button type="submit"
-                                                                                    class="btn btn-xs btn-danger"
-                                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
-                                                                                    Delete
-                                                                                </button>
-                                                                            </form>
-                                                                        @endif
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        @endif
-                                                    @endforeach
-                                                @endif
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -252,11 +56,108 @@
         </div>
     </section>
 @endsection
+
 @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
+        $(document).ready(function() {
+            const tables = {};
+            const statuses = ['pending', 'accepted', 'rejected'];
+
+            function initializeTable(status) {
+                if (tables[status]) return;
+
+                tables[status] = $(`#bt-${status}-table`).DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: "{{ route('emds-dashboard.bt') }}",
+                        data: function(d) {
+                            d.status = status;
+                        },
+                        error: function(xhr, error, thrown) {
+                            console.error('DataTables error:', error, thrown);
+                        }
+                    },
+                    columns: [{
+                            data: 'date',
+                            name: 'created_at'
+                        },
+                        {
+                            data: 'team',
+                            name: 'team'
+                        },
+                        {
+                            data: 'member',
+                            name: 'member'
+                        },
+                        {
+                            data: 'utr',
+                            name: 'utr'
+                        },
+                        {
+                            data: 'bt_acc_name',
+                            name: 'bt_acc_name'
+                        },
+                        {
+                            data: 'tender_name',
+                            name: 'tender_name'
+                        },
+                        {
+                            data: 'tender_status',
+                            name: 'tender_status'
+                        },
+                        {
+                            data: 'amount',
+                            name: 'bt_amount'
+                        },
+                        {
+                            data: 'status',
+                            name: 'status'
+                        },
+                        {
+                            data: 'timer',
+                            name: 'timer',
+                            orderable: false,
+                            searchable: false
+                        },
+                        {
+                            data: 'action',
+                            name: 'action',
+                            orderable: false,
+                            searchable: false
+                        }
+                    ],
+                    order: [
+                        [0, 'desc']
+                    ],
+                    pageLength: 25,
+                    drawCallback: function() {
+                        handleTimers();
+                    }
+                });
+            }
+
+            // Initialize pending table on page load
+            initializeTable('pending');
+
+            // Initialize tables on tab change
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                const status = $(e.target).attr('id').replace('nav-', '').replace('-tab', '');
+                initializeTable(status);
+            });
+
+            // Refresh tables periodically
+            setInterval(function() {
+                statuses.forEach(status => {
+                    if (tables[status]) {
+                        tables[status].ajax.reload(null, false);
+                    }
+                });
+            }, 300000); // Every 5 minutes
+
+            function handleTimers() {
+                document.querySelectorAll('.timer').forEach(startCountdown);
+            }
         });
     </script>
 @endpush

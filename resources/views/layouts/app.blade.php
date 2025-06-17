@@ -793,8 +793,8 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('employee/performance') ? 'active' : '' }}"
-                            aria-current="page" href="{{ route('employee/performance') }}">
+                        <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-performance" role="button"
+                            aria-expanded="false" aria-controls="sidebar-performance">
                             <i class="icon">
                                 <svg width="22" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
@@ -805,7 +805,104 @@
                                 </svg>
                             </i>
                             <span class="item-name">Performance</span>
+                            <i class="right-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7" />
+                                </svg>
+                            </i>
                         </a>
+                        <ul class="sub-nav collapse" id="sidebar-performance" data-bs-parent="#sidebar">
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('employee/performance'),
+                                ]) href="{{ route('employee/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">TE Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('team-leader/performance'),
+                                ]) href="{{ route('team-leader/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">TL Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('operation/performance'),
+                                ]) href="{{ route('operation/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Operation Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('accounts/performance'),
+                                ]) href="{{ route('accounts/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Account Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('oem/performance'),
+                                ]) href="{{ route('oem/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">OEM Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('business/performance'),
+                                ]) href="{{ route('business/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Business Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('customer/performance'),
+                                ]) href="{{ route('customer/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Customer Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('location/performance'),
+                                ]) href="{{ route('location/performance') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Location Dashboard</span>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -882,21 +979,6 @@
         </div>
     </main>
 
-    <div class="d-none">
-        <?php
-
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        // echo finfo_file($finfo, 'uploads/docs/GeM-Bidding-7771730.pdf_1745655322_1368714793.pdf');
-
-        $required_extensions = ['fileinfo', 'gd', 'mbstring', 'xml', 'zip', 'dom', 'curl', 'json', 'intl'];
-
-        echo '<h5>PHP Extension Check</h5>';
-        foreach ($required_extensions as $ext) {
-            echo $ext . ': ' . (extension_loaded($ext) ? '✅ Enabled' : '❌ Disabled') . '<br>';
-        }
-        ?>
-    </div>
-
     <footer class="footer">
         <div class="footer-body">
             <div class="text-center">
@@ -905,11 +987,7 @@
                 &copy;
                 <script>
                     document.write(new Date().getFullYear())
-                </script> TMS, All rights reserved. |
-
-                <span class="connection-icon me-2"></span>
-                <span class="connection-text"></span>
-                <span class="connection-speed"></span>
+                </script> TMS, All rights reserved.
             </div>
         </div>
     </footer>
@@ -960,74 +1038,6 @@
             $('textarea').each(function() {
                 $(this).css('height', $(this).prop('scrollHeight') + 'px');
             });
-
-            function updateConnectionStatus() {
-                const connectionIcon = document.querySelector('.connection-icon');
-                const connectionText = document.querySelector('.connection-text');
-                const connectionSpeed = document.querySelector('.connection-speed');
-
-                if (!navigator.onLine) {
-                    connectionIcon.className = 'connection-icon offline';
-                    connectionText.textContent = 'No Internet';
-                    connectionSpeed.textContent = '';
-                    return;
-                }
-
-                // Test connection speed
-                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                if (connection) {
-                    // Using Network Information API if available
-                    const speed = connection.downlink; // Speed in Mbps
-                    connectionSpeed.textContent = `(${speed} Mbps)`;
-
-                    switch (connection.effectiveType) {
-                        case 'slow-2g':
-                        case '2g':
-                            connectionIcon.className = 'connection-icon slow';
-                            connectionText.textContent = 'Slow';
-                            break;
-                        case '3g':
-                            connectionIcon.className = 'connection-icon slow';
-                            connectionText.textContent = 'Fair';
-                            break;
-                        case '4g':
-                            connectionIcon.className = 'connection-icon fair';
-                            connectionText.textContent = 'Good';
-                            break;
-                        default:
-                            connectionIcon.className = 'connection-icon fair';
-                            connectionText.textContent = 'Good';
-                    }
-                } else {
-                    // Fallback speed test using image loading
-                    const startTime = performance.now();
-                    const img = new Image();
-                    img.onload = function() {
-                        const endTime = performance.now();
-                        const loadTime = endTime - startTime;
-                        const speedMbps = (0.001 / loadTime) * 1000; // Rough estimation of speed in Mbps
-
-                        connectionSpeed.textContent = `${speedMbps.toFixed(1)} Mbps`;
-
-                        if (loadTime > 1000) {
-                            connectionIcon.className = 'connection-icon slow';
-                            connectionText.textContent = 'Slow';
-                        } else if (loadTime > 300) {
-                            connectionIcon.className = 'connection-icon slow';
-                            connectionText.textContent = 'Fair';
-                        } else {
-                            connectionIcon.className = 'connection-icon fair';
-                            connectionText.textContent = 'Good';
-                        }
-                    };
-                    img.src =
-                        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==';
-                }
-            }
-            updateConnectionStatus();
-            window.addEventListener('online', updateConnectionStatus);
-            window.addEventListener('offline', updateConnectionStatus);
-            setInterval(updateConnectionStatus, 5000);
         });
     </script>
     <script>

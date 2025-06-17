@@ -32,6 +32,7 @@ use App\Mail\BgAccountForm2Mail;
 use App\Mail\BgAccountForm3Mail;
 use App\Mail\BgCancellationMail;
 use App\Mail\DdCancellationMail;
+use Yajra\DataTables\DataTables;
 use App\Exports\PayOnPortalExport;
 use App\Exports\BankTransferExport;
 use App\Mail\BgFDRCancellationMail;
@@ -137,15 +138,81 @@ class EmdDashboardController extends Controller
 
     public function BT(Request $request)
     {
-        if ($request->isMethod('get')) {
-            try {
-                $data['emdBtPending'] = BankTransfer::with('emd', 'emd.tender', 'emd.tender.statuses')->whereNull('action')->latest()->get();
-                $data['emdBtDone'] = BankTransfer::with('emd', 'emd.tender', 'emd.tender.statuses')->whereNotNull('action')->latest()->get();
+        try {
+            $user = Auth::user();
+            if ($request->ajax()) {
+                Log::info('Bank Transfer DataTable request', ['request' => $request->all()]);
 
-                return view('emds.emd-dashboard.bank-transfer', $data);
-            } catch (\Throwable $th) {
-                return redirect()->back()->with('error', $th->getMessage());
+                $query = BankTransfer::with(['emd', 'emd.tender', 'emd.tender.statuses', 'emd.tender.users'])
+                    ->select('bank_transfers.*');
+
+                if (!in_array($user->role, ['admin', 'account-executive', 'accountant', 'account-leader'])) {
+                    $query->where('emd.requested_by', $user->name);
+                }
+
+                // Handle status filtering
+                switch ($request->status) {
+                    case 'pending':
+                        $query->whereNull('action');
+                        break;
+                    case 'accepted':
+                        $query->whereNotNull('action')
+                            ->where('status', 'Accepted');
+                        break;
+                    case 'rejected':
+                        $query->whereNotNull('action')
+                            ->where('status', 'Rejected');
+                        break;
+                }
+
+
+                // Handle search
+                if ($request->has('search') && !empty($request->search['value'])) {
+                    $searchValue = $request->search['value'];
+
+                    $query->where(function ($q) use ($searchValue) {
+                        $q->where('utr', 'LIKE', "%{$searchValue}%")
+                            ->orWhere('bt_acc_name', 'LIKE', "%{$searchValue}%")
+                            ->orWhere('bt_amount', 'LIKE', "%{$searchValue}%")
+                            ->orWhereHas('emd.tender', function ($q) use ($searchValue) {
+                                $q->where('tender_name', 'LIKE', "%{$searchValue}%");
+                            });
+                    });
+                }
+                return DataTables::of($query)
+                    ->addColumn('date', function ($bt) {
+                        return date('d-m-Y', strtotime($bt->created_at));
+                    })
+                    ->addColumn('team', function ($bt) {
+                        $member = User::where('name', $bt->emd->requested_by)->first()->team;
+                        return $bt->emd->tender->team ?? $member;
+                    })
+                    ->addColumn('member', function ($bt) {
+                        return $bt->emd->requested_by ?? 'N/A';
+                    })
+                    ->addColumn('tender_name', function ($bt) {
+                        return $bt->emd->project_name ?? 'N/A';
+                    })
+                    ->addColumn('tender_status', function ($bt) {
+                        return $bt->emd->tender->statuses->name ?? 'N/A';
+                    })
+                    ->addColumn('amount', function ($bt) {
+                        return format_inr($bt->bt_amount);
+                    })
+                    ->addColumn('timer', function ($bt) {
+                        return view('partials.timer', ['tender' => $bt])->render();
+                    })
+                    ->addColumn('action', function ($bt) {
+                        return view('partials.bt-actions', compact('bt'))->render();
+                    })
+                    ->rawColumns(['timer', 'action'])
+                    ->make(true);
             }
+
+            return view('emds.emd-dashboard.bank-transfer');
+        } catch (\Throwable $th) {
+            Log::error('Bank Transfer DataTable Error: ' . $th->getMessage());
+            return redirect()->back()->with('error', $th->getMessage());
         }
     }
 

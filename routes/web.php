@@ -44,7 +44,6 @@ use App\Http\Controllers\GoogletoolController;
 use App\Http\Controllers\TeamLeaderController;
 use App\Http\Controllers\TenderInfoController;
 use App\Http\Controllers\CoordinatorController;
-use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\SubmitQueryController;
 use App\Http\Controllers\EmdDashboardController;
 use App\Http\Controllers\FixedExpenseController;
@@ -53,7 +52,9 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PricingSheetController;
 use App\Http\Controllers\BidSubmissionController;
 use App\Http\Controllers\CacheOptimizeController;
+use App\Http\Controllers\TlPerformanceController;
 use App\Http\Controllers\KickoffmeetingController;
+use App\Http\Controllers\OemPerformanceController;
 use App\Http\Controllers\ClientDirectoryController;
 use App\Http\Controllers\CostingApprovalController;
 use App\Http\Controllers\EmployeeImprestController;
@@ -61,6 +62,12 @@ use App\Http\Controllers\CourierDashboardController;
 use App\Http\Controllers\BatteryPriceSheetController;
 use App\Http\Controllers\ContractAgreementController;
 use App\Http\Controllers\DocumentSubmittedController;
+use App\Http\Controllers\AccountsPerformanceController;
+use App\Http\Controllers\BusinessPerformanceController;
+use App\Http\Controllers\CustomerPerformanceController;
+use App\Http\Controllers\EmployeePerformanceController;
+use App\Http\Controllers\LocationPerformanceController;
+use App\Http\Controllers\OperationPerformanceController;
 
 
 Route::view('/', 'auth.login')->name('/');
@@ -73,7 +80,14 @@ Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
 // Routes requiring authentication
 Route::middleware('auth')->group(function () {
 
-    Route::any('/employee/performance', [PerformanceController::class, 'performance'])->name('employee/performance');
+    Route::any('/employee/performance', [EmployeePerformanceController::class, 'performance'])->name('employee/performance');
+    Route::any('/team-leader/performance', [TlPerformanceController::class, 'performance'])->name('team-leader/performance');
+    Route::any('/operation/performance', [OperationPerformanceController::class, 'performance'])->name('operation/performance');
+    Route::any('/accounts/performance', [AccountsPerformanceController::class, 'performance'])->name('accounts/performance');
+    Route::any('/oem/performance', [OemPerformanceController::class, 'performance'])->name('oem/performance');
+    Route::any('/business/performance', [BusinessPerformanceController::class, 'performance'])->name('business/performance');
+    Route::any('/customer/performance', [CustomerPerformanceController::class, 'performance'])->name('customer/performance');
+    Route::any('/location/performance', [LocationPerformanceController::class, 'performance'])->name('location/performance');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

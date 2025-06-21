@@ -20,16 +20,18 @@ class TenderingPerformance
             ->groupBy('tender_id')
             ->get()
             ->keyBy('tender_id')
-            ->map(fn($item) => json_decode($item->stages, true));
+            ->map(function ($item) {
+                return array_unique(json_decode($item->stages, true));
+            });
+            Log::info('Fetched steps per tender ', ['result' => $result->toArray()]);
 
-        Log::info('Fetched steps per tender', ['result' => $result->toArray()]);
 
         return $result;
     }
 
     public function getStepsPerTenderOnTime(array $tenderIds, array $taskStages): Collection
     {
-        Log::info('Fetching steps per tender on time', ['tenderIds' => $tenderIds, 'taskStages' => $taskStages]);
+        // Log::info('Fetching steps per tender on time', ['tenderIds' => $tenderIds, 'taskStages' => $taskStages]);
 
         $result = DB::table('timer_trackers')
             ->select('tender_id', 'stage', 'remaining_time')
@@ -44,7 +46,7 @@ class TenderingPerformance
                 return $items->mapWithKeys(fn($item) => [$item->stage => $item->remaining_time])->toArray();
             });
 
-        Log::info('Fetched steps per tender on time', ['result' => $result->toArray()]);
+        // Log::info('Fetched steps per tender on time', ['result' => $result->toArray()]);
 
         return $result;
     }
@@ -161,12 +163,13 @@ class TenderingPerformance
 
     private function mergeCompletedAndSkipped(Collection $executed, array $skipped, int $totalStageCount): array
     {
-        Log::info('Merging completed and skipped stages', ['executed' => $executed->toArray(), 'skipped' => $skipped, 'totalStageCount' => $totalStageCount]);
+        // Log::info('Merging completed and skipped stages', ['executed' => $executed->toArray(), 'skipped' => $skipped, 'totalStageCount' => $totalStageCount]);
 
         $result = [];
 
         foreach ($executed as $tenderId => $stages) {
             if (empty($stages)) {
+                Log::warning("No stages found for Tender ID $tenderId");
                 continue;
             }
 
@@ -179,12 +182,20 @@ class TenderingPerformance
                 continue;
             }
 
-            Log::info("Merged completed and skipped stages for Tender ID $tenderId", ['skipped' => $skip]);
+            // Log::info("Merged completed and skipped stages for Tender ID $tenderId", ['skipped' => $skip]);
+
+            // Convert stages to array if it's not already
+            if (!is_array($stages)) {
+                $stages = [$stages];
+            }
+
+            // Remove duplicates from stages array
+            $uniqueStages = array_unique($stages);
 
             $result[$tenderId] = [
                 'skipped' => $skip,
-                'stages' => $stages,
-                'done' => count($stages),
+                'stages' => array_values($uniqueStages),
+                'done' => count($uniqueStages),
                 'tenderhave' => $totalStageCount - count($skip),
             ];
 
@@ -192,11 +203,9 @@ class TenderingPerformance
                 Log::warning("Executed stages for Tender ID $tenderId is not an array", ['stages' => $result[$tenderId]['stages']]);
                 continue;
             }
-
             Log::info("Merged completed and skipped stages for Tender ID $tenderId", ['merged' => $result[$tenderId]]);
         }
-
-        Log::info('Merged completed and skipped stages', ['result' => $result]);
+        // Log::info('Merged completed and skipped stages', ['result' => $result]);
 
         return $result;
     }

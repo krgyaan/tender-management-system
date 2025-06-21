@@ -763,7 +763,13 @@ class TenderInfoController extends Controller
 
     public function tlapproval(Request $request)
     {
-        $tenderInfo = TenderInformation::with('tender')->get()->sortByDesc(fn($info) => optional($info->tender)->due_date);
+        $tenderInfo = (Auth::user()->role == 'admin') ?
+            TenderInformation::with('tender')->get()
+            ->sortByDesc(fn($info) => optional($info->tender)->due_date) :
+            TenderInformation::with('tender')->whereHas('tender', function ($query) {
+                $query->where('team', '=', Auth::user()->team);
+            })->get()
+            ->sortByDesc(fn($info) => optional($info->tender)->due_date);
 
         $approved = $tenderInfo->filter(fn($info) => optional($info->tender)->tlStatus == 1);
         $rejected = $tenderInfo->filter(fn($info) => optional($info->tender)->tlStatus == 2);

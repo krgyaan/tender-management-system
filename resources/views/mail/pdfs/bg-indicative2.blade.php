@@ -1,4 +1,4 @@
-<div>
+<div style="padding: 0 50px;">
     <p style="text-align: center; font-size: small;">
         <span style="font-weight: bold;text-decoration: underline;">
             DECLARATION CUM UNDERTAKING UNDER FEMA (Required in case of foreign bank guarantee only)

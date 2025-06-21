@@ -41,6 +41,37 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
+                <div class="mb-3" id="team-color-legend">
+                    @php
+                        $teamColors = [];
+                        $index = 0;
+
+                        foreach ($data['tender_info'] ?? [] as $tender) {
+                            $member = $tender->users->name ?? 'Unknown';
+                            if (!isset($teamColors[$member])) {
+                                $hue = ($index * 137) % 360;
+                                $teamColors[$member] = "hsl($hue, 70%, 50%)";
+                                $index++;
+                            }
+                        }
+                    @endphp
+
+                    <ul class="list-unstyled d-flex flex-wrap">
+                        @foreach ($teamColors as $member => $color)
+                            @php
+                                $user = \App\Models\User::where('name', $member)->first();
+                            @endphp
+                            <li class="me-4 mb-2 d-flex align-items-center">
+                                <span class="rounded-circle me-2"
+                                    style="display:inline-block;width:16px;height:16px;background-color:{{ $color }}"
+                                    data-bs-toggle="tooltip" data-bs-html="true"
+                                    title="{{ $user->email }}<br>{{ ucwords(str_replace(['-', '_'], ' ', $user->role)) }}">
+                                </span>
+                                {{ $member }}
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
                 <div id='calendar'></div>
             </div>
         </div>
@@ -70,7 +101,7 @@
                         {
                             title: 'Tender due - {{ $data->tender_name }}',
                             start: '{{ $data->due_date }}',
-                            color: '#ff0000',
+                            color: '{{ $teamColors[$data->users->name ?? 'Unknown'] }}',
                             textColor: '#ffffff'
                         },
                     @endforeach

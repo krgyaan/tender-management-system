@@ -73,7 +73,7 @@
             <tr>
                 <td class="no-border" style="text-align: left;">
                     To,<br>
-                    {{ $data['bg_favour'] }}
+                    {{ str_replace(',', ",\n", $data['bg_favour']) }}
                 </td>
                 <td class="no-border" style="text-align: right;">
                     Date: {{ date('d-m-Y') }}
@@ -81,7 +81,15 @@
             </tr>
         </tbody>
     </table>
-    <br><br>
+    <br>
+    <p>
+        Subject: Submission of Bank Guarantee No. ___________
+    </p>
+    <p>
+        Dear Sir/Madam,<br>
+        With reference to the captioned subject, we would like to submit the original copy of following bank guarantee
+        against the below mentioned tender/WO/PO number.
+    </p>
     <table class="bordered border-collapse full-width">
         <tbody>
             <tr>
@@ -97,7 +105,15 @@
                 <td class="bordered padding-8">INR {{ format_inr($data['bg_amt']) }}</td>
             </tr>
             <tr>
-                <th class="bordered text-left padding-8">TENDER NO:</th>
+                <th class="bordered text-left padding-8">BANK GUARANTEE EXPIRY:</th>
+                <td class="bordered padding-8">{{ date('d-m-Y', strtotime($data['bg_expiry'])) }}</td>
+            </tr>
+            <tr>
+                <th class="bordered text-left padding-8">BANK GUARANTEE CLAIM PERIOD:</th>
+                <td class="bordered padding-8">INR {{ date('d-m-Y', strtotime($data['bg_claim'])) }}</td>
+            </tr>
+            <tr>
+                <th class="bordered text-left padding-8">TENDER/WO/PO NO:</th>
                 <td class="bordered padding-8">{{ $data['tender_no'] }}</td>
             </tr>
             <tr>
@@ -109,9 +125,10 @@
                 <td class="bordered padding-8">
                     <b>(A) Email ID:</b><br>
                     <ul>
-                        <li>{{ $data['bg_client_user'] }}</li>
-                        <li>{{ $data['bg_client_cp'] }}</li>
-                        <li>{{ $data['bg_client_fin'] }}</li>
+                        <li>Dhiraj.kumar3@yesbank.in</li>
+                        <li>Divya.khurana1@yesbank.in</li>
+                        <li>dtcorpdesknehruplace@yesbank.in</li>
+                        <li>yesbgconfirmation@yesbank.in</li>
                     </ul>
                     <b>(B) Address:</b><br>
                     {{ 'YES BANK LTD - NEHRU PLACE, NEW DELHI' }}<br>

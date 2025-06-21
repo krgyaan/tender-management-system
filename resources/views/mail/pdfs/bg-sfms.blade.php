@@ -1,4 +1,4 @@
-<div>
+<div style="padding: 0 50px;">
     <style>
         .no-border {
             border: none;
@@ -108,8 +108,9 @@
         <li>Dhiraj.kumar3@yesbank.in</li>
         <li>Divya.khurana1@yesbank.in</li>
         <li>dtcorpdesknehruplace@yesbank.in</li>
+        <li>yesbgconfirmation@yesbank.in</li>
     </ol>
-    <p>Phone No: +91-9643467407</p>
+    <p>Phone No: +91-9643467407 (Divya Khurana(CSD))</p>
     <p>Please let us know if you need any further clarification.</p>
 
     <br>

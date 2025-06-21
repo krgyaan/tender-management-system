@@ -31,15 +31,21 @@
                                         <td>{{ $loc->region }}</td>
                                         <td>
                                             <button type="button" class="btn btn-warning btn-sm editLocBtn"
-                                                data-id="{{ $loc->id }}" data-address="{{ $loc->address }}" data-acronym="{{ $loc->acronym }}"
-                                                data-state="{{ $loc->state }}" data-region="{{ $loc->region }}">
+                                                data-id="{{ $loc->id }}" data-address="{{ $loc->address }}"
+                                                data-acronym="{{ $loc->acronym }}" data-state="{{ $loc->state }}"
+                                                data-region="{{ $loc->region }}">
                                                 <i class="fa fa-edit"></i>
                                             </button>
-                                            <a href="#"
-                                                onclick="event.preventDefault(); document.getElementById('deleteForm{{ $loc->id }}').submit();"
-                                                class="btn btn-danger btn-sm">
-                                                <i class="fa fa-trash"></i>
-                                            </a>
+                                            <button type="button"
+                                                class="btn btn-{{ $loc->status ? 'success' : 'danger' }} btn-sm"
+                                                data-toggle="button" aria-pressed="false" autocomplete="off"
+                                                onclick="event.preventDefault(); document.getElementById('deleteForm{{ $loc->id }}').submit();">
+                                                @if ($loc->status)
+                                                    Active {{ $loc->status }}
+                                                @else
+                                                    Inactive {{ $loc->status }}
+                                                @endif
+                                            </button>
                                             <form action="{{ route('locations.destroy', $loc->id) }}" method="POST"
                                                 id="deleteForm{{ $loc->id }}" style="display: none;">
                                                 @csrf
@@ -84,7 +90,8 @@
                             <label for="loc_state">State</label>
                             <select name="state" class="form-control" id="loc_state">
                                 @foreach ($states as $id => $name)
-                                    <option value="{{ $name }}" {{ old('state') == $name ? 'selected' : '' }}>{{ $name }}</option>
+                                    <option value="{{ $name }}" {{ old('state') == $name ? 'selected' : '' }}>
+                                        {{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -92,7 +99,8 @@
                             <label for="loc_region">Region</label>
                             <select name="region" class="form-control" id="loc_region">
                                 @foreach ($regions as $id => $name)
-                                    <option value="{{ $name }}" {{ old('region') == $name ? 'selected' : '' }}>{{ $name }}</option>
+                                    <option value="{{ $name }}" {{ old('region') == $name ? 'selected' : '' }}>
+                                        {{ $name }}</option>
                                 @endforeach
                             </select>
                         </div>

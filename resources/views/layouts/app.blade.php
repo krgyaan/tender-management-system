@@ -488,8 +488,8 @@
                                 </a>
                             </li>
                             <li class="nav-item {{ array_intersect(['all'], $permissions) ? '' : 'd-none' }}">
-                                <a class="nav-link d-flex align-items-center {{ request()->routeIs('acc-checklist.index') ? 'active' : '' }}"
-                                    href="{{ url('/accounts/acc-checklist') }}">
+                                <a class="nav-link d-flex align-items-center {{ request()->routeIs('checklists.*') ? 'active' : '' }}"
+                                    href="{{ url('/accounts/checklists') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Account Checklist</span>
                                 </a>
@@ -792,7 +792,8 @@
                             </li>
                         </ul>
                     </li>
-                    <li class="nav-item">
+                    <li
+                        class="nav-item {{ array_intersect(['te-dashboard', 'tl-dashboard', 'operation-dashboard', 'account-dashboard', 'oem-dashboard', 'business-dashboard', 'customer-dashboard', 'location-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                         <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-performance" role="button"
                             aria-expanded="false" aria-controls="sidebar-performance">
                             <i class="icon">
@@ -814,7 +815,8 @@
                             </i>
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-performance" data-bs-parent="#sidebar">
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['te-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -825,7 +827,8 @@
                                     <span class="item-name fw-normal">TE Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['tl-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -836,7 +839,8 @@
                                     <span class="item-name fw-normal">TL Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['operation-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -847,7 +851,8 @@
                                     <span class="item-name fw-normal">Operation Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['account-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -858,7 +863,8 @@
                                     <span class="item-name fw-normal">Account Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['oem-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -869,7 +875,8 @@
                                     <span class="item-name fw-normal">OEM Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['business-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -880,7 +887,8 @@
                                     <span class="item-name fw-normal">Business Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['customer-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -891,7 +899,8 @@
                                     <span class="item-name fw-normal">Customer Dashboard</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+                            <li
+                                class="nav-item {{ array_intersect(['location-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -900,6 +909,48 @@
                                 ]) href="{{ route('location/performance') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Location Dashboard</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item {{ array_intersect(['crm', 'all'], $permissions) ? '' : 'd-none' }}">
+                        <a class="nav-link" data-bs-toggle="collapse" href="#sidebar-crm" role="button"
+                            aria-expanded="false" aria-controls="sidebar-crm">
+                            <i class="icon">
+                                <svg width="22" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M7.37121 10.2017V17.0618" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M12.0382 6.91919V17.0619" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path d="M16.6285 13.8269V17.0619" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                        d="M16.6857 2H7.31429C4.04762 2 2 4.31208 2 7.58516V16.4148C2 19.6879 4.0381 22 7.31429 22H16.6857C19.9619 22 22 19.6879 22 16.4148V7.58516C22 4.31208 19.9619 2 16.6857 2Z"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                </svg>
+                            </i>
+                            <span class="item-name">CRM</span>
+                            <i class="right-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7" />
+                                </svg>
+                            </i>
+                        </a>
+                        <ul class="sub-nav collapse" id="sidebar-crm" data-bs-parent="#sidebar">
+                            <li
+                                class="nav-item {{ array_intersect(['leads', 'all'], $permissions) ? '' : 'd-none' }}">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->route('lead.*'),
+                                ]) href="{{ route('lead.index') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">Leads</span>
                                 </a>
                             </li>
                         </ul>

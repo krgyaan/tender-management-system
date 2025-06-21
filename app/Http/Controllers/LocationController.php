@@ -64,8 +64,9 @@ class LocationController extends Controller
     public function destroy(Location $location)
     {
         try {
-            $location->delete();
-            return redirect()->back()->with('success', 'Location deleted successfully.');
+            $newStatus = $location->status == '1' ? '0' : '1';
+            $location->update(['status' => $newStatus]);
+            return redirect()->back()->with('success', 'Location status toggled successfully.');
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }

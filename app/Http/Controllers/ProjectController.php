@@ -16,7 +16,7 @@ class ProjectController extends Controller
         Log::info('Getting all projects');
         $organisations = Organization::all();
         $items = Item::all();
-        $locations = Location::all();
+        $locations = Location::where('statue', '1')->get();
         $projects = Project::with(['organisation', 'item', 'location'])->latest()->get();
         $acProjects = Project::with(['organisation', 'item', 'location'])->where('team_name', 'AC')->latest()->get();
         $dcProjects = Project::with(['organisation', 'item', 'location'])->where('team_name', 'DC')->latest()->get();
@@ -28,7 +28,7 @@ class ProjectController extends Controller
         Log::info('Creating new project');
         $organisations = Organization::all();
         $items = Item::all();
-        $locations = Location::all();
+        $locations = Location::where('statue', '1')->get();
         return view('master.projects', compact('organisations', 'items', 'locations'));
     }
 
@@ -131,7 +131,7 @@ class ProjectController extends Controller
         Log::info('Editing project: ' . $project->id);
         $organisations = Organization::all();
         $items = Item::all();
-        $locations = Location::all();
+        $locations = Location::where('statue', '1')->get();
         return view('master.projects', compact('project', 'organisations', 'items', 'locations'));
     }
 

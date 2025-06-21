@@ -313,6 +313,7 @@ class EmployeePerformanceController extends Controller
         return $result;
     }
 
+
     private function preparePerformanceData($tenderStatusCounts, $tenderWithEmd, $mergedDoneStages, $overallSummary, $role, $totalTenders): array
     {
         $performanceData = [

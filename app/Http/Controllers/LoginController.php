@@ -18,23 +18,27 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|min:8',
-        ]);
+        try {
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|min:8',
+            ]);
 
-        $user = User::where('email', $request->email)->where('status', 1)->first();
+            $user = User::where('email', $request->email)->where('status', 1)->first();
 
-        if ($user && Auth::attempt($request->only('email', 'password'))) {
+            if ($user === null) {
+                throw new \Exception('The provided credentials do not match our records.');
+            }
+
+            if (!Auth::attempt($request->only('email', 'password'))) {
+                throw new \Exception('The provided credentials do not match our records.');
+            }
+
             Cookie::queue('user_name', $user->name, 60 * 24 * 7);
             return redirect()->intended('dashboard');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        if (!$user) {
-            return back()->withErrors(['error' => 'The provided credentials do not match our records.']);
-        }
-
-        return back()->withErrors(['error' => 'The account is inactive.']);
     }
 
     public function logout()

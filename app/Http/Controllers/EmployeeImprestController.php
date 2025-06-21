@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class EmployeeImprestController extends Controller
 {
@@ -32,14 +33,14 @@ class EmployeeImprestController extends Controller
         }
 
         // $data['employeeimprest'] = Employeeimprest::with('user')->with('category')->with('team')->get();
-        $data['employeeimprest'] = Employeeimprest::with('user', 'category', 'team')->orderBy('id', 'desc')->get();
+        $data['employeeimprest'] = Employeeimprest::with('user')->with('category')->with('team')->orderBy('id', 'desc')->get();
         return view('employeeimprest.employee_imprest_view', $data);
     }
 
     public function employeeimprest_add()
     {
         $category = Category::where('status', '1')->get();
-        $user = User::where('role', '!=', 'admin')->where('status', '1')->get();
+        $user = User::where('status', '1')->get();
         return view('employeeimprest.employee_imprest', ['category' => $category, 'user' => $user]);
     }
 
@@ -54,46 +55,56 @@ class EmployeeImprestController extends Controller
             'remark' => 'nullable|string|max:500',
         ]);
 
-        if ($request->category == '22' && $request->team_id) {
-            $name = User::where('id', $request->team_id)->first()->name ?? 'Unknown';
-            $from = User::where('id', $request->name_id)->first()->name ?? 'Unknown';
-            $employeeaccount_add = new Employeeimprestamount();
-            $employeeaccount_add->name_id = $request->team_id;
-            $employeeaccount_add->date = date('Y-m-d');
-            $employeeaccount_add->team_member_name = $name;
-            $employeeaccount_add->amount = $request->amount;
-            $employeeaccount_add->project_name = "Transfered from $from";
-            $employeeaccount_add->ip = $_SERVER['REMOTE_ADDR'];
-            $employeeaccount_add->strtotime = Carbon::parse($employeeaccount_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
-            $employeeaccount_add->save();
-        }
+        try {
+            Log::info('Starting employee imprest post process', $request->all());
 
-        $employeeimprest_add = new Employeeimprest();
-        $employeeimprest_add->name_id = $request->name_id;
-        $employeeimprest_add->party_name = $request->category == 22 ? null : $request->party_name;
-        $employeeimprest_add->project_name = $request->category == 22 ? null : $request->project_name;
-        $employeeimprest_add->amount = $request->amount;
-        $employeeimprest_add->category_id = $request->category;
-        $employeeimprest_add->team_id = $request->team_id;
-        $employeeimprest_add->remark = $request->remark;
-        $employeeimprest_add->ip = $_SERVER['REMOTE_ADDR'];
-        $employeeimprest_add->strtotime = Carbon::parse($employeeimprest_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
-
-        // Handle the file upload for invoice proof
-        if ($request->hasFile('invoice_proof')) {
-            $invoiceProofFiles = $request->file('invoice_proof');
-            $imagePaths = [];
-
-            foreach ($invoiceProofFiles as $file) {
-                $img = time() . rand(1000, 9999) . '.' . $file->extension();
-                $file->move(public_path('/uploads/employeeimprest/'), $img);
-                $imagePaths[] = $img;
+            if ($request->category == '22' && $request->team_id) {
+                $name = User::where('id', $request->team_id)->first()->name ?? 'Unknown';
+                $from = User::where('id', $request->name_id)->first()->name ?? 'Unknown';
+                $employeeaccount_add = new Employeeimprestamount();
+                $employeeaccount_add->name_id = $request->team_id;
+                $employeeaccount_add->date = date('Y-m-d');
+                $employeeaccount_add->team_member_name = $name;
+                $employeeaccount_add->amount = $request->amount;
+                $employeeaccount_add->project_name = "Transfered from $from";
+                $employeeaccount_add->ip = $_SERVER['REMOTE_ADDR'];
+                $employeeaccount_add->strtotime = Carbon::parse($employeeaccount_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
+                $employeeaccount_add->save();
+                Log::info('Employee imprest amount added for team transfer', ['team_id' => $request->team_id]);
             }
-            $employeeimprest_add->invoice_proof = json_encode($imagePaths);
-        }
 
-        $employeeimprest_add->save();
-        return redirect()->back()->with('success', 'Employee Imprest added successfully');
+            $employeeimprest_add = new Employeeimprest();
+            $employeeimprest_add->name_id = $request->name_id;
+            $employeeimprest_add->party_name = $request->category == 22 ? null : $request->party_name;
+            $employeeimprest_add->project_name = $request->category == 22 ? null : $request->project_name;
+            $employeeimprest_add->amount = $request->amount;
+            $employeeimprest_add->category_id = $request->category;
+            $employeeimprest_add->team_id = $request->team_id;
+            $employeeimprest_add->remark = $request->remark;
+            $employeeimprest_add->ip = $_SERVER['REMOTE_ADDR'];
+            $employeeimprest_add->strtotime = Carbon::parse($employeeimprest_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
+
+            if ($request->hasFile('invoice_proof')) {
+                $invoiceProofFiles = $request->file('invoice_proof');
+                $imagePaths = [];
+
+                foreach ($invoiceProofFiles as $file) {
+                    $img = time() . rand(1000, 9999) . '.' . $file->extension();
+                    $file->move(public_path('/uploads/employeeimprest/'), $img);
+                    $imagePaths[] = $img;
+                }
+                $employeeimprest_add->invoice_proof = json_encode($imagePaths);
+                Log::info('Invoice proof files uploaded', ['invoice_proof' => $imagePaths]);
+            }
+
+            $employeeimprest_add->save();
+            Log::info('Employee imprest record saved successfully', ['name_id' => $request->name_id]);
+
+            return redirect()->back()->with('success', 'Employee Imprest added successfully');
+        } catch (\Exception $e) {
+            Log::error('Error in employee imprest post process', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+        }
     }
 
     public function employeeimprest_delete($id)
@@ -105,34 +116,52 @@ class EmployeeImprestController extends Controller
     public function employeeimprest_edit(Request $request)
     {
         $category = Category::where('status', '1')->get();
-        $user = User::where('role', '!=', 'admin')->where('status', '1')->get();
+        $user = User::where('status', '1')->get();
         $employeeimprest_update = Employeeimprest::where('id', Crypt::decrypt($request->id))->first();
         return view('employeeimprest.employee_imprest_edit', ['employeeimprest_update' => $employeeimprest_update, 'user' => $user, 'category' => $category]);
     }
 
     public function employeeimprest_update(Request $request)
     {
-        $update = Employeeimprest::where('id', $request->id)->first();
+        try {
+            $update = Employeeimprest::where('id', $request->id)->first();
 
-        $update->name_id = $request->name_id;
-        $update->party_name = $request->party_name;
-        $update->project_name = $request->project_name;
-        $update->amount = $request->amount;
-        $update->category_id = $request->category;
-        $update->team_id = $request->team_id;
-        $update->remark = $request->remark;
-        if ($request->hasFile('invoice_proof')) {
-            $invoiceProofFiles = $request->file('invoice_proof');
-            $imagePaths = [];
-            foreach ($invoiceProofFiles as $file) {
-                $img = time() . rand(1000, 9999) . '.' . $file->extension();
-                $file->move(public_path('/uploads/employeeimprest/'), $img);
-                $imagePaths[] = $img;
+            if (!$update) {
+                Log::error('Error in employee imprest update process', ['error' => 'Employee record not found.']);
+                return redirect()->back()->with('error', 'Employee record not found.');
             }
-            $update->invoice_proof = json_encode($imagePaths);
+
+            $update->name_id = $request->name_id;
+            $update->party_name = $request->party_name;
+            $update->project_name = $request->project_name;
+            $update->amount = $request->amount;
+            $update->category_id = $request->category;
+            $update->team_id = $request->team_id;
+            $update->remark = $request->remark;
+
+            if ($request->hasFile('invoice_proof')) {
+                Log::info('Invoice proof files received', ['invoice_proof' => $request->invoice_proof]);
+                $invoiceProofFiles = $request->file('invoice_proof');
+                $imagePaths = [];
+                foreach ($invoiceProofFiles as $file) {
+                    if (!$file) {
+                        continue;
+                    }
+                    $img = time() . rand(1000, 9999) . '.' . $file->extension();
+                    $file->move(public_path('/uploads/employeeimprest/'), $img);
+                    $imagePaths[] = $img;
+                }
+                Log::info('Invoice proof files uploaded', ['invoice_proof' => $imagePaths]);
+                $update->invoice_proof = json_encode($imagePaths);
+            }
+
+            $update->save();
+            Log::info('Employee imprest record updated successfully', ['name_id' => $request->name_id]);
+            return redirect()->back()->with('success', 'Employee Imprest updated successfully');
+        } catch (\Exception $e) {
+            Log::error('Error in employee imprest update process', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
         }
-        $update->save();
-        return redirect()->back()->with('success', 'Employee Imprest updated successfully');
     }
 
     public function employeeimprest_account(Request $request)
@@ -141,23 +170,41 @@ class EmployeeImprestController extends Controller
         $data['amountrecevied'] = Employeeimprestamount::sum('amount');
         $data['amountapproved'] = EmployeeImprest::where('buttonstatus', '1')->sum('amount');
         $data['amountspent'] = $data['amountapproved'] - $data['amountrecevied'];
-        $data['employeeimprest'] = EmployeeImprest::with('user', 'category', 'team')->select('name_id')->groupBy('name_id')->get();
+        $data['employeeimprest'] = EmployeeImprest::select('name_id')->groupBy('name_id')->get();
         return view('employeeimprest.employee_imprest_account_view', $data);
     }
 
     public function employeeimprest_amount_post(Request $request)
     {
-        // dd($request->all());
-        $employeeaccount_add = new Employeeimprestamount();
-        $employeeaccount_add->name_id = $request->name_id;
-        $employeeaccount_add->date = $request->date;
-        $employeeaccount_add->team_member_name = $request->team_member_name;
-        $employeeaccount_add->amount = $request->amount;
-        $employeeaccount_add->project_name = $request->project_name;
-        $employeeaccount_add->ip = $_SERVER['REMOTE_ADDR'];
-        $employeeaccount_add->strtotime = Carbon::parse($employeeaccount_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
-        $employeeaccount_add->save();
-        return redirect()->back()->with('success', 'Employee Imprest Account added successfully');
+        try {
+            $this->validate($request, [
+                'name_id' => 'required',
+                'date' => 'required',
+                'team_member_name' => 'required',
+                'amount' => 'required',
+                'project_name' => 'required',
+            ]);
+
+            $employeeaccount_add = new Employeeimprestamount();
+            $employeeaccount_add->name_id = $request->name_id;
+            $employeeaccount_add->date = $request->date;
+            $employeeaccount_add->team_member_name = $request->team_member_name;
+            $employeeaccount_add->amount = $request->amount;
+            $employeeaccount_add->project_name = $request->project_name;
+            $employeeaccount_add->ip = $_SERVER['REMOTE_ADDR'];
+            $employeeaccount_add->strtotime = Carbon::parse($employeeaccount_add->strtotime)->timezone('Asia/Kolkata')->timestamp;
+
+            if ($employeeaccount_add->save()) {
+                Log::info('Employee imprest amount added successfully', ['name_id' => $request->name_id]);
+                return redirect()->back()->with('success', 'Employee Imprest Account added successfully');
+            } else {
+                Log::error('Error in employee imprest amount post process', ['error' => 'Unable to add employee imprest amount']);
+                return redirect()->back()->with('error', 'Unable to add employee imprest amount');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in employee imprest amount post process', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+        }
     }
 
     public function employeeimprest_account_delete($id)
@@ -168,7 +215,7 @@ class EmployeeImprestController extends Controller
 
     public function employeeimprest_account_edit(Request $request)
     {
-        $employeeimprest = User::where('role', '!=', 'admin')->where('status', '1')->get();
+        $employeeimprest = User::where('status', '1')->get();
         $employeeimprest_update = Employeeimprestamount::where('id', Crypt::decrypt($request->id))->first();
         return view('employeeimprest.employee_imprest_account_edit', ['employeeimprest_update' => $employeeimprest_update, 'employeeimprest' => $employeeimprest]);
     }
@@ -187,7 +234,7 @@ class EmployeeImprestController extends Controller
 
     public function employeeimprest_dashboard($id)
     {
-        $data['employee'] = EmployeeImprest::where('name_id', $id)->with('project', 'user', 'team')->orderBy('id', 'desc')->get();
+        $data['employee'] = EmployeeImprest::where('name_id', $id)->with('project')->orderBy('id', 'desc')->get();
         $data['name_id'] = $id;
         $data['name'] = User::where('id', $id)->first()->name;
         $data['amtReceived'] = EmployeeImprest::getAmtReceived($id);
@@ -669,9 +716,9 @@ class EmployeeImprestController extends Controller
                 ->where('buttonstatus', '1')
                 ->where('name_id', $name_id);
 
-            Log::info('Employee Imprest Voucher Query', ['query' => $query->toSql(), 'bindings' => $query->getBindings()]);
-
             $voucher = $query->get();
+
+            // dd($query->toSql(), $query->getBindings(), $voucher);
 
             // $abcd = EmployeeImprest::whereBetween(DB::raw('COALESCE(approved_date, created_at)'), [$from, $to])
             //     ->where('name_id', $name_id)
@@ -706,7 +753,9 @@ class EmployeeImprestController extends Controller
 
     public function adminSignedVoucher(Request $request, $id)
     {
-        $id = "VE/24/V$id";
+        $fy = $this->getFinancialYearStartYear();
+        $id = "VE/$fy/V$id";
+        Log::info('VID = '. $id);
         try {
             $user = Auth::user();
             Log::info('Attempting to sign voucher by admin', ['user_id' => $user->id, 'voucher_id' => $id]);
@@ -742,12 +791,14 @@ class EmployeeImprestController extends Controller
     // function to sign the voucher by account
     public function accountSignedVoucher(Request $request, $id)
     {
-        $id = "VE/24/V$id";
+        $fy = $this->getFinancialYearStartYear();
+        $id = "VE/$fy/V$id";
+        Log::info('VID = '. $id);
         try {
             // get loggedin user, if account then update acc_sign and acc_sign_date in voucher table
             $user = Auth::user();
             Log::info('Attempting to sign voucher by account', ['user_id' => $user->id, 'voucher_id' => $id]);
-            if ($user->role == 'accountant') {
+            if (Str::startsWith($user->role, 'account')) {
                 $voucher = Voucher::where('voucher_id', $id)->first();
                 // check if already signed
                 if ($voucher->acc_sign) {

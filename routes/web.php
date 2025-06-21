@@ -13,6 +13,7 @@ use App\Exports\EmployeeImprestExport;
 use App\Http\Controllers\TQController;
 use App\Http\Controllers\RFQController;
 use App\Http\Controllers\EmdsController;
+use App\Http\Controllers\LeadController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Gst3BController;
@@ -23,7 +24,6 @@ use App\Http\Controllers\ReqExtController;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\StatusController;
 use App\Http\Controllers\VendorController;
-use App\Http\Controllers\AccountController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\PhyDocsController;
 use App\Http\Controllers\ProfileController;
@@ -59,6 +59,7 @@ use App\Http\Controllers\ClientDirectoryController;
 use App\Http\Controllers\CostingApprovalController;
 use App\Http\Controllers\EmployeeImprestController;
 use App\Http\Controllers\CourierDashboardController;
+use App\Http\Controllers\AccountsChecklistController;
 use App\Http\Controllers\BatteryPriceSheetController;
 use App\Http\Controllers\ContractAgreementController;
 use App\Http\Controllers\DocumentSubmittedController;
@@ -268,11 +269,72 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('accounts')->group(function () {
-        Route::resource('gstr1', GstR1Controller::class);
-        Route::resource('gst3b', Gst3BController::class);
-        Route::resource('tds', TdsFormController::class);
-        Route::resource('acc-checklist', AccountController::class);
-        Route::resource('fixed-expenses', FixedExpenseController::class);
+        Route::resource('lead', LeadController::class);
+    });
+
+
+    Route::prefix('accounts')->group(function () {
+        // Checklists
+        Route::prefix('checklists')->name('checklists.')
+            ->controller(AccountsChecklistController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{checklist}', 'show')->name('show');
+                Route::get('/{checklist}/edit', 'edit')->name('edit');
+                Route::put('/{checklist}', 'update')->name('update');
+                Route::delete('/{checklist}', 'destroy')->name('destroy');
+
+                // Custom checklist actions
+                Route::post('/{checklist}/resp-remark', 'storeResponsibilityRemark')->name('resp.remark');
+                Route::post('/{checklist}/acct-remark', 'storeAccountabilityRemark')->name('acct.remark');
+                Route::post('/{checklist}/upload-result', 'uploadResultFile')->name('upload.result');
+                Route::post('/{checklist}/complete-resp', 'completeResponsibility')->name('complete.resp');
+                Route::post('/{checklist}/complete-acct', 'completeAccountability')->name('complete.acct');
+                Route::get('/{checklist}/download', 'download')->name('download');
+            });
+
+        // Fixed Expenses
+        Route::prefix('fixed-expenses')->name('fixed-expenses.')
+            ->controller(FixedExpenseController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{fixedExpense}', 'show')->name('show');
+                Route::get('/{fixedExpense}/edit', 'edit')->name('edit');
+                Route::put('/{fixedExpense}', 'update')->name('update');
+                Route::delete('/{fixedExpense}', 'destroy')->name('destroy');
+                Route::get('/status/{fixedExpense}', 'status')->name('status.index');
+                Route::put('/status/update/{fixedExpense}', 'updateStatus')->name('status.update');
+            });
+
+        // GST 3B
+        Route::prefix('gst3b')->name('gst3b.')
+            ->controller(Gst3BController::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{id}', 'show')->name('show');
+                Route::get('/{id}/edit', 'edit')->name('edit');
+                Route::put('/{id}', 'update')->name('update');
+                Route::delete('/{id}', 'destroy')->name('destroy');
+                Route::post('/{id}/upload2a', 'upload2a')->name('upload2a');
+                Route::post('/{id}/uploadPaymentChallan', 'uploadPaymentChallan')->name('uploadPaymentChallan');
+                Route::post('/{id}/approve', 'approve')->name('approve');
+                Route::post('/{id}/reject', 'reject')->name('reject');
+            });
+
+        //Gst r1 routes
+        Route::prefix('gstr1')->name('gstr1.')
+            ->controller(GstR1Controller::class)->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{gstR1}/edit', 'edit')->name('edit');
+                Route::get('/show/{gstR1}', 'show')->name('show');
+                Route::post('/update/{gstR1}', 'update')->name('update');
+                Route::delete('/{gstR1}', 'destroy')->name('destroy');
+            });
     });
 
     Route::resource('tender/rfq', RFQController::class)->except('create');

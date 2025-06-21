@@ -48,7 +48,7 @@
                         @foreach ($bankStats as $bankName => $stats)
                             <div class="p-3 rounded shadow border position-relative">
                                 <h5 class="">
-                                    {{ $banks[$bankName] }} 
+                                    {{ $banks[$bankName] }}
                                 </h5>
                                 <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-info">
                                     BG Created: {{ $stats['count'] }}
@@ -57,7 +57,8 @@
                                 <p class="my-0 text-success">FDR (10%): ₹ {{ format_inr($stats['fdrAmount10']) }}</p>
                                 <p class="my-0 text-success">FDR (15%): ₹ {{ format_inr($stats['fdrAmount15']) }}</p>
                                 <p class="my-0 text-success">FDR (100%): ₹ {{ format_inr($stats['fdrAmount100']) }}</p>
-                                <span class="position-absolute top-100 start-50 translate-middle badge rounded-pill bg-dark border border-light">
+                                <span
+                                    class="position-absolute top-100 start-50 translate-middle badge rounded-pill bg-dark border border-light">
                                     {{ number_format($stats['percentage'], 2) }}% of BG
                                 </span>
                             </div>
@@ -97,7 +98,8 @@
                                 <tbody>
                                     @if ($emdBg && count($emdBg) > 0)
                                         @foreach ($emdBg as $bg)
-                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator','account-executive','accountant','account-leader']) || Auth::user()->name == $bg->emds->requested_by)
+                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
+                                                    Auth::user()->name == $bg->emds->requested_by)
                                                 <tr>
                                                     <td>{{ $bg->created_at->format('d-m-Y') }}</td>
                                                     <td>{{ $bg->bg_no ?? '' }}</td>
@@ -105,11 +107,11 @@
                                                     <td>{{ $bg->emds->project_name }}</td>
                                                     <td>{{ format_inr($bg->bg_amt) ?? 0 }}</td>
                                                     <td>
-                                                        <span class="d-none">{{$bg->bg_expiry}}</span>
+                                                        <span class="d-none">{{ $bg->bg_expiry }}</span>
                                                         {{ date('d-m-Y', strtotime($bg->bg_expiry)) }}
                                                     </td>
                                                     <td>
-                                                        <span class="d-none">{{$bg->bg_claim}}</span>
+                                                        <span class="d-none">{{ $bg->bg_claim }}</span>
                                                         {{ date('d-m-Y', strtotime($bg->bg_claim)) }}
                                                     </td>
                                                     <td>
@@ -125,24 +127,28 @@
                                                     <td>
                                                         @php
                                                             $bgValue = $bg->bg_amt ?? 0;
-                                                            $stampPaper = $bg->stamp_charge_deducted ?? 0;
                                                             $bgStampPaperValue = 300;
-                                                            $sfmsCharges = $bg->sfms_charge_deducted ?? 0;
-                                                            $bgCreationDate = Carbon::parse($bg->created_at);
+                                                            $sfmsCharges = 590;
+                                                            $bgCreationDate = Carbon::parse($bg->bg_date);
                                                             $bgClaimDate = Carbon::parse($bg->bg_claim);
 
                                                             $dailyInterestRate = 0.01 / 365;
-                                                            $daysDifference = $bgClaimDate->diffInDays($bgCreationDate);
+                                                            $monthsDifference = $bgCreationDate->diffInMonths($bgClaimDate);
                                                             $interestComponent =
-                                                                $bgValue * $dailyInterestRate * $daysDifference;
+                                                                $bgValue * $dailyInterestRate * $monthsDifference;
                                                             $interestWithGST = $interestComponent * 1.18;
-                                                            $totalValue =
-                                                                $interestWithGST +
-                                                                $stampPaper +
-                                                                $bgStampPaperValue +
-                                                                $sfmsCharges;
-                                                                
-                                                                echo format_inr($totalValue);
+
+                                                            echo "$bgCreationDate to $bgClaimDate" . $monthsDifference . '<br>';
+                                                            echo 'amount: ' . format_inr($interestWithGST) . '<br>';
+                                                            echo 'smfs: ' . format_inr($sfmsCharges) . '<br>';
+                                                            echo 'stamp: ' . format_inr($bgStampPaperValue);
+                                                            echo "<hr class='p-0 m-0'>";
+                                                            echo ' = ' .
+                                                                format_inr(
+                                                                    $interestWithGST +
+                                                                        $sfmsCharges +
+                                                                        $bgStampPaperValue,
+                                                                );
                                                         @endphp
                                                     </td>
                                                     <td>{{ $bg->fdr_no ?? '' }}</td>
@@ -225,7 +231,8 @@
                                                             }
                                                         @endphp
                                                         @if ($timer)
-                                                            <span class="timer" id="timer-{{ $bg->id }}" data-remaining="{{ $remaining }}"></span>
+                                                            <span class="timer" id="timer-{{ $bg->id }}"
+                                                                data-remaining="{{ $remaining }}"></span>
                                                         @else
                                                             {!! $remained !!}
                                                         @endif
@@ -239,11 +246,13 @@
                                                             class="btn btn-xs btn-info">
                                                             View
                                                         </a>
-                                                        <a href="{{ route('emds-dashboard.edit', $bg->emds->id) }}" class="btn btn-xs btn-warning">
+                                                        <a href="{{ route('emds-dashboard.edit', $bg->emds->id) }}"
+                                                            class="btn btn-xs btn-warning">
                                                             Edit
                                                         </a>
                                                         @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                            <form action="{{ route('emds-dashboard.destroy', $bg->emds->id) }}"
+                                                            <form
+                                                                action="{{ route('emds-dashboard.destroy', $bg->emds->id) }}"
                                                                 method="POST" class="d-inline">
                                                                 @csrf
                                                                 @method('DELETE')
@@ -273,10 +282,10 @@
     </section>
 @endsection
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const timers = document.querySelectorAll('.timer');
-        timers.forEach(startCountdown);
-    });
-</script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const timers = document.querySelectorAll('.timer');
+            timers.forEach(startCountdown);
+        });
+    </script>
 @endpush

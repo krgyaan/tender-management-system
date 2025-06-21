@@ -2568,11 +2568,16 @@ class EmdDashboardController extends Controller
                 $ccRoles['coordinator'] ?? null,
                 'accounts@volksenergie.in'
             ];
-            $ccMail = array_filter($ccMail); // Remove null values
+            $ccMail = array_filter($ccMail);
 
             // =Tender due date time - Expected Courier Delivery time
             $tender = TenderInfo::find($ddChq->emds->tender_id)->first();
-            $dueDT = "$tender->due_date $tender->due_time";
+            if (!$tender) {
+                Log::error("Tender not found for EMD ID: " . $ddChq->emds->id);
+                $dueDT = $ddChq->emds->due_date;
+            } else {
+                $dueDT = "$tender->due_date $tender->due_time";
+            }
             $eCD = time() - $ddChq->chqDd->courier_deadline * 3600;
             Log::info("$dueDT - $eCD = " . (strtotime($dueDT) - $eCD));
             $remainingHrs = (strtotime($dueDT) - $eCD) / 3600;

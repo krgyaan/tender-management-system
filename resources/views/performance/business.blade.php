@@ -8,6 +8,11 @@
                 <div class="new-user-info">
                     <form method="POST" action="">
                         @csrf
+
+                        @php
+                            $team_member ??= $_POST['team_member'] ?? '';
+                        @endphp
+
                         <div class="row">
                             <div class="form-group col-md-4">
                                 <label class="form-label" for="address">Team Member:</label>

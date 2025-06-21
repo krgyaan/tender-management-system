@@ -6,38 +6,80 @@
             <div class="col-md-12 m-auto">
                 <div class="card">
                     <div class="card-body">
-                        <form method="POST" action="#">
+                        @include('partials.messages')
+                        <form method="POST" action="{{ route('checklists.store') }}">
                             @csrf
                             <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="task_name" class="form-label">Task Name</label>
-                                    <input type="text" class="form-control" name="task_name" required>
+                                <div class="col-md-12">
+                                    <label for="task_name" class="form-label">Task Name </label>
+                                    <input type="text" class="form-control @error('task_name') is-invalid @enderror"
+                                        name="task_name" value="{{ old('task_name') }}" required>
+                                    @error('task_name')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="frequency" class="form-label">Frequency</label>
-                                    <select class="form-control" name="frequency" required>
-                                        <option value="">Choose</option>
-                                        <option value="Daily">Daily</option>
-                                        <option value="Monthly">Monthly</option>
-                                        <option value="Quarterly">Quarterly</option>
-                                        <option value="Annual">Annual</option>
-                                    </select>
+                                <div class="col-md-12 mt-3">
+                                    <label for="description" class="form-label">Task Description</label>
+                                    <textarea class="form-control @error('description') is-invalid @enderror" name="description" rows="3">{{ old('description') }}</textarea>
+                                    @error('description')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
-                            </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="responsibility" class="form-label">Responsibility</label>
-                                    <input type="text" class="form-control" name="responsibility" required>
+                                <div class="col-md-4 mt-3">
+                                    <label for="frequency" class="form-label">Frequency </label>
+                                    <select class="form-control @error('frequency') is-invalid @enderror" name="frequency"
+                                        required>
+                                        <option value="">Choose Frequency</option>
+                                        @foreach (['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Annual'] as $f)
+                                            <option value="{{ $f }}"
+                                                {{ old('frequency') == $f ? 'selected' : '' }}>
+                                                {{ $f }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('frequency')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="accountability" class="form-label">Accountability</label>
-                                    <input type="text" class="form-control" name="accountability" required>
+                                <div class="col-md-4 mt-3">
+                                    <label for="responsibility" class="form-label">Responsibility </label>
+                                    <select class="form-control @error('responsibility') is-invalid @enderror"
+                                        name="responsibility" required>
+                                        <option value="">Select Responsible User</option>
+                                        @foreach ($users as $user)
+                                            <option value="{{ $user->id }}"
+                                                {{ old('responsibility') == $user->id ? 'selected' : '' }}>
+                                                {{ $user->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('responsibility')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="col-md-4 mt-3">
+                                    <label for="accountability" class="form-label">Accountability </label>
+                                    <select class="form-control @error('accountability') is-invalid @enderror"
+                                        name="accountability" required>
+                                        <option value="">Select Accountable User</option>
+                                        @foreach ($users as $user)
+                                            <option value="{{ $user->id }}"
+                                                {{ old('accountability') == $user->id ? 'selected' : '' }}>
+                                                {{ $user->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('accountability')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 
                             <div class="text-end">
                                 <button class="btn btn-primary" type="submit">Save Task</button>
+                                <a href="{{ route('checklists.index') }}" class="btn btn-secondary">Cancel</a>
                             </div>
                         </form>
                     </div>

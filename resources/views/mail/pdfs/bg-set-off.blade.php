@@ -1,4 +1,4 @@
-<div>
+<div style="padding: 0 50px;">
     <h3 style="text-align: center; font-weight: bold;">APPLICATION CUM SET OFF LETTER</h3>
 
     <p>

@@ -1,9 +1,5 @@
 @extends('layouts.app')
 @section('page-title', 'Tender Info Approval Form')
-@php
-    $pqr = App\Models\Pqr::all();
-    $finance = App\Models\Finance::all();
-@endphp
 @section('content')
     <section>
         <div class="row">
@@ -26,30 +22,21 @@
                                 <label for="status" class="form-label">
                                     TL's decision to bid on the tender
                                 </label>
-                                <select name="status" id="status" class="form-control">
+                                <select name="status" id="status" class="form-control" data-toggle-watch="true" required>
                                     <option value="">Select Status</option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '1' ? 'selected' : '' }} value="1">
-                                        Yes
-                                    </option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '2' ? 'selected' : '' }} value="2">
-                                        No
-                                    </option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '3' ? 'selected' : '' }} value="3">
-                                        Tender Sheet Incomplete
-                                    </option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '1' ? 'selected' : '' }} value="1">Yes</option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '2' ? 'selected' : '' }} value="2">No</option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '3' ? 'selected' : '' }} value="3">Tender Sheet Incomplete</option>
                                 </select>
                             </div>
                             <div class="col-md-12">
-                                <div class="row" id="no"
-                                    style="display: {{ $tenderInfo->tender->tlStatus == 2 ? 'flex' : 'none' }}">
+                                <div class="row" id="no" data-show-if="status:2">
                                     <div class="form-group mb-3 col-md-4">
                                         <label for="tender_status" class="form-label">Tender Status</label>
-                                        <select name="tender_status" id="tender_status" class="form-control">
-                                            <option value="">Select Status</option>
+                                        <select name="tender_status" id="tender_status" class="form-control" data-toggle-oem="true" data-oem-value="10" data-required-if="status:2">
+                                            <option value="" disabled>Select Status</option>
                                             @php
-                                                $statuses = App\Models\Status::whereBetween('id', [9, 15])
-                                                    ->orWhereBetween('id', [31, 32])
-                                                    ->get();
+                                                $statuses = App\Models\Status::whereBetween('id', [9, 15])->orWhereBetween('id', [31, 32])->get();
                                             @endphp
                                             @foreach ($statuses as $status)
                                                 <option value="{{ $status->id }}"
@@ -59,16 +46,31 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                    <div class="form-group mb-3 col-md-4" id="who_rejected" data-show-if="tender_status:10" data-required-if="tender_status:10">
+                                        <label for="oem" class="form-label">OEM who didn't allow</label>
+                                        <select name="oem_who_denied[]" id="oem" class="form-control w-100" multiple
+                                            data-placeholder="Select OEMs">
+                                            @php
+                                                $vendors = App\Models\VendorOrg::all();
+                                            @endphp
+                                            @foreach ($vendors as $vendor)
+                                                <option value="{{ $vendor->id }}"
+                                                    {{ in_array($vendor->id, explode(',', $tenderInfo->tender->oem_who_denied ?? '')) ? 'selected' : '' }}>
+                                                    {{ $vendor->name }}
+                                                </option>
+                                            @endforeach
+                                            <option value="0">None</option>
+                                        </select>
+                                    </div>
                                     <div class="form-group mb-3 col-md-4">
                                         <label for="rej_remark" class="form-label">Rejection Remark</label>
-                                        <textarea name="rej_remark" id="rej_remark" class="form-control"></textarea>
+                                        <textarea name="rej_remark" id="rej_remark" class="form-control" data-required-if="status:2">{{ $tenderInfo->rej_remark }}</textarea>
                                     </div>
                                 </div>
-                                <div class="row" id="yes"
-                                    style="display: {{ $tenderInfo->tender->tlStatus == 1 ? 'flex' : 'none' }}">
+                                <div class="row" id="yes" data-show-if="status:1">
                                     <div class="form-group mb-3 col-md-4" id="rfqTo">
                                         <label for="rfq_to" class="form-label">Send RFQ to</label>
-                                        <select name="rfq_to[]" id="rfq_to" class="form-control w-100" multiple
+                                        <select name="rfq_to[]" id="rfq_to" class="form-control w-100" multiple data-required-if="status:1"
                                             data-placeholder="Select Vendor for RFQ">
                                             @php
                                                 $vendors = App\Models\VendorOrg::all();
@@ -84,7 +86,7 @@
                                     </div>
                                     <div class="form-group mb-3 col-md-4" id="tenderFee">
                                         <label for="tender_fees" class="form-label">Select Mode of Tender Fees</label>
-                                        <select name="tender_fees[]" id="tender_fees" class="form-control" multiple
+                                        <select name="tender_fees[]" id="tender_fees" class="form-control" multiple data-required-if="status:1"
                                             data-placeholder="Select Tender Fees Mode">
                                             @foreach (explode(',', $tenderInfo->tender_fees ?? '') as $key => $value)
                                                 @if (array_key_exists($value, $tenderFees))
@@ -98,7 +100,7 @@
                                     </div>
                                     <div class="form-group mb-3 col-md-4" id="emdMode">
                                         <label for="emd_mode" class="form-label">Select Mode of EMD</label>
-                                        <select name="emd_mode[]" id="emd_mode" class="form-control" multiple
+                                        <select name="emd_mode[]" id="emd_mode" class="form-control" multiple data-required-if="status:1"
                                             data-placeholder="Select EMD Mode">
                                             @foreach (explode(',', $tenderInfo->emd_opt) as $key => $value)
                                                 @if (array_key_exists($value, $emdOpt))
@@ -123,17 +125,15 @@
                                         <div class="d-flex gap-4 pt-3">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="pqr_eligible"
-                                                    id="pqr_eligible" value="1"
-                                                    {{ $tenderInfo->pqr_eligible == 1 ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="pqr_eligible">
+                                                    id="pqr_eligible_yes" value="1">
+                                                <label class="form-check-label" for="pqr_eligible_yes">
                                                     Yes
                                                 </label>
                                             </div>
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="pqr_eligible"
-                                                    id="pqr_eligible" value="0"
-                                                    {{ $tenderInfo->pqr_eligible == 0 ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="pqr_eligible">
+                                                    id="pqr_eligible_no" value="0">
+                                                <label class="form-check-label" for="pqr_eligible_no">
                                                     No
                                                 </label>
                                             </div>
@@ -152,17 +152,15 @@
                                         <div class="d-flex gap-4 pt-3">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="fin_eligible"
-                                                    id="fin_eligible" value="1"
-                                                    {{ $tenderInfo->fin_eligible == 1 ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="fin_eligible">
+                                                    id="fin_eligible_yes" value="1">
+                                                <label class="form-check-label" for="fin_eligible_yes">
                                                     Yes
                                                 </label>
                                             </div>
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="fin_eligible"
-                                                    id="fin_eligible" value="0"
-                                                    {{ $tenderInfo->fin_eligible == 0 ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="fin_eligible">
+                                                    id="fin_eligible_no" value="0" >
+                                                <label class="form-check-label" for="fin_eligible_no">
                                                     No
                                                 </label>
                                             </div>
@@ -221,10 +219,10 @@
                                     </table>
                                 </div>
                             </div>
-                            <div class="col-md-6" id="rej_rem" style="display: none;">
+                            <div class="col-md-6" id="rej_rem" data-show-if="status:3">
                                 <div class="form-group mb-3 w-100">
                                     <label for="remarks" class="form-label">Remarks</label>
-                                    <textarea name="remarks" id="remarks" class="form-control">{{ $tenderInfo->tender->tlRemarks }}</textarea>
+                                    <textarea name="remarks" id="remarks" class="form-control" data-required-if="status:3">{{ $tenderInfo->tender->tlRemarks }}</textarea>
                                 </div>
                             </div>
                             <div class="col-md-12 text-end">
@@ -241,35 +239,63 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            let tl = $('#status');
-            let no = $('#no');
-            let yes = $('#yes');
-            let remark = $('#rej_rem');
+            function setupConditionalToggles() {
+                $('[data-show-if]').each(function () {
+                    const $target = $(this);
+                    const condition = $target.data('show-if');
+                    const [sourceId, showVal] = condition.split(':');
 
-            tl.on('change', function() {
-                no.toggle(this.value == 2).find('#tender_status').prop('required', this.value == 2);
-                yes.toggle(this.value == 1).find('#rfq_to').prop('required', this.value == 1);
-                remark.toggle(this.value == 3).prop('required', this.value == 3);
-            });
+                    const $source = $('#' + sourceId);
+                    if (!$source.length) return;
 
-            $('#rfq_to,#tender_fees,#emd_mode').select2({
-                width: '100%',
-                placeholder: $(this).data('placeholder'),
-                allowClear: true
+                    function evaluateToggle() {
+                        const currentVal = $source.val();
+                        $target.toggle(currentVal == showVal);
+                    }
+
+                    evaluateToggle();
+
+                    $source.on('change', evaluateToggle);
+                });
+            }
+
+            setupConditionalToggles();
+
+            function updateRequiredFields() {
+                $('[data-required-if]').each(function () {
+                    const $field = $(this);
+                    const condition = $field.data('required-if');
+                    const [sourceId, requiredVal] = condition.split(':');
+                    const $source = $('#' + sourceId);
+
+                    if (!$source.length) return;
+
+                    const isRequired = $source.val() == requiredVal;
+                    $field.prop('required', isRequired);
+                });
+            }
+
+            updateRequiredFields();
+            $('#status, #tender_status').on('change', updateRequiredFields);
+
+            $('#rfq_to,#tender_fees,#emd_mode,#oem').each(function() {
+                $(this).select2({
+                    width: '100%',
+                    placeholder: $(this).data('placeholder'),
+                    allowClear: true
+                });
             });
 
             $('input[name="pqr_eligible"]').on('change', function() {
-                console.log(this.value);
-
                 $('#newPqr').toggle(this.value == 0);
             });
 
             $('input[name="fin_eligible"]').on('change', function() {
-                console.log(this.value);
-
                 $('#newFin').toggle(this.value == 0);
             });
+        });
 
+        $(document).ready(function() {
             // Add new row for documents onclick #addDoc
             let docc = 1;
 
@@ -301,7 +327,7 @@
                 let html = '';
                 html += '<tr>';
                 html += '<td><select name="wo[' + woc +
-                    '][wo_name]" class="form-select" id="workorder"><option value="">Select PQR</option>';
+                    '][wo_name]" class="form-select" id="workorder"><option value="" disabled >Select PQR</option>';
                 @foreach ($pqr as $it)
                     html +=
                         '<option value="{{ $it->id }}">{{ $it->project_name }}</option>';

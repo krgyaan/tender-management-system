@@ -6,12 +6,20 @@
         <div class="col-lg-3 {{ $data['role'] == 'admin' ? 'd-none' : '' }}">
             <div class="card shining-card">
                 <div class="card-body">
-                    <a href="{{ route('admin/user/all') }}" class="stretched-link fw-bold fs-5 me-2">
-                        Total Employees
-                    </a>
-                    <div class="pt-3">
-                        <h4 class="counter text-success" style="visibility: visible;">{{ $data['userCount'] }}</h4>
-                    </div>
+                    @if ($data['role'] == 'admin')
+                        <a href="{{ route('admin/user/all') }}" class="stretched-link fw-bold fs-5 me-2">
+                            Total Employees
+                        </a>
+                        <div class="pt-3">
+                            <h4 class="counter text-success" style="visibility: visible;">{{ $data['userCount'] }}</h4>
+                        </div>
+                    @else
+                        <div class="d-flex">
+                            <span class="text-muted">Today</span>
+                            <a href="javascript:void(0);" class="fw-bold fs-5">{{ date('l, F jS') }}</a>
+                            <h4 class="fs-5" id="currentTime">{{ date('h:i:s A') }}</h4>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -32,7 +40,7 @@
                 <div class="card-body">
                     <a href="" class="stretched-link fw-bold fs-5 me-2">Total Bids</a>
                     <div class="progress-detail pt-3">
-                        <h4 class="counter text-success" style="visibility: visible;">5</h4>
+                        <h4 class="counter text-success" style="visibility: visible;">{{ $data['bided'] }}</h4>
                     </div>
                 </div>
             </div>

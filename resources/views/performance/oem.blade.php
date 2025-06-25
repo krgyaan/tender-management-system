@@ -8,26 +8,18 @@
                 <div class="new-user-info">
                     <form method="POST" action="">
                         @csrf
-
-                        @php
-                            $team_member ??= $_POST['team_member'] ?? '';
-                        @endphp
-
                         <div class="row">
                             <div class="form-group col-md-4">
-                                <label class="form-label" for="address">Team Member:</label>
-                                <select name="team_member" class="form-control" id="team_member" required>
-                                    <option value="">Select Team Member</option>
-                                    @foreach ($users as $user)
-                                        <option {{ $team_member == $user->id ? 'selected' : '' }}
-                                            value="{{ $user->id }}">
-                                            {{ $user->name }} ({{ $user->team }})
+                                <label class="form-label" for="oem">Select OEM:</label>
+                                <select name="oem" class="form-control select2" id="oem" required>
+                                    <option value="">Select OEM</option>
+                                    @foreach ($oems as $oem)
+                                        <option value="{{ $oem->id }}"
+                                            {{ old('oem', $_POST['oem'] ?? '') == $oem->id ? 'selected' : '' }}>
+                                            {{ $oem->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <small>
-                                    <span class="text-danger">{{ $errors->first('team_member') }}</span>
-                                </small>
                             </div>
                             <div class="form-group col-md-4">
                                 <div class="profile-img-edit position-relative">
@@ -36,9 +28,6 @@
                                         <input type="date" name="from_date" class="form-control" id="from_date"
                                             value="{{ old('from_date') ?? ($_POST['from_date'] ?? '') }}">
                                     </div>
-                                    <small>
-                                        <span class="text-danger">{{ $errors->first('from_date') }}</span>
-                                    </small>
                                 </div>
                             </div>
                             <div class="form-group col-md-4">
@@ -48,9 +37,6 @@
                                         <input type="date" name="to_date" class="form-control" id="to_date"
                                             value="{{ old('to_date') ?? ($_POST['to_date'] ?? '') }}">
                                     </div>
-                                    <small>
-                                        <span class="text-danger">{{ $errors->first('to_date') }}</span>
-                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -61,7 +47,107 @@
                         </div>
                     </form>
                 </div>
+                <hr class="m-0 mt-3 p-0">
             </div>
+            @if ($result)
+                <h4 class="text-center">Tenders Not Allowed by This OEM</h4>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Team Member</th>
+                            <th>Team</th>
+                            <th>Tender</th>
+                            <th>GST Value</th>
+                            <th>Due Date Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($notAllowedTenders as $tender)
+                            <tr>
+                                <td>{{ $tender['team'] }}</td>
+                                <td>{{ $tender['member'] }}</td>
+                                <td>
+                                    <b>
+                                        {{ $tender['tender_name'] }}
+                                    </b><br>
+                                    {{ $tender['tender_no'] }}
+                                </td>
+                                <td>{{ format_inr($tender['gst_values']) }}</td>
+                                <td>{{ $tender['due_date'] }}</td>
+                            </tr>
+                        @empty
+                        @endforelse
+                    </tbody>
+                </table>
+                <h4 class="text-center mt-3">RFQs Sent to This OEM</h4>
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Team Member</th>
+                            <th>Tender</th>
+                            <th>GST Value</th>
+                            <th>Due Date Time</th>
+                            <th>RFQ Sent on</th>
+                            <th>Response get on</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($rfqsSentToOem as $tender)
+                            <tr>
+                                <td>{{ $tender['team'] }}</td>
+                                <td>{{ $tender['member'] }}</td>
+                                <td>
+                                    <b>
+                                        {{ $tender['tender_name'] }}
+                                    </b><br>
+                                    {{ $tender['tender_no'] }}
+                                </td>
+                                <td>{{ format_inr($tender['gst_values']) }}</td>
+                                <td>{{ $tender['due_date'] }}</td>
+                                <td>{{ $tender['rfq_sent_on'] }}</td>
+                                <td>{{ $tender['rfq_response'] }}</td>
+                            </tr>
+                        @empty
+                        @endforelse
+                    </tbody>
+                </table>
+            @endif
         </div>
     </div>
 @endsection
+@push('scripts')
+    <script>
+        $(document).ready(function() {
+            $('#oem').select2({
+                placeholder: 'Select OEM',
+                allowClear: true,
+            });
+        });
+    </script>
+@endpush
+
+@push('styles')
+    <style>
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            padding: 0 0.75rem;
+            border: 1px solid #000;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            display: flex;
+            align-items: center;
+            line-height: 2.3;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px;
+            top: 0;
+            right: 10px;
+        }
+    </style>
+@endpush

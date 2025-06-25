@@ -6,6 +6,8 @@ use Carbon\Carbon;
 use App\Models\Emds;
 use App\Models\Item;
 use App\Models\User;
+use App\Models\Pqr;
+use App\Models\Finance;
 use App\Models\Status;
 use App\Mail\TlApproval;
 use App\Models\Location;
@@ -38,6 +40,7 @@ use Illuminate\Support\Facades\Config;
 class TenderInfoController extends Controller
 {
     protected $timerService;
+
     public function __construct(TimerService $timerService)
     {
         $this->timerService = $timerService;
@@ -84,6 +87,7 @@ class TenderInfoController extends Controller
         2 => 'NEFT/RTGS',
         3 => 'DD',
         4 => 'BG',
+        4 => 'FDR',
         5 => 'Not Applicable',
     ];
 
@@ -100,9 +104,8 @@ class TenderInfoController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $teams = $this->teams;
         $permissions = explode(',', $user->permissions);
-        return view('tender.index', compact('permissions', 'teams'));
+        return view('tender.index', compact('permissions'));
     }
 
     public function getTenderData(Request $request, $type)
@@ -122,13 +125,14 @@ class TenderInfoController extends Controller
                 'itemName:id,name',
                 'statuses:id,name'
             ])
-                ->select('tender_infos.*')
+                ->select('tender_infos.*') // SELECT main table fields only
                 ->leftJoin('users', 'users.id', '=', 'tender_infos.team_member')
                 ->leftJoin('organizations', 'organizations.id', '=', 'tender_infos.organisation')
                 ->leftJoin('statuses', 'statuses.id', '=', 'tender_infos.status')
                 ->leftJoin('items as item_name', 'item_name.id', '=', 'tender_infos.item')
                 ->where('tender_infos.deleteStatus', '0');
 
+            // Get Team Wise
             if ($team) {
                 $query->where('tender_infos.team', $team);
             }
@@ -186,7 +190,7 @@ class TenderInfoController extends Controller
                     return view('partials.timer', compact('tender'))->render();
                 })
                 ->editColumn('due_date', function ($tender) {
-                    return $tender->due_date . '<br>' . date('h:i A', strtotime($tender->due_time));
+                    return '<span class="d-none">' . strtotime($tender->due_date) . '</span>' . date('d-m-Y', strtotime($tender->due_date)) . '<br>' . date('h:i A', strtotime($tender->due_time));
                 })
                 ->editColumn('gst_values', function ($tender) {
                     return format_inr($tender->gst_values);
@@ -198,67 +202,48 @@ class TenderInfoController extends Controller
             return response()->json([
                 'error' => true,
                 'message' => 'Error loading data',
-                'details' => config('app.debug') ? $e->getMessage() : null
+                'details' => $e->getMessage()
             ], 500);
         }
     }
 
     public function create()
     {
-        try {
-            $users = User::where('role', '!=', 'admin')->where('status', 1)->get();
-            $statuses = Status::all();
-            $items = Item::all();
-            $organisations = Organization::all();
-            $locations = Location::all();
-            $websites = Websites::all();
-            $teams = $this->teams;
-
-            if (!$users || !$statuses || !$items || !$organisations || !$locations || !$websites || !$teams) {
-                throw new \Exception('One or more resources could not be loaded');
-            }
-
-            return view('tender.create', compact('users', 'statuses', 'organisations', 'items', 'locations', 'websites', 'teams'));
-        } catch (\Exception $e) {
-            Log::error('Error loading data for create: ' . $e->getMessage());
-            return response()->view('errors.general', ['message' => 'Error loading resources. Please try again later.'], 500);
-        }
+        $users = User::all()->where('role', '!=', 'admin')->where('status', 1);
+        $statuses = Status::all();
+        $items = Item::all();
+        $organisations = Organization::all();
+        $locations = Location::where('status', '1')->get();
+        $websites = Websites::all();
+        $teams = $this->teams;
+        return view('tender.create', compact('users', 'statuses', 'organisations', 'items', 'locations', 'websites', 'teams'));
     }
 
     public function infoCreate($id)
     {
-        try {
-            $tenderInfo = TenderInfo::findOrFail($id);
-            $items = Item::all();
-            $tender = TenderInformation::where('tender_id', $id)->first();
-            $reason = $this->reason;
-            $commercial = $this->commercial;
-            $maf = $this->maf;
-            $tenderFees = $this->tenderFees;
-            $emdReq = $this->emdReq;
-            $emdOpt = $this->emdOpt;
-            $revAuction = $this->revAuction;
+        $tenderInfo = TenderInfo::find($id);
+        $items = Item::all();
+        $tender = TenderInformation::where('tender_id', $id)->first();
+        $reason = $this->reason;
+        $commercial = $this->commercial;
+        $maf = $this->maf;
+        $tenderFees = $this->tenderFees;
+        $emdReq = $this->emdReq;
+        $emdOpt = $this->emdOpt;
+        $revAuction = $this->revAuction;
 
-            if (!$items || !$tender || !$reason || !$commercial || !$maf || !$tenderFees || !$emdReq || !$emdOpt || !$revAuction) {
-                throw new \Exception('One or more resources could not be loaded');
-            }
-
-            return view('tender.info', compact(
-                'tenderInfo',
-                'items',
-                'tender',
-                'reason',
-                'commercial',
-                'maf',
-                'tenderFees',
-                'emdReq',
-                'emdOpt',
-                'revAuction'
-            ));
-        } catch (\Exception $e) {
-            Log::error('Error loading data for info create: ' . $e->getMessage());
-            return response()->view('errors.general', ['message' => 'Error loading resources. Please try again later.'], 500);
-        }
+        return view('tender.info', compact(
+            'tenderInfo',
+            'items',
+            'tender',
+            'reason',
+            'commercial',
+            'maf',
+            'tenderFees',
+            'emdReq',
+            'emdOpt',
+            'revAuction'
+        ));
     }
 
     public function store(Request $request)
@@ -359,7 +344,7 @@ class TenderInfoController extends Controller
         $statuses = Status::all();
         $organisations = Organization::all();
         $users = User::all()->where('role', '!=', 'admin')->where('status', 1);
-        $locations = Location::all();
+        $locations = Location::where('status', '1')->get();
         $websites = Websites::all();
         $teams = $this->teams;
         return view('tender.edit', compact('tenderInfo', 'users', 'statuses', 'organisations', 'items', 'locations', 'websites', 'teams'));
@@ -368,7 +353,7 @@ class TenderInfoController extends Controller
     public function update(Request $request, TenderInfo $tenderInfo, $id)
     {
         $request->validate([
-            'tender_no' => 'nullable|string|max:50',
+            'tender_no' => 'nullable|string',
             'team' => 'string|max:50',
             'organisation' => 'nullable|string|max:255',
             'tender_name' => 'nullable|string|max:255',
@@ -758,7 +743,9 @@ class TenderInfoController extends Controller
         $tenderInfo = TenderInformation::find($request->id);
         $tenderFees = $this->tenderFees;
         $emdOpt = $this->emdOpt;
-        return view('tender.tender-approval-form', compact('tenderInfo', 'tenderFees', 'emdOpt'));
+        $pqr = Pqr::all();
+        $finance = Finance::all();
+        return view('tender.tender-approval-form', compact('tenderInfo', 'tenderFees', 'emdOpt', 'pqr', 'finance'));
     }
 
     public function tlapproval(Request $request)
@@ -804,6 +791,7 @@ class TenderInfoController extends Controller
             if ($request->status == 2) {
                 $rules['tender_status'] = 'required';
                 $rules['rej_remark'] = 'required';
+                $rules['oem_who_denied'] = 'required|array';
             }
 
             if ($request->status == 3) {
@@ -855,6 +843,7 @@ class TenderInfoController extends Controller
             $tender->tlRemarks = $request->status == 3 ? $request->remarks : $tender->tlRemarks;
             $tender->status = [1 => 3, 2 => $request->tender_status, 3 => 29][$request->status];
             $tender->rfq_to = $request->status == 1 ? implode(',', $request->rfq_to) : '0';
+            $tender->oem_who_denied = $request->status == 2 ? implode(',', $request->oem_who_denied) : '0';
             $tender->save();
             Log::info('TenderInfo updated', $tender->toArray());
 
@@ -870,7 +859,7 @@ class TenderInfoController extends Controller
                 if ($info->phyDocs == 'Yes') {
                     $this->timerService->startTimer($tender, 'physical_docs');
                 }
-
+                // countdown to 72 hours before the tender due date and time
                 $dueDate = new Carbon("{$tender->due_date} {$tender->due_time}");
                 $cutoffDate = (clone $dueDate)->subHours(72); // Timer hits zero here
                 $now = Carbon::now();
@@ -944,9 +933,9 @@ class TenderInfoController extends Controller
             $memberId = User::find($tender->team_member);
             $memberMail = $memberId->email ?? 'gyanprakashk55@gmail.com';
             $member = $memberId->name ?? 'gyanprakash';
-            $adminMail = User::where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $tlMail = User::where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $coo = User::where('role', 'coordinator')->first();
+            $adminMail = User::where('team', $memberId->team)->where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
+            $tlMail = User::where('team', $memberId->team)->where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
+            $coo = User::where('team', $memberId->team)->where('role', 'coordinator')->first();
             $cooMail = $coo->email ?? 'gyanprakashk55@gmail.com';
             $cooName = $coo->name ?? 'gyanprakash';
             $password = $coo->app_password ?? 'password';
@@ -977,7 +966,7 @@ class TenderInfoController extends Controller
                 ->cc([$tlMail, $adminMail])
                 ->send(new TenderCreated($data));
             if ($mail) {
-                Log::info("Tender Created Email sent successfully using " . json_encode($mailer));
+                Log::info("Tender Created Email successfully sent ", ['to' => $memberMail, 'cc' => [$tlMail, $adminMail]]);
             } else {
                 Log::error("Tender Created Email failed to send");
             }
@@ -1035,9 +1024,9 @@ class TenderInfoController extends Controller
             $username = $member->email ?? 'gyanprakashk55@gmail.com';
             $membername = $member->name ?? 'gyanprakash';
             $password = $member->app_password ?? 'password';
-            $adminMail = User::where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $tlMail = User::where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $cooMail = User::where('role', 'coordinator')->first()->email ?? 'gyanprakashk55@gmail.com';
+            $adminMail = User::where('team', $member->team)->where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
+            $tlMail = User::where('team', $member->team)->where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
+            $cooMail = User::where('team', $member->team)->where('role', 'coordinator')->first()->email ?? 'gyanprakashk55@gmail.com';
             $due_date = date('d-m-Y', strtotime($request->due_date));
             $commercial = $this->commercial;
             $maf = $this->maf;
@@ -1158,9 +1147,9 @@ class TenderInfoController extends Controller
             $member = User::where('id', $request->tender->team_member)->first();
             $memberMail = $member->email ?? 'gyanprakashk55@gmail.com';
             $membername = $member->name ?? 'gyanprakash';
-            $adminMail = User::where('role', 'admin')->value('email') ?? 'gyanprakashk55@gmail.com';
-            $cooMail = User::where('role', 'coordinator')->value('email') ?? 'gyanprakashk55@gmail.com';
-            $tl = User::where('role', 'team-leader')->first();
+            $adminMail = User::where('team', $member->team)->where('role', 'admin')->value('email') ?? 'gyanprakashk55@gmail.com';
+            $cooMail = User::where('team', $member->team)->where('role', 'coordinator')->value('email') ?? 'gyanprakashk55@gmail.com';
+            $tl = User::where('team', $member->team)->where('role', 'team-leader')->first();
             $tlMail = $tl->email ?? 'gyanprakashk55@gmail.com';
             $tlName = $tl->name ?? 'gyanprakash';
             $tlPassword = $tl->app_password ?? 'password';
@@ -1223,9 +1212,9 @@ class TenderInfoController extends Controller
             $tender = TenderInfo::find($tenderId);
             $recipientEmail = User::find($tender->team_member)->email ?? 'gyanprakashk55@gmail.com';
             $member = User::find($tender->team_member)->name ?? 'gyanprakash';
-            $adminMail = User::where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $tlMail = User::where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $coo = User::where('role', 'coordinator')->first();
+            $adminMail = User::where('role', 'admin')->where('team', $tender->team)->first()->email ?? 'gyanprakashk55@gmail.com';
+            $tlMail = User::where('role', 'team-leader')->where('team', $tender->team)->first()->email ?? 'gyanprakashk55@gmail.com';
+            $coo = User::where('role', 'coordinator')->where('team', $tender->team)->first();
             $cooMail = $coo->email ?? 'gyanprakashk55@gmail.com';
             $cooName = $coo->name ?? 'gyanprakash';
             $password = $coo->app_password ?? 'password';

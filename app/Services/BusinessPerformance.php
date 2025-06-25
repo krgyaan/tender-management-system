@@ -2,15 +2,15 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class LocationPerformance
+class BusinessPerformance
 {
-    public function getTendersByLocation($filters)
+    public function getTenders($filters)
     {
-        return DB::table('bid_submissions as bs')
+        $query = DB::table('bid_submissions as bs')
             ->select(
                 'bs.id',
                 'bs.tender_id',
@@ -22,36 +22,28 @@ class LocationPerformance
                 'ti.tender_name',
                 'ti.gst_values',
                 'ti.status as tender_status',
-                'l.id as location_id',
                 'l.state',
-                'l.address',
                 'l.region',
-                'ih.name as item_name',
-                'ih.team as item_team'
+                'ih.name as item_heading_name',
+                'ih.team as heading_team',
+                'it.name as item_name',
+                'it.team as item_team'
             )
             ->join('tender_infos as ti', 'bs.tender_id', '=', 'ti.id')
             ->join('locations as l', 'ti.location', '=', 'l.id')
-            ->join('item_headings as ih', 'ti.item', '=', 'ih.id')
-            ->when($filters['state'] || $filters['area'], function ($query) use ($filters) {
-                $query->where(function ($q) use ($filters) {
-                    if ($filters['state']) {
-                        $q->where('l.state', $filters['state']);
-                    }
-                    if ($filters['area']) {
-                        $q->orWhere('l.region', $filters['area']);
-                    }
-                });
+            ->join('items as it', 'ti.item', '=', 'it.id')
+            ->leftJoin('item_headings as ih', function ($join) {
+                $join->on('it.heading', '=', 'ih.name')
+                    ->whereColumn('it.team', 'ih.team');
             })
-            ->when($filters['item_heading'], function ($query) use ($filters) {
-                $query->where('ih.id', $filters['item_heading']);
+            ->when(!empty($filters['heading']), function ($q) use ($filters) {
+                $q->where('ih.id', $filters['heading']);
             })
-            ->when($filters['from'] && $filters['to'], function ($query) use ($filters) {
-                $query->whereBetween('bs.bid_submissions_date', [
-                    Carbon::parse($filters['from'])->startOfDay(),
-                    Carbon::parse($filters['to'])->endOfDay()
-                ]);
-            })
-            ->get();
+            ->when(!empty($filters['from']) && !empty($filters['to']), function ($q) use ($filters) {
+                $q->whereBetween('bs.bid_submissions_date', [$filters['from'], $filters['to']]);
+            });
+
+        return $query->get();
     }
 
     public function calculateSummary(Collection $tenders): array
@@ -118,37 +110,52 @@ class LocationPerformance
         $summaryItem['tender'][] = $tender->tender_name;
     }
 
-    public function getLocationMetrics(Collection $tenders): array
+    public function getMetrics($tenders)
     {
-        $metrics = [
-            'total_value' => $tenders->sum('gst_values'),
-            'total_count' => $tenders->count(),
-            'by_region' => [],
-            'by_state' => [],
-            'by_item' => [],
+        $by_region = [];
+        $by_state = [];
+        $by_item = [];
+        $total_count = 0;
+        $total_value = 0;
+
+        foreach ($tenders as $tender) {
+            // Region
+            $region = $tender->region ?? 'Unknown';
+            $by_region[$region]['count'] = ($by_region[$region]['count'] ?? 0) + 1;
+            $by_region[$region]['value'] = ($by_region[$region]['value'] ?? 0) + ($tender->bid_value ?? 0);
+
+            // State
+            $state = $tender->state ?? 'Unknown';
+            $by_state[$state]['count'] = ($by_state[$state]['count'] ?? 0) + 1;
+            $by_state[$state]['value'] = ($by_state[$state]['value'] ?? 0) + ($tender->bid_value ?? 0);
+
+            // Item
+            $item = $tender->item_name ?? 'Unknown';
+            $by_item[$item]['count'] = ($by_item[$item]['count'] ?? 0) + 1;
+            $by_item[$item]['value'] = ($by_item[$item]['value'] ?? 0) + ($tender->bid_value ?? 0);
+
+            $total_count++;
+            $total_value += $tender->bid_value ?? 0;
+        }
+
+        return [
+            'by_region' => $by_region,
+            'by_state' => $by_state,
+            'by_item' => $by_item,
+            'total_count' => $total_count,
+            'total_value' => $total_value,
         ];
+    }
 
-        // Group by region
-        $metrics['by_region'] = $tenders->groupBy('region')
-            ->map(fn($group) => [
-                'count' => $group->count(),
-                'value' => $group->sum('gst_values')
-            ])->toArray();
-
-        // Group by state
-        $metrics['by_state'] = $tenders->groupBy('state')
-            ->map(fn($group) => [
-                'count' => $group->count(),
-                'value' => $group->sum('gst_values')
-            ])->toArray();
-
-        // Group by item
-        $metrics['by_item'] = $tenders->groupBy('item_name')
-            ->map(fn($group) => [
-                'count' => $group->count(),
-                'value' => $group->sum('gst_values')
-            ])->toArray();
-
-        return $metrics;
+    public function getItemsUnderHeading($headingId)
+    {
+        return DB::table('items as it')
+            ->join('item_headings as ih', function ($join) {
+                $join->on('it.heading', '=', 'ih.name')
+                    ->whereColumn('it.team', 'ih.team');
+            })
+            ->where('ih.id', $headingId)
+            ->select('it.id', 'it.name')
+            ->get();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BidSubmission;
 use App\Models\TenderInfo;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -47,16 +48,39 @@ class DashboardController extends Controller
         'tender-create' => 'Tender Create',
         'tender-info' => 'Tender Info',
         'tender-approval' => 'Tender Approval',
+        'request-emd' => 'Request EMD',
         'rfq' => 'RFQ',
         'phy-docs' => 'Physical Docs',
-        'pricing-sheet' => 'Pricing Sheet',
-        'request-emd' => 'Request EMD',
-        'emd-dashboard' => 'EMD Dashboard',
+        'costing-sheet' => 'Costing Sheet',
+        'costing-approval' => 'Costing Approval',
+        'results' => 'Results',
+        'tq-mgmt' => 'TQ Management',
+        'ra-mgmt' => 'RA Management',
+        'bid-submission' => 'Bid Submission',
+        'pqr-dashboard' => 'PQR Dashboard',
+        'bg-emds-dashboard' => 'BG Dashboard',
+        'dd-emds-dashboard' => 'DD Dashboard',
+        'bt-emds-dashboard' => 'BT Dashboard',
+        'pop-emds-dashboard' => 'POP Dashboard',
+        'chq-emds-dashboard' => 'CHEQUE Dashboard',
+        'fdr-emds-dashboard' => 'FDR Dashboard',
         'tender-fees' => 'Tender Fees',
         'follow-up' => 'Follow Up',
         'courier' => 'Courier',
         'employee-imprest' => 'Employee Imprest',
-        'doc-dashboard' => 'Documents Dashboard',
+        'finance-docs' => 'Finance Documents',
+        'loan-advances' => 'Loan & Advance',
+        'projects' => 'Project Dashboard',
+        'client-directory' => 'Client Directory',
+        'wo-dashboard' => 'WO Dashboard',
+        'kickoff-meeting' => 'Kick Off Meeting',
+        'contract-agreement' => 'Contract Agreement',
+        'rent-agreement' => 'Rent Agreement',
+        'account-checklist' => 'Account Checklist',
+        'expense-checklist' => 'Expense Checklist',
+        'gstr1-checklist' => 'GSTR1 Checklist',
+        'gst3b-checklist' => 'GST3B Checklist',
+        'tds-checklist' => 'TDS Checklist',
         'admin' => 'Admin',
     ];
     public function index()
@@ -80,6 +104,14 @@ class DashboardController extends Controller
                 $query->where('assigned_to', $user->id);
             })
             ->get();
+
+        $data['bided'] = BidSubmission::with('tenderdue')->where('status', 'Bid Submitted')
+            ->when($user->role != 'admin', function ($query) use ($user) {
+                $query->whereHas('tenderdue', function ($query) use ($user) {
+                    $query->where('team_member', $user->id);
+                });
+            })
+            ->count();
 
         return view('dashboard', compact('user', 'data'));
     }

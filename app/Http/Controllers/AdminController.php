@@ -77,6 +77,11 @@ class AdminController extends Controller
         'kickoff-meeting' => 'Kick Off Meeting',
         'contract-agreement' => 'Contract Agreement',
         'rent-agreement' => 'Rent Agreement',
+        'account-checklist' => 'Account Checklist',
+        'expense-checklist' => 'Expense Checklist',
+        'gstr1-checklist' => 'GSTR1 Checklist',
+        'gst3b-checklist' => 'GST3B Checklist',
+        'tds-checklist' => 'TDS Checklist',
         'admin' => 'Admin',
     ];
     public function index()

@@ -28,6 +28,7 @@ class TenderInfo extends Model
         'website',
         'tlRemarks',
         'rfq_to',
+        'oem_who_denied',
         'client_organisation',
         'courier_address',
     ];
@@ -137,7 +138,7 @@ class TenderInfo extends Model
     // Relatiionship with result
     public function result()
     {
-        $this->hasOne(TenderResult::class, 'tender_id', 'id');
+        return $this->hasOne(TenderResult::class, 'tender_id', 'id');
     }
 
     // Relationship with Client
@@ -173,7 +174,7 @@ class TenderInfo extends Model
     // Relationship with RaMgmt
     public function ra_mgmt()
     {
-        return $this->hasMany(RaMgmt::class, 'tender_id', 'id');
+        return $this->hasMany(RaMgmt::class, 'tender_no', 'id');
     }
 
     // Relationship with BasicDetails
@@ -241,7 +242,7 @@ class TenderInfo extends Model
 
     public function timers()
     {
-        return $this->hasMany(TimerTracker::class, 'tender_id', 'id');
+        return $this->hasMany(TimerTracker::class);
     }
 
     public function getTimer($stage = null)

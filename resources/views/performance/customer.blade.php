@@ -153,7 +153,7 @@
     <style>
         .select2-container--default .select2-selection--single {
             height: 38px;
-            padding: 0.375rem 0.75rem;
+            padding: 0 0.75rem;
             border: 1px solid #000;
             border-radius: 0.375rem;
             font-size: 1rem;

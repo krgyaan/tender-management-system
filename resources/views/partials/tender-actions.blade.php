@@ -29,23 +29,25 @@
                 Submit Queries
             </a>
         </li>
-        <li>
-            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exampleModal"
-                data-id="{{ $tender->id }}" data-name="{{ $tender->status }}">
-                Change Status
-            </a>
-        </li>
-        <li>
-            <a class="dropdown-item text-danger" href="#"
-                onclick="event.preventDefault(); document.getElementById('deleteForm{{ $tender->id }}').submit();">
-                Delete
-            </a>
-        </li>
+        @if (in_array(Auth::user()->role, ['coordinator', 'admin']))
+            <li>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#exampleModal"
+                    data-id="{{ $tender->id }}" data-name="{{ $tender->status }}">
+                    Change Status
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item text-danger" href="#"
+                    onclick="event.preventDefault(); document.getElementById('deleteForm{{ $tender->id }}').submit();">
+                    Delete
+                </a>
+                <form action="{{ route('tender.destroy', $tender->id) }}" method="POST"
+                    id="deleteForm{{ $tender->id }}" style="display: none;">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="id" value="{{ $tender->id }}">
+                </form>
+            </li>
+        @endif
     </ul>
-    <form action="{{ route('tender.destroy', $tender->id) }}" method="POST" id="deleteForm{{ $tender->id }}"
-        style="display: none;">
-        @csrf
-        @method('DELETE')
-        <input type="hidden" name="id" value="{{ $tender->id }}">
-    </form>
 </div>

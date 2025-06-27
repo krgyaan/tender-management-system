@@ -15,35 +15,45 @@ class AdminController extends Controller
     public $teams = [
         'AC' => 'AC',
         'DC' => 'DC',
+        'Accounts' => 'Accounts',
+        'Sales' => 'Sales',
+        'Common' => 'Common',
     ];
+
     public $designations = [
         'CEO' => 'CEO',
         'coo' => 'COO',
-        'ac-coordinator' => 'AC Co-ordinator',
-        'dc-coordinator' => 'DC Co-ordinator',
+        'common-coordinator' => 'Common Coordinator',
+        'ac-coordinator' => 'AC Coordinator',
+        'dc-coordinator' => 'DC Coordinator',
         'ac-team-leader' => 'AC Tender Team Leader',
         'dc-team-leader' => 'DC Tender Team Leader',
         'ac-tender-executive' => 'AC Tender Executive',
         'dc-tender-executive' => 'DC Tender Executive',
-        'ac-operation_leader' => 'AC Opreration Team Leader',
-        'dc-operation_executive' => 'DC Oprerator Executive',
+        'dc-operation-leader' => 'DC Operations Team Leader',
+        'dc-operation-executive' => 'DC Operations Executive',
+        'ac-operation-leader' => 'AC Operations Team Leader',
+        'ac-operation-executive' => 'AC Operations Executive',
         'account-leader' => 'Account Team Leader',
         'account-executive' => 'Account Executive',
         'accountant' => 'Accountant',
         'field' => 'Field',
     ];
+
     public $roles = [
         'admin' => 'Admin',
-        'coordinator' => 'Co-ordinator',
+        'coordinator' => 'Team Coordinator',
+        'common-coordinator' => 'Common Coordinator',
         'team-leader' => 'Tender Team Leader',
         'tender-executive' => 'Tender Executive',
-        'operation_leader' => 'Opreration Team Leader',
-        'operation_executive' => 'Oprerator Executive',
+        'operation-leader' => 'Opreration Team Leader',
+        'operation-executive' => 'Oprerator Executive',
         'account-leader' => 'Account Team Leader',
         'account-executive' => 'Account Executive',
         'accountant' => 'Accountant',
         'field' => 'Field',
     ];
+
     public $permissions = [
         'all' => 'All',
         'tender-create' => 'Tender Create',
@@ -84,6 +94,7 @@ class AdminController extends Controller
         'tds-checklist' => 'TDS Checklist',
         'admin' => 'Admin',
     ];
+
     public function index()
     {
         $userCount = User::where('role', '!=', 'admin')->where('status', 1)->count();
@@ -93,8 +104,6 @@ class AdminController extends Controller
         if ($user->role == 'admin') {
             $tender_info = TenderInfo::all();
             $follow_ups = FollowUps::where('assign_initiate', 'Followup Initiated')->get();
-            // return $data;
-
         } else {
             $tender_info = TenderInfo::where('team_member', $user->id)->get();
             $follow_ups = FollowUps::where('assign_initiate', 'Followup Initiated')->where('assigned_to', $user->id)->get();

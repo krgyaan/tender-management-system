@@ -27,6 +27,7 @@ class CourierDashboard extends Model
         'delivery_date',
         'delivery_pod',
         'within_time',
+        'rej_remarks',
     ];
 
     public function courier_from()

@@ -131,7 +131,7 @@
                                         <td>{{ Str::title(str_replace('_', ' ', $name)) }}</td>
                                         <td>{{ $value['count'] }}</td>
                                         <td>₹{{ format_inr($value['value']) }}</td>
-                                        <td>
+                                        <td class="text-wrap">
                                             @foreach ($value['tender'] as $tender)
                                                 <small class="badge bg-success">
                                                     {{ $tender }},
@@ -237,23 +237,6 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Metrics Summary -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h4 class="card-title">Overall Summary</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5>Total Tenders: {{ $metrics['total_count'] }}</h5>
-                        </div>
-                        <div class="col-md-6">
-                            <h5>Total Value: ₹{{ format_inr($metrics['total_value']) }}</h5>
                         </div>
                     </div>
                 </div>

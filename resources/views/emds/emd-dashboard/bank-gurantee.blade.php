@@ -65,215 +65,72 @@
                         @endforeach
                     </div>
                 @endif
+                <div class="d-flex justify-content-between">
+                    <a href="{{ route('bg-old-entry') }}" class="btn btn-info btn-sm">
+                        Update Old Entries
+                    </a>
+                    <a href="{{ route('download-bgs') }}" class="btn btn-primary btn-sm">
+                        Download All Bgs
+                    </a>
+                </div>
                 <div class="card">
                     <div class="card-body">
                         @include('partials.messages')
-                        <div class="text-center">
-                            <a href="{{ route('bg-old-entry') }}" class="btn btn-info btn-sm">
-                                Update Old Entries
-                            </a>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table" id="bg">
-                                <thead>
-                                    <tr>
-                                        <th>BG Date</th>
-                                        <th>BG No.</th>
-                                        <th>Beneficiary name</th>
-                                        <th>Tender Name</th>
-                                        <th>Amount</th>
-                                        <th>BG Expiry Date</th>
-                                        <th>BG Claim Period<br> Expiry Date</th>
-                                        <th>BG Charges paid</th>
-                                        <th>BG Charges <br>Calculated</th>
-                                        <th>FDR No</th>
-                                        <th>FDR Value</th>
-                                        <th>Tender Status</th>
-                                        <th>Expiry</th>
-                                        <th>BG Status</th>
-                                        <th>Timer</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if ($emdBg && count($emdBg) > 0)
-                                        @foreach ($emdBg as $bg)
-                                            @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account-executive', 'accountant', 'account-leader']) ||
-                                                    Auth::user()->name == $bg->emds->requested_by)
+                        <ul class="nav nav-pills justify-content-center" id="bgTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#new_requests"
+                                    type="button">
+                                    New Requests
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#live" type="button">
+                                    Live
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#cancelled" type="button">
+                                    Cancelled
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rejected" type="button">
+                                    Rejected
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            @foreach (['new_requests', 'live', 'cancelled', 'rejected'] as $type)
+                                <div class="tab-pane fade {{ $type === 'new_requests' ? 'show active' : '' }}"
+                                    id="{{ $type }}">
+                                    <div class="table-responsive">
+                                        <table class="table-hover" id="{{ $type }}Table">
+                                            <thead>
                                                 <tr>
-                                                    <td>{{ $bg->created_at->format('d-m-Y') }}</td>
-                                                    <td>{{ $bg->bg_no ?? '' }}</td>
-                                                    <td>{{ $bg->bg_favour ?? '' }}</td>
-                                                    <td>{{ $bg->emds->project_name }}</td>
-                                                    <td>{{ format_inr($bg->bg_amt) ?? 0 }}</td>
-                                                    <td>
-                                                        <span class="d-none">{{ $bg->bg_expiry }}</span>
-                                                        {{ date('d-m-Y', strtotime($bg->bg_expiry)) }}
-                                                    </td>
-                                                    <td>
-                                                        <span class="d-none">{{ $bg->bg_claim }}</span>
-                                                        {{ date('d-m-Y', strtotime($bg->bg_claim)) }}
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $bgc = $bg->bg_charge_deducted ?? 0;
-                                                            $sfms = $bg->sfms_charge_deducted ?? 0;
-                                                            $stamp = $bg->stamp_charge_deducted ?? 0;
-                                                            $other = $bg->other_charge_deducted ?? 0;
-                                                            $total = $bgc + $sfms + $stamp + $other;
-                                                            echo format_inr($total);
-                                                        @endphp
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $bgValue = $bg->bg_amt ?? 0;
-                                                            $bgStampPaperValue = 300;
-                                                            $sfmsCharges = 590;
-                                                            $bgCreationDate = Carbon::parse($bg->bg_date);
-                                                            $bgClaimDate = Carbon::parse($bg->bg_claim);
-
-                                                            $dailyInterestRate = 0.01 / 365;
-                                                            $monthsDifference = $bgCreationDate->diffInMonths($bgClaimDate);
-                                                            $interestComponent =
-                                                                $bgValue * $dailyInterestRate * $monthsDifference;
-                                                            $interestWithGST = $interestComponent * 1.18;
-
-                                                            echo "$bgCreationDate to $bgClaimDate" . $monthsDifference . '<br>';
-                                                            echo 'amount: ' . format_inr($interestWithGST) . '<br>';
-                                                            echo 'smfs: ' . format_inr($sfmsCharges) . '<br>';
-                                                            echo 'stamp: ' . format_inr($bgStampPaperValue);
-                                                            echo "<hr class='p-0 m-0'>";
-                                                            echo ' = ' .
-                                                                format_inr(
-                                                                    $interestWithGST +
-                                                                        $sfmsCharges +
-                                                                        $bgStampPaperValue,
-                                                                );
-                                                        @endphp
-                                                    </td>
-                                                    <td>{{ $bg->fdr_no ?? '' }}</td>
-                                                    <td>{{ format_inr($bg->fdr_amt) ?? 0 }}</td>
-                                                    <td>
-                                                        {{ $bg->emds->tender_id ? $bg->emds->tender->statuses->name ?? '' : '' }}
-                                                    </td>
-                                                    <td>
-                                                        @if ($bg->bg_expiry && $bg->bg_claim)
-                                                            @if (now()->lte($bg->bg_expiry))
-                                                                Valid
-                                                            @elseif (now()->lte($bg->bg_claim))
-                                                                Claim Period
-                                                            @else
-                                                                Expired
-                                                            @endif
-                                                        @else
-                                                            N/A
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if ($bg->action)
-                                                            @switch($bg->action)
-                                                                @case(1)
-                                                                    <span
-                                                                        class="{{ $bg->bg_req == 'Accepted' ? 'text-success' : 'text-danger' }}">
-                                                                        {{ $bg->bg_req == 'Accepted' ? 'Format Accepted' : 'Rejected' }}
-                                                                    </span>
-                                                                @break
-
-                                                                @case(2)
-                                                                    <span class="text-info">Created</span>
-                                                                @break
-
-                                                                @case(3)
-                                                                    <span class="text-info">SFMS Submitted</span>
-                                                                @break
-
-                                                                @case(4)
-                                                                    <span class="text-info">Followup Initiated</span>
-                                                                @break
-
-                                                                @case(5)
-                                                                    <span class="text-info">Extension Request</span>
-                                                                @break
-
-                                                                @case(6)
-                                                                    <span class="text-info">Returned via courier</span>
-                                                                @break
-
-                                                                @case(7)
-                                                                    <span class="text-info">Cancellation Request</span>
-                                                                @break
-
-                                                                @case(8)
-                                                                    <span class="text-info">BG Cancelled</span>
-                                                                @break
-
-                                                                @case(9)
-                                                                    <span class="text-info">FDR released</span>
-                                                                @break
-
-                                                                @default
-                                                                    <span class="text-info"></span>
-                                                            @endswitch
-                                                        @else
-                                                            {{ $bg->emds->type }}
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $timer = $bg ? $bg->getTimer('bg_acc_form') : '';
-                                                            if ($timer) {
-                                                                $start = $timer->start_time;
-                                                                $hrs = $timer->duration_hours;
-                                                                $end = strtotime($start) + $hrs * 60 * 60;
-                                                                $remaining = $end - time();
-                                                            } else {
-                                                                $remained = $bg ? $bg->remainedTime('bg_acc_form') : '';
-                                                            }
-                                                        @endphp
-                                                        @if ($timer)
-                                                            <span class="timer" id="timer-{{ $bg->id }}"
-                                                                data-remaining="{{ $remaining }}"></span>
-                                                        @else
-                                                            {!! $remained !!}
-                                                        @endif
-                                                    </td>
-                                                    <td class="d-flex flex-wrap gap-2">
-                                                        <a href="{{ route('bg-action', $bg->id) }}"
-                                                            class="btn btn-xs btn-primary">
-                                                            Status
-                                                        </a>
-                                                        <a href="{{ route('emds-dashboard.show', $bg->emds->id) }}"
-                                                            class="btn btn-xs btn-info">
-                                                            View
-                                                        </a>
-                                                        <a href="{{ route('emds-dashboard.edit', $bg->emds->id) }}"
-                                                            class="btn btn-xs btn-warning">
-                                                            Edit
-                                                        </a>
-                                                        @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
-                                                            <form
-                                                                action="{{ route('emds-dashboard.destroy', $bg->emds->id) }}"
-                                                                method="POST" class="d-inline">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-xs btn-danger"
-                                                                    onclick="return confirm('Are you sure you want to delete this emd?');">
-                                                                    Delete
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                    </td>
+                                                    <th>BG Date</th>
+                                                    <th>BG No.</th>
+                                                    <th>Beneficiary name</th>
+                                                    <th>Tender Name</th>
+                                                    <th>Amount</th>
+                                                    <th>BG Expiry Date</th>
+                                                    <th>BG Claim Period<br> Expiry Date</th>
+                                                    <th>BG Charges paid</th>
+                                                    <th>BG Charges <br>Calculated</th>
+                                                    <th>FDR No</th>
+                                                    <th>FDR Value</th>
+                                                    <th>Tender Status</th>
+                                                    <th>Expiry</th>
+                                                    <th>BG Status</th>
+                                                    <th>Timer</th>
+                                                    <th>Action</th>
                                                 </tr>
-                                            @endif
-                                        @endforeach
-                                    @endif
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="pt-3">
-                            <a href="{{ route('download-bgs') }}" class="btn btn-primary btn-sm">
-                                Download All Bgs
-                            </a>
+                                            </thead>
+                                            <tbody>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -281,11 +138,141 @@
         </div>
     </section>
 @endsection
+
 @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
+        $(document).ready(function() {
+            let bgTables = {};
+            let types = ['new_requests', 'live', 'cancelled', 'rejected'];
+
+            function initDataTable(type) {
+                if (bgTables[type]) {
+                    bgTables[type].ajax.reload();
+                    return;
+                }
+                bgTables[type] = $(`#${type}Table`).DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: '{{ route('bg.getBgData', ':type') }}'.replace(':type', type),
+                        type: 'POST',
+                        data: function(d) {
+                            d
+                        },
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        error: function(xhr, error, thrown) {
+                            console.error('DataTables error:', error, thrown);
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                console.error(xhr.responseJSON.message);
+                            } else {
+                                console.error('Error loading data. Please try again.');
+                            }
+                        }
+                    },
+                    columns: [{
+                            data: 'bg_date',
+                            name: 'bg_date'
+                        },
+                        {
+                            data: 'bg_no',
+                            name: 'bg_no'
+                        },
+                        {
+                            data: 'beneficiary_name',
+                            name: 'beneficiary_name'
+                        },
+                        {
+                            data: 'tender_name',
+                            name: 'tender_name'
+                        },
+                        {
+                            data: 'amount',
+                            name: 'amount',
+                        },
+                        {
+                            data: 'bg_expiry',
+                            name: 'bg_expiry'
+                        },
+                        {
+                            data: 'bg_claim_expiry',
+                            name: 'bg_claim_expiry'
+                        },
+                        {
+                            data: 'bg_charges_paid',
+                            name: 'bg_charges_paid'
+                        },
+                        {
+                            data: 'bg_charges_calculated',
+                            name: 'bg_charges_calculated',
+                        },
+                        {
+                            data: 'fdr_no',
+                            name: 'fdr_no'
+                        },
+                        {
+                            data: 'fdr_value',
+                            name: 'fdr_value',
+                        },
+                        {
+                            data: 'tender_status',
+                            name: 'tender_status'
+                        },
+                        {
+                            data: 'expiry',
+                            name: 'expiry'
+                        },
+                        {
+                            data: 'bg_status',
+                            name: 'bg_status'
+                        },
+                        {
+                            data: 'timer',
+                            name: 'timer',
+                        },
+                        {
+                            data: 'action',
+                            name: 'action',
+                            orderable: false,
+                            searchable: false
+                        }
+
+                    ],
+                    order: [
+                        []
+                    ],
+                    search: {
+                        return: true,
+                    },
+                    pageLength: 25,
+                    language: {
+                        zeroRecords: 'No matching records found',
+                        emptyTable: 'No data available in table',
+                        paginate: {
+                            first: 'First',
+                            previous: 'Previous',
+                            next: 'Next',
+                            last: 'Last'
+                        }
+                    },
+                    responsive: true,
+                    stateSave: true,
+                    drawCallback: function() {
+                        handleTimers();
+                    },
+                });
+            }
+            initDataTable('new_requests');
+
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                let type = $(e.target).data('bs-target').replace('#', '');
+                initDataTable(type);
+            });
+
+            function handleTimers() {
+                document.querySelectorAll('.timer').forEach(startCountdown);
+            }
         });
     </script>
 @endpush

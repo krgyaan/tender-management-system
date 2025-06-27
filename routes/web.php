@@ -193,6 +193,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('courier', CourierDashboardController::class);
         Route::any('courier/despatch/{id}', [CourierDashboardController::class, 'despatch'])->name('courier.despatch');
         Route::any('courier/updateStatus', [CourierDashboardController::class, 'updateStatus'])->name('courier.updateStatus');
+        Route::post('courier/data/{type}', [CourierDashboardController::class, 'getCourierData'])->name('courier.getCourierData');
+
         Route::resource('phydocs', PhyDocsController::class);
 
         Route::resource('pricingsheets', PricingSheetController::class);
@@ -223,6 +225,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('emds-dashboard', [EmdDashboardController::class, 'dashboard'])->name('emds-dashboard.index');
         Route::get('emds-dashboard/bank-gurantee', [EmdDashboardController::class, 'BG'])->name('emds-dashboard.bg');
+        Route::post('bg/data/{type}', [EmdDashboardController::class, 'getBgData'])->name('bg.getBgData');
+
+
         Route::get('emds-dashboard/demand-draft', [EmdDashboardController::class, 'DD'])->name('emds-dashboard.dd');
         Route::get('emds-dashboard/bank-transfer', [EmdDashboardController::class, 'BT'])->name('emds-dashboard.bt');
         Route::get('emds-dashboard/pay-on-portal', [EmdDashboardController::class, 'POP'])->name('emds-dashboard.pop');

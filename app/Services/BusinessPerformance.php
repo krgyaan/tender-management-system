@@ -4,7 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class BusinessPerformance
 {
@@ -46,13 +46,68 @@ class BusinessPerformance
         return $query->get();
     }
 
+    public function getAssignedAndApprovedSummary($filters)
+    {
+        $assigned = DB::table('tender_infos as ti')
+            ->select(
+                'ti.id',
+                'ti.team',
+                'ti.location',
+                'ti.item',
+                'ti.tender_name',
+                'ti.gst_values',
+                'ti.tlStatus',
+                'ti.status as tender_status',
+                'l.state',
+                'l.region',
+                'ih.name as item_heading_name',
+                'ih.team as heading_team',
+                'it.name as item_name',
+                'it.team as item_team'
+            )
+            ->where('ti.deleteStatus', '0')
+            ->join('locations as l', 'ti.location', '=', 'l.id')
+            ->join('items as it', 'ti.item', '=', 'it.id')
+            ->leftJoin('item_headings as ih', function ($join) {
+                $join->on('it.heading', '=', 'ih.name')
+                    ->whereColumn('it.team', 'ih.team');
+            })
+            ->when(!empty($filters['heading']), function ($q) use ($filters) {
+                $q->where('ih.id', $filters['heading']);
+            })
+            ->when(!empty($filters['from']) && !empty($filters['to']), function ($q) use ($filters) {
+                $q->whereBetween('ti.due_date', [$filters['from'], $filters['to']]);
+            })
+            ->get();
+
+        $approved = $assigned->filter(function ($tender) {
+            return isset($tender->tlStatus) && $tender->tlStatus == '1';
+        });
+
+        $assignedCount = $assigned->count();
+        $assignedSum = $assigned->sum('gst_values');
+        $approvedCount = $approved->count();
+        $approvedSum = $approved->sum('gst_values');
+
+        return [
+            'tenders_assigned' => [
+                'count' => $assignedCount,
+                'value' => $assignedSum,
+                'tender' => $assigned->pluck('tender_name')->toArray(),
+            ],
+            'tenders_approved' => [
+                'count' => $approvedCount,
+                'value' => $approvedSum,
+                'tender' => $approved->pluck('tender_name')->toArray(),
+            ],
+        ];
+    }
+
     public function calculateSummary(Collection $tenders): array
     {
         $summary = [
-            'tenders_assigned' => ['tender' => [], 'count' => 0, 'value' => 0],
-            'tenders_approved' => ['tender' => [], 'count' => 0, 'value' => 0],
-            'tenders_missed' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_bid' => ['tender' => [], 'count' => 0, 'value' => 0],
+            'tenders_missed' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tender_results_awaited' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_disqualified' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_won' => ['tender' => [], 'count' => 0, 'value' => 0],
@@ -60,11 +115,6 @@ class BusinessPerformance
         ];
 
         foreach ($tenders as $tender) {
-            // Count all tenders as assigned
-            $summary['tenders_assigned']['count']++;
-            $summary['tenders_assigned']['value'] += $tender->gst_values;
-            $summary['tenders_assigned']['tender'][] = $tender->tender_name;
-
             // Classify based on status
             switch ($tender->tender_status) {
                 case 8:
@@ -92,11 +142,6 @@ class BusinessPerformance
             // Count bid submitted tenders
             if ($tender->bid_status === 'Bid Submitted') {
                 $this->addToSummary($summary['tenders_bid'], $tender);
-            }
-
-            // Count approved tenders (you might need to adjust this condition based on your business logic)
-            if (in_array($tender->tender_status, [17, 24, 25, 26, 27, 28])) {
-                $this->addToSummary($summary['tenders_approved'], $tender);
             }
         }
 

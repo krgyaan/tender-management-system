@@ -13,10 +13,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
+use Yajra\DataTables\DataTables;
 
 class CourierDashboardController extends Controller
 {
     public $status = [
+        0 => 'Rejected',
         1 => 'In Transit',
         2 => 'Out for delivery',
         3 => 'Address incorrect/Not delivered/Returned',
@@ -32,8 +35,89 @@ class CourierDashboardController extends Controller
     public function index()
     {
         $status = $this->status;
-        $couriers = CourierDashboard::with('courier_from')->orderBy('created_at', 'desc')->get();
-        return view('courier.index', compact('couriers', 'status'));
+        return view('courier.index', compact('status'));
+    }
+
+    public function getCourierData(Request $request, $type)
+    {
+        try {
+            $user = Auth::user();
+            $statusMap = [
+                'rejected' => [0],
+                'dispatched' => [1],
+                'not_delivered' => [2, 3],
+                'delivered' => [4],
+            ];
+
+            if (!in_array($type, array_merge(array_keys($statusMap), ['pending']))) {
+                throw new \InvalidArgumentException('Invalid courier type');
+            }
+
+            Log::info("Fetching $type couriers");
+
+            $query = CourierDashboard::with('courier_from');
+            if ($type === 'pending') {
+                $query->whereNull('status');
+            } else {
+                $query->whereIn('status', $statusMap[$type]);
+            }
+
+            if (!in_array($user->role, ['admin', 'common-coordinator'])) {
+                $query->where('emp_from', $user->id);
+            }
+            $query->orderBy('created_at', 'desc');
+            // Handle search
+            if ($request->has('search') && !empty($request->search['value'])) {
+                $searchValue = $request->search['value'];
+                $query->where(function ($q) use ($searchValue) {
+                    $q->where('to_name', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('to_org', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('courier_provider', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('docket_no', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('to_addr', 'LIKE', "%{$searchValue}%");
+                });
+            }
+
+            return DataTables::of($query)
+                ->addColumn('from_name', function ($courier) {
+                    return $courier->courier_from->name ?? '';
+                })
+                ->addColumn('timer', function ($courier) {
+                    return view('partials.courier-timer', compact('courier'))->render();
+                })
+                ->addColumn('action', function ($courier) {
+                    return view('partials.courier-actions', compact('courier'))->render();
+                })
+                ->editColumn('created_at', function ($courier) {
+                    return $courier->created_at
+                        ? '<span class="d-none">' . strtotime($courier->created_at) . '</span>' . $courier->created_at->format('d-m-Y h:i A')
+                        : '';
+                })
+                ->editColumn('del_date', function ($courier) {
+                    return $courier->del_date
+                        ? '<span class="d-none">' . strtotime($courier->del_date) . '</span>' . date('d-m-Y', strtotime($courier->del_date))
+                        : '';
+                })
+                ->editColumn('pickup_date', function ($courier) {
+                    return $courier->pickup_date
+                        ? '<span class="d-none">' . strtotime($courier->pickup_date) . '</span>' . date('d-m-Y h:i A', strtotime($courier->pickup_date))
+                        : '';
+                })
+                ->editColumn('delivery_date', function ($courier) {
+                    return $courier->delivery_date
+                        ? '<span class="d-none">' . strtotime($courier->delivery_date) . '</span>' . date('d-m-Y h:i A', strtotime($courier->delivery_date))
+                        : '';
+                })
+                ->rawColumns(['action', 'timer', 'created_at', 'del_date', 'pickup_date', 'delivery_date'])
+                ->make(true);
+        } catch (\Exception $e) {
+            Log::error('DataTables Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => true,
+                'message' => 'Error loading data',
+                'details' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function create()
@@ -122,10 +206,6 @@ class CourierDashboardController extends Controller
     {
         return view('courier.show', compact('courier'));
     }
-
-    public function edit(CourierDashboard $courierDashboard) {}
-
-    public function update(Request $request, CourierDashboard $courierDashboard) {}
 
     public function destroy($id)
     {
@@ -256,6 +336,9 @@ class CourierDashboardController extends Controller
                 'within_time' => $request->within_time,
             ]);
             $courier = CourierDashboard::find($request->id);
+            $message = 'Courier status updated successfully';
+            $error = false;
+
             if ($courier->status == 3 || $courier->status == 4) {
                 if ($this->courierStatusMail($courier)) {
                     Log::info("Courier status updated and mail sent successfully $courier->id to $courier->status");
@@ -268,7 +351,9 @@ class CourierDashboardController extends Controller
                 Log::info("Courier status updated successfully $courier->id to $courier->status");
             }
 
-            return redirect()->route('courier.index')->with('success', 'Courier updated successfully');
+            Log::info($message . " {$courier->id} to {$courier->status}");
+
+            return redirect()->route('courier.index')->with('success', $message);
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }

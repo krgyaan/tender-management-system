@@ -50,7 +50,7 @@ class TimerService
             return;
         }
 
-        $duration = $customDuration ?? ($this->stageDurations[$stage] ?? 24);           
+        $duration = $customDuration ?? ($this->stageDurations[$stage] ?? 24);
 
         $uid = match ($stage) {
             'pop_acc_form', 'bt_acc_form', 'cheque_ac_form', 'dd_acc_form', 'bg_acc_form' =>

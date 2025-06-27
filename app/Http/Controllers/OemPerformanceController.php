@@ -6,14 +6,22 @@ use Carbon\Carbon;
 use App\Models\TenderInfo;
 use App\Models\VendorOrg;
 use Illuminate\Http\Request;
+use App\Services\OemPerformance;
 
 class OemPerformanceController extends Controller
 {
+    protected OemPerformance $oemPerformanceService;
+
+    public function __construct(OemPerformance $oemPerformanceService)
+    {
+        $this->oemPerformanceService = $oemPerformanceService;
+    }
     public function performance(Request $request)
     {
         $oems = VendorOrg::all();
         $result = false;
         $tenders = [];
+        $summary = [];
         $notAllowedTenders = [];
         $rfqsSentToOem = [];
         $selectedOem = $request->oem ?? null;
@@ -22,6 +30,12 @@ class OemPerformanceController extends Controller
 
         if ($request->isMethod('POST')) {
             $result = true;
+            // Prepare filters for service
+            $filters = [
+                'oem' => $selectedOem,
+                'from' => $from,
+                'to' => $to
+            ];
 
             $tenders = TenderInfo::with('users', 'rfqs', 'rfqs.rfqResponse')
                 ->when($from && $to, function ($q) use ($from, $to) {
@@ -32,45 +46,21 @@ class OemPerformanceController extends Controller
                 })
                 ->get();
 
-            $notAllowedTenders = $tenders->filter(function ($tender) use ($selectedOem) {
-                if (!$tender->oem_who_denied) return false;
-                $denied = is_array($tender->oem_who_denied)
-                    ? $tender->oem_who_denied
-                    : explode(',', $tender->oem_who_denied);
-                return in_array($selectedOem, array_map('trim', $denied));
-            })->map(function ($tender) {
-                return [
-                    'id' => $tender->id,
-                    'team' => $tender->team,
-                    'tender_no' => $tender->tender_no,
-                    'tender_name' => $tender->tender_name,
-                    'due_date' => date('d-m-Y h:i A', strtotime("$tender->due_date $tender->due_time")),
-                    'gst_values' => $tender->gst_values,
-                    'member' => $tender->users->name ?? '',
-                ];
-            })->toArray();
+            // Assigned & Approved summary
+            $assignedApprovedSummary = $this->oemPerformanceService->getAssignedAndApprovedSummary($tenders, $selectedOem);
 
-            $rfqsSentToOem = $tenders->filter(function ($tender) use ($selectedOem) {
-                if (!$tender->rfq_to) return false;
-                $sent = is_array($tender->rfq_to)
-                    ? $tender->rfq_to
-                    : explode(',', $tender->rfq_to);
-                return in_array($selectedOem, array_map('trim', $sent));
-            })->map(function ($tender) {
-                return [
-                    'id' => $tender->id,
-                    'team' => $tender->team,
-                    'tender_no' => $tender->tender_no,
-                    'tender_name' => $tender->tender_name,
-                    'due_date' => date('d-m-Y h:i A', strtotime("$tender->due_date $tender->due_time")),
-                    'gst_values' => $tender->gst_values,
-                    'member' => $tender->users->name ?? '',
-                    'rfq_sent_on' => $tender->rfqs->created_at->format('d-m-Y h:i A') ?? 'Not Yet',
-                    'rfq_response' => $tender->rfqs->rfqResponse?->receipt_datetime->format('d-m-Y h:i A') ?? 'Not Yet',
-                ];
-            })->toArray();
+            // Use service for these
+            $notAllowedTenders = $this->oemPerformanceService->getNotAllowedTenders($tenders, $selectedOem);
+            $rfqsSentToOem = $this->oemPerformanceService->getRfqsSentToOem($tenders, $selectedOem);
+
+            // Get tenders using service
+            $bidedTenders = $this->oemPerformanceService->getTendersByOem($filters);
+            // Calculate summary using service
+            $summary = $this->oemPerformanceService->calculateSummary($bidedTenders);
+            // Merge assigned/approved into summary
+            $summary = array_merge($assignedApprovedSummary, $summary);
         }
 
-        return view('performance.oem', compact('oems', 'result', 'notAllowedTenders', 'rfqsSentToOem'));
+        return view('performance.oem', compact('oems', 'result', 'notAllowedTenders', 'rfqsSentToOem', 'summary'));
     }
 }

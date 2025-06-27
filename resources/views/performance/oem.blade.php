@@ -50,68 +50,108 @@
                 <hr class="m-0 mt-3 p-0">
             </div>
             @if ($result)
-                <h4 class="text-center">Tenders Not Allowed by This OEM</h4>
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Team Member</th>
-                            <th>Team</th>
-                            <th>Tender</th>
-                            <th>GST Value</th>
-                            <th>Due Date Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($notAllowedTenders as $tender)
-                            <tr>
-                                <td>{{ $tender['team'] }}</td>
-                                <td>{{ $tender['member'] }}</td>
-                                <td>
-                                    <b>
-                                        {{ $tender['tender_name'] }}
-                                    </b><br>
-                                    {{ $tender['tender_no'] }}
-                                </td>
-                                <td>{{ format_inr($tender['gst_values']) }}</td>
-                                <td>{{ $tender['due_date'] }}</td>
-                            </tr>
-                        @empty
-                        @endforelse
-                    </tbody>
-                </table>
-                <h4 class="text-center mt-3">RFQs Sent to This OEM</h4>
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Team</th>
-                            <th>Team Member</th>
-                            <th>Tender</th>
-                            <th>GST Value</th>
-                            <th>Due Date Time</th>
-                            <th>RFQ Sent on</th>
-                            <th>Response get on</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($rfqsSentToOem as $tender)
-                            <tr>
-                                <td>{{ $tender['team'] }}</td>
-                                <td>{{ $tender['member'] }}</td>
-                                <td>
-                                    <b>
-                                        {{ $tender['tender_name'] }}
-                                    </b><br>
-                                    {{ $tender['tender_no'] }}
-                                </td>
-                                <td>{{ format_inr($tender['gst_values']) }}</td>
-                                <td>{{ $tender['due_date'] }}</td>
-                                <td>{{ $tender['rfq_sent_on'] }}</td>
-                                <td>{{ $tender['rfq_response'] }}</td>
-                            </tr>
-                        @empty
-                        @endforelse
-                    </tbody>
-                </table>
+                <div id="result" class="pb-3">
+                    <h4 class="text-center">Tenders Not Allowed by This OEM</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Team Member</th>
+                                    <th>Team</th>
+                                    <th>Tender</th>
+                                    <th>GST Value</th>
+                                    <th>Due Date Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($notAllowedTenders as $tender)
+                                    <tr>
+                                        <td>{{ $tender['team'] }}</td>
+                                        <td>{{ $tender['member'] }}</td>
+                                        <td>
+                                            <b>
+                                                {{ $tender['tender_name'] }}
+                                            </b><br>
+                                            {{ $tender['tender_no'] }}
+                                        </td>
+                                        <td>{{ format_inr($tender['gst_values']) }}</td>
+                                        <td>{{ $tender['due_date'] }}</td>
+                                    </tr>
+                                @empty
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    <h4 class="text-center mt-3">RFQs Sent to This OEM</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Team Member</th>
+                                    <th>Tender</th>
+                                    <th>GST Value</th>
+                                    <th>Due Date Time</th>
+                                    <th>RFQ Sent on</th>
+                                    <th>Response get on</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($rfqsSentToOem as $tender)
+                                    <tr>
+                                        <td>
+                                            <b>{{ $tender['member'] }}</b>
+                                            <br>
+                                            <span class="text-muted">
+                                                of {{ $tender['team'] }} Team
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <b>
+                                                {{ $tender['tender_name'] }}
+                                            </b><br>
+                                            {{ $tender['tender_no'] }}
+                                        </td>
+                                        <td>{{ format_inr($tender['gst_values']) }}</td>
+                                        <td>{{ $tender['due_date'] }}</td>
+                                        <td>{{ $tender['rfq_sent_on'] }}</td>
+                                        <td>{{ $tender['rfq_response'] }}</td>
+                                    </tr>
+                                @empty
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="text-center mt-3">Worked With This OEM</h4>
+                    <div class="table-responsive">
+                        <table class="table-bordered w-100 summary">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Count</th>
+                                    <th>Value</th>
+                                    <th>Tenders</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($summary as $name => $value)
+                                    <tr>
+                                        <td>{{ Str::title(str_replace('_', ' ', $name)) }}</td>
+                                        <td>{{ $value['count'] }}</td>
+                                        <td>₹{{ format_inr($value['value']) }}</td>
+                                        <td class="text-wrap">
+                                            @foreach ($value['tender'] as $tender)
+                                                <small class="badge bg-success">
+                                                    {{ $tender }},
+                                                </small>
+                                            @endforeach
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             @endif
         </div>
     </div>
@@ -148,6 +188,16 @@
             height: 38px;
             top: 0;
             right: 10px;
+        }
+
+        .summary th {
+            font-weight: bold;
+        }
+
+        .summary th,
+        .summary td {
+            padding: 8px;
+            font-size: 16px;
         }
     </style>
 @endpush

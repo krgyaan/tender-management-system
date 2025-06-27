@@ -36,6 +36,7 @@ use App\Mail\TenderStatusUpdateMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 
 class TenderInfoController extends Controller
 {
@@ -125,7 +126,7 @@ class TenderInfoController extends Controller
                 'itemName:id,name',
                 'statuses:id,name'
             ])
-                ->select('tender_infos.*') // SELECT main table fields only
+                ->select('tender_infos.*')
                 ->leftJoin('users', 'users.id', '=', 'tender_infos.team_member')
                 ->leftJoin('organizations', 'organizations.id', '=', 'tender_infos.organisation')
                 ->leftJoin('statuses', 'statuses.id', '=', 'tender_infos.status')
@@ -161,26 +162,35 @@ class TenderInfoController extends Controller
                 });
             }
 
+            $statusIds = DB::table('statuses')
+                ->selectRaw('tender_category, GROUP_CONCAT(id) as ids')
+                ->where('status', '1')
+                ->groupBy('tender_category')
+                ->pluck('ids', 'tender_category')
+                ->toArray();
+
+            // Log::info('Status IDs: ' . json_encode($statusIds));
+
             // Type-based filtering
             switch ($type) {
                 case 'prep':
-                    $query->whereIn('tender_infos.status', ['1', '2', '3', '4', '5', '6', '7', '29', '30']);
+                    $query->whereIn('tender_infos.status', [$statusIds['prep']] ?? []);
                     break;
                 case 'dnb':
-                    $query->whereIn('tender_infos.status', ['8', '9', '10', '11', '12', '13', '14', '15', '16', '31', '32']);
+                    $query->whereIn('tender_infos.status', [$statusIds['dnb']] ?? []);
                     break;
                 case 'bid':
-                    $query->whereIn('tender_infos.status', ['17', '19', '20', '23']);
+                    $query->whereIn('tender_infos.status', [$statusIds['bid']] ?? []);
                     break;
                 case 'won':
-                    $query->whereIn('tender_infos.status', ['25', '26', '27', '28']);
+                    $query->whereIn('tender_infos.status', [$statusIds['won']] ?? []);
                     break;
                 case 'lost':
-                    $query->whereIn('tender_infos.status', ['18', '21', '22', '24']);
+                    $query->whereIn('tender_infos.status', [$statusIds['lost']] ?? []);
                     break;
             }
 
-            Log::info('Fetching tenders SQL: ' . $query->toSql());
+            // Log::info('Fetching tenders SQL: ' . $query->toSql());
 
             return DataTables::of($query)
                 ->addColumn('action', function ($tender) {

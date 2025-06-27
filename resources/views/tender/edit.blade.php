@@ -266,6 +266,34 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
+            // Delete document
+            $('#remove_docs').on('click', function() {
+                if (!confirm('Are you sure you want to delete this document?')) {
+                    return;
+                }
+                var id = $(this).data('id');
+                var row = $(this).closest('tr');
+                if (!id) {
+                    row.remove();
+                } else {
+                    $.ajax({
+                        url: '{{ route('tender.doc.delete', ':id') }}'.replace(':id', id),
+                        type: 'DELETE',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                row.remove();
+                                console.log("Document deleted successfully.");
+                            } else {
+                                alert('Failed to delete document.');
+                            }
+                        }
+                    });
+                }
+            });
+
             function updateTenderName() {
                 let organisation = $('#organisation').find('option:selected').text().trim();
                 let itemName = $('#item').find('option:selected').text().trim();
@@ -306,31 +334,6 @@
                 },
                 fileValidateTypeLabelExpectedTypes: 'Expects {allButLastType} or {lastType}'
 
-            });
-
-            // Delete document
-            $('#docs').on('click', '#remove_docs', function() {
-                var id = $(this).data('id');
-                var row = $(this).closest('tr');
-                if (!id) {
-                    row.remove();
-                } else {
-                    $.ajax({
-                        url: '{{ route('tender.doc.delete', ':id') }}'.replace(':id', id),
-                        type: 'DELETE',
-                        data: {
-                            _token: '{{ csrf_token() }}'
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                row.remove();
-                                console.log("Document deleted successfully.");
-                            } else {
-                                alert('Failed to delete document.');
-                            }
-                        }
-                    });
-                }
             });
         });
     </script>

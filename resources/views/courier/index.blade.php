@@ -13,99 +13,62 @@
                 <div class="card">
                     <div class="card-body">
                         @include('partials.messages')
-                        <div class="table-responsive">
-                            <table class="table" id="allUsers">
-                                <thead class="">
-                                    <tr>
-                                        <th>Request No</th>
-                                        <th>Request Date</th>
-                                        <th>To (Name)</th>
-                                        <th>From (Name)</th>
-                                        <th>Expected <br>Delivery Date</th>
-                                        <th>Timer</th>
-                                        <th>Courier <br>Provider</th>
-                                        <th>Pickup <br>Date & Time</th>
-                                        <th>Docket No</th>
-                                        <th>Delivery <br>Date & Time</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if ($couriers->count() > 0)
-                                        @foreach ($couriers as $courier)
-                                            @if ($courier->emp_from == Auth::user()->id || Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator')
+                        <ul class="nav nav-pills justify-content-center" id="courierTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pending"
+                                    type="button">
+                                    Pending
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#dispatched" type="button">
+                                    Dispatched
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#not_delivered"
+                                    type="button">
+                                    Not Delivered
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#delivered" type="button">
+                                    Delivered
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#rejected" type="button">
+                                    Rejected
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            @foreach (['pending', 'dispatched', 'not_delivered', 'delivered', 'rejected'] as $type)
+                                <div class="tab-pane fade {{ $type === 'pending' ? 'show active' : '' }}"
+                                    id="{{ $type }}">
+                                    <div class="table-responsive">
+                                        <table class="table-hover" id="{{ $type }}Table">
+                                            <thead class="">
                                                 <tr>
-                                                    <td>{{ $courier->id }}</td>
-                                                    <td>{{ $courier->created_at->format('d-m-Y H:i A') }}</td>
-                                                    <td>{{ $courier->to_name }}</td>
-                                                    <td>{{ $courier->courier_from->name }}</td>
-                                                    <td>
-                                                        {{ $courier->del_date ? Carbon::parse($courier->del_date)->format('d-m-Y') : '' }}
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $timer = $courier->getTimer('courier_created');
-                                                            if ($timer) {
-                                                                $start = $timer->start_time;
-                                                                $hrs = $timer->duration_hours;
-                                                                $end = strtotime($start) + $hrs * 60 * 60;
-                                                                $remaining = $end - time();
-                                                            } else {
-                                                                $remained = $courier->remainedTime('courier_created');
-                                                            }
-                                                        @endphp
-                                                        @if ($timer)
-                                                            <span class="timer" id="timer-{{ $courier->id }}"
-                                                                data-remaining="{{ $remaining }}"></span>
-                                                        @else
-                                                            {!! $remained !!}
-                                                        @endif
-                                                    </td>
-                                                    <td>{{ $courier->courier_provider }}</td>
-                                                    <td>
-                                                        {{ $courier->pickup_date ? date('d-m-Y h:1 A', strtotime($courier->pickup_date)) : '' }}
-                                                    </td>
-                                                    <td>{{ $courier->docket_no }}</td>
-                                                    <td>
-                                                        @if ($courier->status == 4)
-                                                            {{ date('d-m-Y', strtotime($courier->delivery_date)) }}
-                                                        @else
-                                                            {{ $courier->status ? $status[$courier->status] : '' }}
-                                                        @endif
-                                                    </td>
-                                                    <td class="d-flex gap-2 flex-wrap">
-                                                        <a type="button" data-id="{{ $courier->id }}"
-                                                            data-status="{{ $courier->status }}" data-bs-toggle="modal"
-                                                            data-bs-target="#statusModal"
-                                                            class="btn btn-primary btn-xs status-btn">
-                                                            Status
-                                                        </a>
-                                                        <a href="{{ route('courier.despatch', $courier->id) }}"
-                                                            class="btn btn-success btn-xs">
-                                                            Dispatch
-                                                        </a>
-                                                        <a href="{{ route('courier.show', $courier->id) }}"
-                                                            class="btn btn-info btn-xs">
-                                                            View
-                                                        </a>
-                                                        @if ($courier->emp_from == Auth::user()->id || in_array(Auth::user()->role, ['coordinator', 'admin']))
-                                                            <form action="{{ route('courier.destroy', $courier->id) }}"
-                                                                method="POST" class="d-inline">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-danger btn-xs"
-                                                                    onclick="return confirm('Are you sure you want to delete this courier?')">
-                                                                    <i class="fa fa-trash"></i>
-                                                                </button>
-                                                            </form>
-                                                        @endif
-                                                    </td>
+                                                    <th>Request No</th>
+                                                    <th>Request Date</th>
+                                                    <th>To (Name)</th>
+                                                    <th>From (Name)</th>
+                                                    <th>Expected <br>Delivery Date</th>
+                                                    <th>Timer</th>
+                                                    <th>Courier <br>Provider</th>
+                                                    <th>Pickup <br>Date & Time</th>
+                                                    <th>Docket No</th>
+                                                    <th>Delivery <br>Date & Time</th>
+                                                    <th>Action</th>
                                                 </tr>
-                                            @endif
-                                        @endforeach
-                                    @endif
-                                </tbody>
-                            </table>
+                                            </thead>
+                                            <tbody>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -160,37 +123,148 @@
             </div>
         </div>
     </div>
-
 @endsection
 
 @push('scripts')
     <script>
         $(document).ready(function() {
-            $(document).on('show.bs.modal', function() {
-                const status = $(this).find('#status');
-                status.on('change', function() {
-                    if (status.val() == '4') {
-                        $('.delivery').show();
-                        $('#delivery_date').attr('required', true);
-                        $('#delivery_pod').attr('required', true);
-                        $('#within_time').attr('required', true);
-                    } else {
-                        $('.delivery').hide();
-                        $('#delivery_date').removeAttr('required');
-                        $('#delivery_pod').removeAttr('required');
-                        $('#within_time').removeAttr('required');
-                    }
+            let courierTables = {};
+            let types = ['pending', 'dispatched', 'not_delivered', 'delivered', 'rejected'];
+
+            function initDataTable(type) {
+                if (courierTables[type]) {
+                    courierTables[type].ajax.reload();
+                    return;
+                }
+                courierTables[type] = $(`#${type}Table`).DataTable({
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: '{{ route('courier.getCourierData', ':type') }}'.replace(':type', type),
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        },
+                        error: function(xhr, error, thrown) {
+                            console.error('DataTables error:', error, thrown);
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                console.error(xhr.responseJSON.message);
+                            } else {
+                                console.error('Error loading data. Please try again.');
+                            }
+                        }
+                    },
+                    columns: [{
+                            data: 'id',
+                            name: 'id'
+                        },
+                        {
+                            data: 'created_at',
+                            name: 'created_at'
+                        },
+                        {
+                            data: 'to_name',
+                            name: 'to_name'
+                        },
+                        {
+                            data: 'courier_from.name',
+                            name: 'courier_from.name'
+                        },
+                        {
+                            data: 'del_date',
+                            name: 'del_date'
+                        },
+                        {
+                            data: 'timer',
+                            name: 'timer',
+                            orderable: false,
+                            searchable: false
+                        },
+                        {
+                            data: 'courier_provider',
+                            name: 'courier_provider'
+                        },
+                        {
+                            data: 'pickup_date',
+                            name: 'pickup_date'
+                        },
+                        {
+                            data: 'docket_no',
+                            name: 'docket_no'
+                        },
+                        {
+                            data: 'delivery_date',
+                            name: 'delivery_date'
+                        },
+                        {
+                            data: 'action',
+                            name: 'action',
+                            orderable: false,
+                            searchable: false
+                        }
+                    ],
+                    order: [
+                        [0, 'asc']
+                    ],
+                    search: {
+                        return: true,
+                    },
+                    pageLength: 25,
+                    language: {
+                        zeroRecords: 'No matching records found',
+                        emptyTable: 'No data available in table',
+                        paginate: {
+                            first: 'First',
+                            previous: 'Previous',
+                            next: 'Next',
+                            last: 'Last'
+                        }
+                    },
+                    responsive: true,
+                    stateSave: true,
+                    drawCallback: function() {
+                        handleTimers();
+                        handleModalEvents();
+                    },
                 });
+            }
+            initDataTable('pending');
+
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                let type = $(e.target).data('bs-target').replace('#', '');
+                initDataTable(type);
             });
 
-            $('.status-btn').click(function() {
-                const id = $(this).data('id');
-                const status = $(this).data('status');
-                $('#id').val(id);
+
+            function handleModalEvents() {
+                $('.status-btn').click(function() {
+                    const id = $(this).data('id');
+                    const status = $(this).data('status');
+                    $('#id').val(id);
+                });
+            }
+            const status = $(this).find('#status');
+            status.on('change', function() {
+                if (status.val() == '4') {
+                    $('.delivery').show();
+                    $('#delivery_date').attr('required', true);
+                    $('#delivery_pod').attr('required', true);
+                    $('#within_time').attr('required', true);
+                } else {
+                    $('.delivery').hide();
+                    $('#delivery_date').removeAttr('required');
+                    $('#delivery_pod').removeAttr('required');
+                    $('#within_time').removeAttr('required');
+                }
             });
 
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
+
+            function handleTimers() {
+                document.querySelectorAll('.timer').forEach(startCountdown);
+            }
         });
     </script>
 @endpush

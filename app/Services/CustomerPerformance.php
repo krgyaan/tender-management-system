@@ -51,13 +51,72 @@ class CustomerPerformance
             ->get();
     }
 
+    public function getAssignedAndApprovedSummary($filters)
+    {
+        $assigned = DB::table('tender_infos as ti')
+            ->select(
+                'ti.id',
+                'ti.team',
+                'ti.location',
+                'ti.item',
+                'ti.tender_name',
+                'ti.gst_values',
+                'ti.tlStatus',
+                'ti.status as tender_status',
+                'o.id as org_id',
+                'o.name as org_name',
+                'ih.name as item_name',
+                'ih.team as item_team'
+            )
+            ->where('ti.deleteStatus', '0')
+            ->join('organizations as o', 'ti.organisation', '=', 'o.id')
+            ->join('item_headings as ih', 'ti.item', '=', 'ih.id')
+            ->when($filters['org'], function ($query) use ($filters) {
+                $query->where(function ($q) use ($filters) {
+                    if ($filters['org']) {
+                        $q->where('o.id', $filters['org']);
+                    }
+                });
+            })
+            ->when($filters['item_heading'], function ($query) use ($filters) {
+                $query->where('ih.id', $filters['item_heading']);
+            })
+            ->when($filters['from'] && $filters['to'], function ($query) use ($filters) {
+                $query->whereBetween('ti.due_date', [
+                    Carbon::parse($filters['from'])->startOfDay(),
+                    Carbon::parse($filters['to'])->endOfDay()
+                ]);
+            })
+            ->get();
+
+        $approved = $assigned->filter(function ($tender) {
+            return isset($tender->tlStatus) && $tender->tlStatus == '1';
+        });
+
+        $assignedCount = $assigned->count();
+        $assignedSum = $assigned->sum('gst_values');
+        $approvedCount = $approved->count();
+        $approvedSum = $approved->sum('gst_values');
+
+        return [
+            'tenders_assigned' => [
+                'count' => $assignedCount,
+                'value' => $assignedSum,
+                'tender' => $assigned->pluck('tender_name')->toArray(),
+            ],
+            'tenders_approved' => [
+                'count' => $approvedCount,
+                'value' => $approvedSum,
+                'tender' => $approved->pluck('tender_name')->toArray(),
+            ],
+        ];
+    }
+
     public function calculateSummary(Collection $tenders): array
     {
         $summary = [
-            'tenders_assigned' => ['tender' => [], 'count' => 0, 'value' => 0],
-            'tenders_approved' => ['tender' => [], 'count' => 0, 'value' => 0],
-            'tenders_missed' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_bid' => ['tender' => [], 'count' => 0, 'value' => 0],
+            'tenders_missed' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tender_results_awaited' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_disqualified' => ['tender' => [], 'count' => 0, 'value' => 0],
             'tenders_won' => ['tender' => [], 'count' => 0, 'value' => 0],
@@ -65,11 +124,6 @@ class CustomerPerformance
         ];
 
         foreach ($tenders as $tender) {
-            // Count all tenders as assigned
-            $summary['tenders_assigned']['count']++;
-            $summary['tenders_assigned']['value'] += $tender->gst_values;
-            $summary['tenders_assigned']['tender'][] = $tender->tender_name;
-
             // Classify based on status
             switch ($tender->tender_status) {
                 case 8:
@@ -98,11 +152,6 @@ class CustomerPerformance
             if ($tender->bid_status === 'Bid Submitted') {
                 $this->addToSummary($summary['tenders_bid'], $tender);
             }
-
-            // Count approved tenders (you might need to adjust this condition based on your business logic)
-            if (in_array($tender->tender_status, [17, 24, 25, 26, 27, 28])) {
-                $this->addToSummary($summary['tenders_approved'], $tender);
-            }
         }
 
         return $summary;
@@ -118,8 +167,6 @@ class CustomerPerformance
     public function getLocationMetrics(Collection $tenders): array
     {
         $metrics = [
-            'total_value' => $tenders->sum('gst_values'),
-            'total_count' => $tenders->count(),
             'by_region' => [],
             'by_state' => [],
             'by_item' => [],

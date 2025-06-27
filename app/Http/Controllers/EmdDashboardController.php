@@ -124,6 +124,122 @@ class EmdDashboardController extends Controller
         }
     }
 
+    public function getBgData(Request $request, $type)
+    {
+        try {
+            $user = Auth::user();
+            $statusMap = [
+                'live'         => ['1', '2', '3', '4', '5', '6', '7'],
+                'cancelled'    => ['8', '9'],
+                'rejected'     => ['1'],
+            ];
+
+            if (!array_key_exists($type, $statusMap) && $type !== 'new_requests') {
+                throw new \InvalidArgumentException('Invalid BG type');
+            }
+
+            Log::info("Fetching $type bgs");
+
+            $query = EmdBg::with(['emds', 'emds.tender', 'emds.tender.statuses']);
+
+            if ($type === 'new_requests') {
+                $query->whereNull('action')->whereNull('bg_no');
+            } else {
+                $query->whereIn('action', $statusMap[$type]);
+                if ($type === 'rejected') {
+                    $query->where('bg_req', 'Rejected');
+                } else if ($type === 'live') {
+                    $query->whereNotNull('bg_no')->where('bg_req', 'Accepted')
+                        ->whereHas('emds', function ($q) {
+                            $q->where('type', 'Old Entries');
+                        });
+                } else if ($type === 'cancelled') {
+                    $query->where('bg_req', 'Cancelled');
+                }
+            }
+
+            if (!in_array($user->role, ['admin', 'account-executive', 'accountant', 'account-leader'])) {
+                $query->whereHas('emds.tender', function ($q) use ($user) {
+                    $q->where('team_member', $user->name);
+                });
+            }
+
+            // Handle search
+            if ($request->has('search') && !empty($request->search['value'])) {
+                $searchValue = $request->search['value'];
+                $query->where(function ($q) use ($searchValue) {
+                    $q->where('bg_no', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('bg_favour', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('bg_bank', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('bg_amt', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('fdr_no', 'LIKE', "%{$searchValue}%")
+                        ->orWhere('fdr_amt', 'LIKE', "%{$searchValue}%")
+                        ->orWhereHas('emds.tender', function ($q2) use ($searchValue) {
+                            $q2->where('tender_name', 'LIKE', "%{$searchValue}%");
+                        });
+                });
+            }
+
+            // latest bg requests first
+            $query->orderBy('id', 'desc');
+
+            return DataTables::of($query)
+                ->addColumn('bg_date', function ($bg) {
+                    return $bg->bg_date ? '<span class="d-none">' . strtotime($bg->bg_date) . '</span>' . date('d M, Y', strtotime($bg->bg_date)) : '';
+                })
+                ->addColumn('bg_no', function ($bg) {
+                    return $bg->bg_no ?? '';
+                })
+                ->addColumn('beneficiary_name', function ($bg) {
+                    return $bg->bg_favour ?? '';
+                })
+                ->addColumn('tender_name', function ($bg) {
+                    return $bg->emds->project_name ?? '';
+                })
+                ->addColumn('amount', function ($bg) {
+                    return format_inr($bg->bg_amt ?? 0);
+                })
+                ->addColumn('bg_expiry', function ($bg) {
+                    return $bg->bg_expiry ? '<span class="d-none">' . strtotime($bg->bg_expiry) . '</span>' . date('d-m-Y', strtotime($bg->bg_expiry)) : '';
+                })
+                ->addColumn('bg_claim_expiry', function ($bg) {
+                    return $bg->bg_claim ? '<span class="d-none">' . strtotime($bg->bg_claim) . '</span>' . date('d-m-Y', strtotime($bg->bg_claim)) : '';
+                })
+                ->addColumn('bg_charges_paid', function ($bg) {
+                    return view('partials.bg.charges-paid', ['bg' => $bg])->render();
+                })
+                ->addColumn('bg_charges_calculated', function ($bg) {
+                    return view('partials.bg.charges-calculated', ['bg' => $bg])->render();
+                })
+                ->addColumn('fdr_no', function ($bg) {
+                    return $bg->fdr_no ?? '';
+                })
+                ->addColumn('fdr_value', function ($bg) {
+                    return format_inr($bg->fdr_amt ?? 0);
+                })
+                ->addColumn('tender_status', function ($bg) {
+                    return view('partials.bg.tender-status', ['bg' => $bg])->render();
+                })
+                ->addColumn('expiry', function ($bg) {
+                    return view('partials.bg.expiry-status', ['bg' => $bg])->render();
+                })
+                ->addColumn('bg_status', function ($bg) {
+                    return view('partials.bg.bg-status', ['bg' => $bg])->render();
+                })
+                ->addColumn('timer', function ($bg) {
+                    return view('partials.bg.timer', ['bg' => $bg])->render();
+                })
+                ->addColumn('action', function ($bg) {
+                    return view('partials.bg.actions', ['bg' => $bg])->render();
+                })
+                ->rawColumns(['expiry', 'timer', 'action', 'bg_date', 'bg_expiry', 'bg_claim_expiry', 'bg_status'])
+                ->make(true);
+        } catch (\Throwable $th) {
+            Log::error('BG DataTable Error: ' . $th->getMessage());
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+
     public function DD(Request $request)
     {
         if ($request->isMethod('get')) {

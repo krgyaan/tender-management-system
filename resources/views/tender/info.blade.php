@@ -786,13 +786,12 @@
 
             $('#phyDocs').on('change', function() {
                 const phyDocs = $('#phyDocsDate');
-
                 if ($(this).val() === 'No') {
-                    phyDocs.hide();
+                    phyDocs.addClass('d-none');
                     $('#dead_time').removeAttr('required');
                     $('#dead_date').removeAttr('required');
                 } else {
-                    phyDocs.show();
+                    phyDocs.removeClass('d-none');
                     $('#dead_time').attr('required', 'true');
                     $('#dead_date').attr('required', 'true');
                 }

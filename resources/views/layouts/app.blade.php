@@ -487,35 +487,40 @@
                                     <span class="item-name fw-normal">Projects</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'account-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'account-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('checklists.*') ? 'active' : '' }}"
                                     href="{{ url('/accounts/checklists') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Account Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'expense-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'expense-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('fixed-expenses.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/fixed-expenses') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Expense Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'gstr1-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'gstr1-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('gstr1.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/gstr1') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">GST R1 Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'gst3b-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'gst3b-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('gst3b.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/gst3b') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">GST 3B Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'tds-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'tds-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('tds.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/tds') }}">
                                     <i class="fa fa-arrow-right"></i>
@@ -1037,7 +1042,7 @@
             <div class="right-panel">
                 &copy;
                 <script>
-                    document.write(new Date().getFullYear())
+                    document.querySelector(".footer .right-panel").innerHTML += new Date().getFullYear();
                 </script> TMS, All rights reserved.
             </div>
         </div>

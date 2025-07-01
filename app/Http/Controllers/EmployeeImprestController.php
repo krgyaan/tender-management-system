@@ -177,7 +177,7 @@ class EmployeeImprestController extends Controller
     public function employeeimprest_amount_post(Request $request)
     {
         try {
-            $this->validate($request, [
+            $request->validate([
                 'name_id' => 'required',
                 'date' => 'required',
                 'team_member_name' => 'required',
@@ -509,11 +509,13 @@ class EmployeeImprestController extends Controller
     {
         $request->validate([
             'category' => 'required|unique:categories,category',
+            'heading' => 'required',
         ], [
             'category.unique' => 'The category name has already been taken. Please choose a different one.',
         ]);
         $category = new Category();
         $category->category = $request->category;
+        $category->heading = $request->heading;
         $category->ip = $_SERVER['REMOTE_ADDR'];
 
         $category->save();
@@ -522,21 +524,23 @@ class EmployeeImprestController extends Controller
 
     public function category_del($id)
     {
-        $categorydel = Category::where('id', Crypt::decrypt($id))->delete();
-        return redirect()->back()->with('success', 'Category deleted successfully');
+        $categorydel = Category::where('id', Crypt::decrypt($id))->first();
+        $categorydel->status = $categorydel->status == '0' ? '1' : '0';
+        $categorydel->save();
+        return redirect()->back()->with('success', 'Category status updated successfully');
     }
 
     public function category_edit(Request $request)
     {
         $update = Category::where('id', $request->id)->first();
         $update->category = $request->category;
+        $update->heading = $request->heading;
         $update->save();
         return redirect()->back()->with('success', 'Category updated successfully');
     }
 
     public function dateFilter(Request $request)
     {
-        // dd($request->all());
         try {
             $request->validate([
                 'start_date' => 'required|date',
@@ -755,7 +759,7 @@ class EmployeeImprestController extends Controller
     {
         $fy = $this->getFinancialYearStartYear();
         $id = "VE/$fy/V$id";
-        Log::info('VID = '. $id);
+        Log::info('VID = ' . $id);
         try {
             $user = Auth::user();
             Log::info('Attempting to sign voucher by admin', ['user_id' => $user->id, 'voucher_id' => $id]);
@@ -793,7 +797,7 @@ class EmployeeImprestController extends Controller
     {
         $fy = $this->getFinancialYearStartYear();
         $id = "VE/$fy/V$id";
-        Log::info('VID = '. $id);
+        Log::info('VID = ' . $id);
         try {
             // get loggedin user, if account then update acc_sign and acc_sign_date in voucher table
             $user = Auth::user();

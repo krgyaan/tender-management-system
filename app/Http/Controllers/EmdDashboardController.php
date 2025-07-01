@@ -281,7 +281,6 @@ class EmdDashboardController extends Controller
                         break;
                 }
 
-
                 // Handle search
                 if ($request->has('search') && !empty($request->search['value'])) {
                     $searchValue = $request->search['value'];
@@ -291,20 +290,22 @@ class EmdDashboardController extends Controller
                             ->orWhere('bt_acc_name', 'LIKE', "%{$searchValue}%")
                             ->orWhere('bt_amount', 'LIKE', "%{$searchValue}%")
                             ->orWhereHas('emd.tender', function ($q) use ($searchValue) {
-                                $q->where('tender_name', 'LIKE', "%{$searchValue}%");
+                                $q->where('tender_name', 'LIKE', "%{$searchValue}%")
+                                    ->orWhere('team', 'LIKE', "%{$searchValue}%");
+                            })
+                            ->orWhereHas('emd', function ($q) use ($searchValue) {
+                                $q->where('requested_by', 'LIKE', "%{$searchValue}%");
                             });
                     });
                 }
                 return DataTables::of($query)
                     ->addColumn('date', function ($bt) {
-                        return date('d-m-Y', strtotime($bt->created_at));
+                        return "<span class='d-none'>date('d-m-Y', strtotime($bt->created_at)</span>" . date('d-m-Y', strtotime($bt->created_at));
                     })
-                    ->addColumn('team', function ($bt) {
-                        $member = User::where('name', $bt->emd->requested_by)->first()->team;
-                        return $bt->emd->tender->team ?? $member;
-                    })
-                    ->addColumn('member', function ($bt) {
-                        return $bt->emd->requested_by ?? 'N/A';
+                    ->addColumn('team_member', function ($bt) {
+                        $member = User::where('name', $bt->emd->requested_by)->first();
+                        return "<strong>{$member->name}</strong> <br>
+                                <span class='text-muted'>(of {$member->team} Team)</span>";
                     })
                     ->addColumn('tender_name', function ($bt) {
                         return $bt->emd->project_name ?? 'N/A';
@@ -316,12 +317,12 @@ class EmdDashboardController extends Controller
                         return format_inr($bt->bt_amount);
                     })
                     ->addColumn('timer', function ($bt) {
-                        return view('partials.timer', ['tender' => $bt])->render();
+                        return view('partials.bt-timer', ['bt' => $bt])->render();
                     })
                     ->addColumn('action', function ($bt) {
                         return view('partials.bt-actions', compact('bt'))->render();
                     })
-                    ->rawColumns(['timer', 'action'])
+                    ->rawColumns(['timer', 'action', 'team_member', 'date'])
                     ->make(true);
             }
 
@@ -1275,6 +1276,7 @@ class EmdDashboardController extends Controller
             }
         }
     }
+
     public function BankTransferDashboard(Request $request, $id)
     {
         if ($request->isMethod('GET')) {
@@ -2625,8 +2627,10 @@ class EmdDashboardController extends Controller
                 $reminderDays = [15, 7, 3, 2, 1];
                 Log::info("DD: {$dueDate} TD: {$today} DUD: {$daysUntilDue}");
                 if (in_array($daysUntilDue, $reminderDays)) {
-                    $admin = User::where('role', 'admin')->first();
-                    $coo = User::where('role', 'coordinator')->first();
+                    $admin = User::where('role', 'admin')->pluck('email')->toArray();
+                    $member = $cheque->emds->requested_by;
+                    $team = User::where('name', 'LIKE', $member . '%')->first()->team;
+                    $coo = User::where('role', 'coordinator')->where('team', $team)->first();
 
                     $data = [
                         'for' => $cheque->cheque_reason,
@@ -2640,17 +2644,15 @@ class EmdDashboardController extends Controller
 
                     Log::info("Cheque Due Date Reminder Mail Data: " . json_encode($data));
 
-
-                    $cc = array_filter([
-                        'accounts@volksenergie.in',
-                        $admin->email ?? 'admin@volksenergie.in',
-                        $coo->email ?? 'coo@volksenergie.in'
-                    ]);
+                    $cc = array_filter(array_merge(
+                        ['accounts@volksenergie.in'],
+                        $admin
+                    ));
 
                     MailHelper::configureMailer($coo->email, $coo->app_password, $coo->name);
                     $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
                     Mail::mailer($mailer)
-                        ->to('Kailash@volksenergie.in')
+                        ->to('kailash@volksenergie.in')
                         ->cc($cc)
                         ->send(new ChequeDueDateReminder($data));
 

@@ -39,6 +39,14 @@
             'YESBANK_0771' => 'Yes Bank 0771',
             'PNB_6011' => 'Punjab National Bank',
         ];
+        $color = [
+            'SBI' => 'bg-bank-sbi',
+            'HDFC_0026' => 'bg-bank-hdfc',
+            'ICICI' => 'bg-bank-icici',
+            'YESBANK_2011' => 'bg-bank-yes2011',
+            'YESBANK_0771' => 'bg-bank-yes0771',
+            'PNB_6011' => 'bg-bank-pnb',
+        ];
     @endphp
     <section>
         <div class="row">
@@ -46,7 +54,7 @@
                 @if ($groupedBg)
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center mb-3">
                         @foreach ($bankStats as $bankName => $stats)
-                            <div class="p-3 rounded shadow border position-relative">
+                            <div class="p-3 rounded shadow border position-relative {{ $color[$bankName] }}">
                                 <h5 class="">
                                     {{ $banks[$bankName] }}
                                 </h5>
@@ -171,6 +179,32 @@
                             }
                         }
                     },
+                    createdRow: function(row, data, dataIndex) {
+                        let bankClass = '';
+                        switch (data.bg_bank) {
+                            case 'SBI':
+                                bankClass = 'bg-bank-sbi';
+                                break;
+                            case 'HDFC_0026':
+                                bankClass = 'bg-bank-hdfc';
+                                break;
+                            case 'ICICI':
+                                bankClass = 'bg-bank-icici';
+                                break;
+                            case 'YESBANK_2011':
+                                bankClass = 'bg-bank-yes2011';
+                                break;
+                            case 'YESBANK_0771':
+                                bankClass = 'bg-bank-yes0771';
+                                break;
+                            case 'PNB_6011':
+                                bankClass = 'bg-bank-pnb';
+                                break;
+                        }
+                        if (bankClass) {
+                            $(row).addClass(bankClass);
+                        }
+                    },
                     columns: [{
                             data: 'bg_date',
                             name: 'bg_date'
@@ -275,4 +309,32 @@
             }
         });
     </script>
+@endpush
+
+@push('styles')
+    <style>
+        .bg-bank-sbi {
+            background-color: #e3f2fd !important;
+        }
+
+        .bg-bank-hdfc {
+            background-color: #fff3e0 !important;
+        }
+
+        .bg-bank-icici {
+            background-color: #fce4ec !important;
+        }
+
+        .bg-bank-yes2011 {
+            background-color: #e8f5e9 !important;
+        }
+
+        .bg-bank-yes0771 {
+            background-color: #f9fbe7 !important;
+        }
+
+        .bg-bank-pnb {
+            background-color: #f3e5f5 !important;
+        }
+    </style>
 @endpush

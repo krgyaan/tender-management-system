@@ -32,8 +32,7 @@
                                                 <thead>
                                                     <tr>
                                                         <th style="width: 100px;">Date</th>
-                                                        <th>Team</th>
-                                                        <th>Member</th>
+                                                        <th>Team Member</th>
                                                         <th>UTR No</th>
                                                         <th>Account Name</th>
                                                         <th>Tender Name</th>
@@ -83,12 +82,8 @@
                             name: 'created_at'
                         },
                         {
-                            data: 'team',
-                            name: 'team'
-                        },
-                        {
-                            data: 'member',
-                            name: 'member'
+                            data: 'team_member',
+                            name: 'team_member'
                         },
                         {
                             data: 'utr',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use App\Models\Emds;
+use App\Exports\BgExport;
 use App\Models\User;
 use App\Models\EmdBg;
 use App\Models\EmdFdr;
@@ -15,7 +16,6 @@ use App\Models\TenderInfo;
 use App\Helpers\MailHelper;
 use App\Mail\PopStatusMail;
 use App\Models\PayOnPortal;
-use App\Mail\BgRejectedMail;
 use App\Mail\BgReminderMail;
 use App\Mail\ChequeStopMail;
 use App\Models\BankTransfer;
@@ -23,18 +23,15 @@ use Illuminate\Http\Request;
 use App\Mail\DdChqAcceptMail;
 use App\Models\EmdDemandDraft;
 use App\Services\TimerService;
-use App\Mail\BgClaimPeriodMail;
 use App\Mail\DdAccountFormMail;
 use App\Models\FollowUpPersons;
 use App\Mail\BankTransferStatus;
 use App\Mail\BgAccountForm1Mail;
+use App\Mail\BgRejectedMail;
 use App\Mail\BgAccountForm2Mail;
 use App\Mail\BgAccountForm3Mail;
 use App\Mail\BgCancellationMail;
 use App\Mail\DdCancellationMail;
-use Yajra\DataTables\DataTables;
-use App\Exports\PayOnPortalExport;
-use App\Exports\BankTransferExport;
 use App\Mail\BgFDRCancellationMail;
 use App\Mail\BgReturnedCourierMail;
 use App\Mail\ChequeDueDateReminder;
@@ -42,22 +39,54 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\BgRequestExtensionMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\Config;
 use App\Mail\BgRequestCancellationMail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Exports\PayOnPortalExport;
+use App\Exports\BankTransferExport;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Mail\BgClaimPeriodMail;
+use Yajra\DataTables\DataTables;
 
 class EmdDashboardController extends Controller
 {
+    public $ferq = [
+        '1' => 'Daily',
+        '2' => 'Alternate Days',
+        '3' => '2 times a day',
+        '4' => 'Weekly (every Mon)',
+        '5' => 'Twice a Week (every Mon & Thu)',
+        '6' => 'Stop',
+    ];
     public $instrumentType = [
+        '0' => 'NA',
         '1' => 'Demand Draft',
         '2' => 'FDR',
         '3' => 'Cheque',
         '4' => 'BG',
         '5' => 'Bank Transfer',
         '6' => 'Pay on Portal',
+    ];
+    public $bgStatus = [
+        1 => 'Accounts Form 1 - Request to Bank',
+        2 => 'Accounts Form 2 - After BG Creation',
+        3 => 'Accounts Form 3 - Capture FDR Details',
+        4 => 'Initiate Followup',
+        5 => 'Request Extension',
+        6 => 'Returned via courier',
+        7 => 'Request Cancellation',
+        8 => 'BG Cancellation Confirmation',
+        9 => 'FDR Cancellation Confirmation',
+    ];
+    public $banks = [
+        'SBI' => 'State Bank of India',
+        'HDFC_0026' => 'HDFC Bank',
+        'ICICI' => 'ICICI Bank',
+        'YESBANK_2011' => 'Yes Bank 2011',
+        'YESBANK_0771' => 'Yes Bank 0771',
+        'PNB_6011' => 'Punjab National Bank',
     ];
 
     protected $timerService;
@@ -86,6 +115,11 @@ class EmdDashboardController extends Controller
 
     public function BG(Request $request)
     {
+        $data['ferq'] = $this->ferq;
+        $data['instrumentType'] = $this->instrumentType;
+        $data['bgStatus'] = $this->bgStatus;
+        $data['banks'] = $this->banks;
+
         if ($request->isMethod('get')) {
             try {
                 $data['emdBg'] = EmdBg::with('emds', 'emds.tender')->latest()->get();
@@ -94,9 +128,9 @@ class EmdDashboardController extends Controller
                 $totalBgAmount = $data['emdBg']->sum('bg_amount');
                 $bankStats = [];
                 foreach ($groupedBg as $bankName => $bgs) {
-                    $bankCount = $bgs->count();
+                    $bankCount = $bgs->whereNotNull('bg_no')->count();
                     // $bankAmount = $bgs->sum('bg_amt');
-                    $bankAmount = $bgs->where('action', '!=', '7')->sum('bg_amt');
+                    $bankAmount = $bgs->whereNotNull('bg_no')->sum('bg_amt');
                     $fdrAmount10 = $bgs->where('fdr_per', '10')->sum('fdr_amt');
                     $fdrAmount15 = $bgs->where('fdr_per', '15')->sum('fdr_amt');
                     $fdrAmount100 = $bgs->where('fdr_per', '100')->sum('fdr_amt');
@@ -129,9 +163,10 @@ class EmdDashboardController extends Controller
         try {
             $user = Auth::user();
             $statusMap = [
-                'live'         => ['1', '2', '3', '4', '5', '6', '7'],
-                'cancelled'    => ['8', '9'],
-                'rejected'     => ['1'],
+                'live_yes'    => ['2', '3', '4', '5', '6', '7'],
+                'live_pnb'    => ['2', '3', '4', '5', '6', '7'],
+                'cancelled'   => ['8', '9'],
+                'rejected'    => ['1'],
             ];
 
             if (!array_key_exists($type, $statusMap) && $type !== 'new_requests') {
@@ -143,22 +178,21 @@ class EmdDashboardController extends Controller
             $query = EmdBg::with(['emds', 'emds.tender', 'emds.tender.statuses']);
 
             if ($type === 'new_requests') {
-                $query->whereNull('action')->whereNull('bg_no');
+                $query->whereNull('action')->orWhere('action', '1');
+                $query->where('bg_req', 'Accepted');
             } else {
                 $query->whereIn('action', $statusMap[$type]);
+                if ($type === 'live_yes') {
+                    $query->whereIn('bg_bank', ['YESBANK_2011', 'YESBANK_0771']);
+                } else if ($type === 'live_pnb') {
+                    $query->where('bg_bank', 'PNB_6011');
+                }
                 if ($type === 'rejected') {
                     $query->where('bg_req', 'Rejected');
-                } else if ($type === 'live') {
-                    $query->whereNotNull('bg_no')->where('bg_req', 'Accepted')
-                        ->whereHas('emds', function ($q) {
-                            $q->where('type', 'Old Entries');
-                        });
-                } else if ($type === 'cancelled') {
-                    $query->where('bg_req', 'Cancelled');
                 }
             }
 
-            if (!in_array($user->role, ['admin', 'account-executive', 'accountant', 'account-leader'])) {
+            if (!in_array($user->role, ['admin', 'account-executive', 'accountant', 'account-leader', 'coordinator'])) {
                 $query->whereHas('emds.tender', function ($q) use ($user) {
                     $q->where('team_member', $user->name);
                 });
@@ -182,6 +216,10 @@ class EmdDashboardController extends Controller
 
             // latest bg requests first
             $query->orderBy('id', 'desc');
+
+            Log::info('Fetching tenders SQL: ' . vsprintf(str_replace('?', '%s', $query->toSql()), collect($query->getBindings())->map(function ($binding) {
+                return is_numeric($binding) ? $binding : "'$binding'";
+            })->toArray()));
 
             return DataTables::of($query)
                 ->addColumn('bg_date', function ($bg) {
@@ -281,6 +319,7 @@ class EmdDashboardController extends Controller
                         break;
                 }
 
+
                 // Handle search
                 if ($request->has('search') && !empty($request->search['value'])) {
                     $searchValue = $request->search['value'];
@@ -337,7 +376,6 @@ class EmdDashboardController extends Controller
     {
         if ($request->isMethod('get')) {
             try {
-
                 // 1. Pending – Sort by emd.due_date (via relation)
                 $data['emdPopPending'] = PayOnPortal::with(['emd', 'emd.tender', 'emd.tender.statuses'])
                     ->whereNull('action')
@@ -352,7 +390,7 @@ class EmdDashboardController extends Controller
                     ->whereNotNull('action')
                     ->get()
                     ->sortByDesc(fn($item) => isset($item->date_time)
-                        ? Carbon::createFromFormat('d-m-Y H:i:s', $item->date_time)
+                        ? Carbon::parse($item->date_time)
                         : now()->subYears(100))
                     ->values();
 
@@ -385,14 +423,13 @@ class EmdDashboardController extends Controller
                             ->orWhereNotNull('transfer_date')
                             ->orWhereNotNull('cancelled_img');
                     })
-                    ->orderByDesc('updated_at') // Or created_at if you prefer
+                    ->orderByDesc('updated_at')
                     ->get();
 
                 $data['emdChequeSecFDRDD'] = EmdCheque::with(['emds', 'emds.tender'])
                     ->whereIn('cheque_reason', ['DD', 'FDR', 'Security'])
                     ->orderBy('id', 'asc')
                     ->get();
-
 
                 return view('emds.emd-dashboard.cheque', $data);
             } catch (\Throwable $th) {
@@ -464,6 +501,9 @@ class EmdDashboardController extends Controller
                         } else {
                             Log::info('Demand Draft account form mail sending failed', ['id' => $emd->id]);
                         }
+
+                        // stop timer at date_time
+                        $this->timerService->stopTimer($emd, 'dd_acc_form');
 
                         break;
 
@@ -550,6 +590,7 @@ class EmdDashboardController extends Controller
                             return redirect()->route('emds-dashboard.dd')->with('error', 'Followup initiated successfully but mail not sent to targeted persons');
                         }
 
+
                     case '3': // Returned via courier
                         Log::info('Returned via courier called by ' . Auth::user()->name . ' For DD id ' . $id);
                         $action = $request->action;
@@ -607,6 +648,9 @@ class EmdDashboardController extends Controller
                         ];
 
                         $pdfFiles = $this->pdfGenerator->generatePdfs('DdCancellation', $pdfData);
+
+                        $emd->ddcancel_pdf = $pdfFiles[0];
+                        $emd->save();
                         try {
                             // Check if PDF files were generated successfully
                             if (empty($pdfFiles)) {
@@ -747,12 +791,28 @@ class EmdDashboardController extends Controller
                         }
 
                         $emd->save();
-
                         Log::info('Check Saved ' . json_encode($emd));
 
+                        // stop timer at date_time
+                        $this->timerService->stopTimer($emd, 'cheque_ac_form');
+
                         if ($emd->dd_id) {
-                            Log::info('Check have DD ' . json_encode($emd->dd_id));
-                            $pdfFiles = $this->pdfGenerator->generatePdfs('chqCret', $emd->toArray());
+                            Log::info('Check have DD ' . json_encode($emd->chqDd));
+
+                            $data = [
+                                'cheque' => $emd->cheq_no ?? '',
+                                'beneficiary_name' => $emd->cheque_favour,
+                                'dd_amount' => $emd->cheque_amt ?? '',
+                                'dd_amount_in_words' => inr_to_words($emd->cheque_amt ?? ''),
+                                'payable_at' => $emd->chqDd->dd_payable,
+                                'total' => $emd->cheque_amt ?? '',
+                            ];
+
+                            $pdfFiles = $this->pdfGenerator->generatePdfs('ddFormat', $data);
+
+                            $emd->chqDd->generated_dd = $pdfFiles[0];
+                            $emd->chqDd->save();
+
                             $result = $emd->status == 'Accepted'
                                 ? $this->DdChqAccept($emd->id, $pdfFiles)
                                 : ($emd->status == 'Rejected' ? $this->DdChqReject($emd->id) : false);
@@ -1063,14 +1123,14 @@ class EmdDashboardController extends Controller
                         if ($request->hasFile('sfms_conf')) {
                             $file = $request->file('sfms_conf');
                             $filename = time() . '_bg_' . $bg->id . '.' . $file->getClientOriginalExtension();
-                            $file->move(public_path('uploads/accounts'), $filename);
+                            $file->move(public_path('uploads/emds'), $filename);
                             $bg->sfms_conf = $filename;
                         }
 
                         if ($request->hasFile('fdr_copy')) {
                             $file = $request->file('fdr_copy');
                             $filename = time() . '_bg_' . $bg->id . '.' . $file->getClientOriginalExtension();
-                            $file->move(public_path('uploads/accounts'), $filename);
+                            $file->move(public_path('uploads/emds'), $filename);
                             $bg->fdr_copy = $filename;
                         }
 
@@ -1457,8 +1517,6 @@ class EmdDashboardController extends Controller
 
     public function PayOnPortalDashboard(Request $request, $id)
     {
-        // dd($request->all());
-        // for get method
         if ($request->isMethod('get')) {
             $pop = PayOnPortal::find($id);
             $followup = FollowUps::where('emd_id', $id)->first();
@@ -1499,7 +1557,8 @@ class EmdDashboardController extends Controller
                         $emd->utr_mgs = $utr_mgs;
                         $emd->save();
 
-                        $this->timerService->stopTimer($emd, 'pop_acc_form');
+                        // stop timer at date_time
+                        $this->timerService->stopTimerOnDifferentTime($emd, 'pop_acc_form', $date_time);
 
                         if ($this->popStatusMail($emd->emd_id)) {
                             Log::info('POP EMD status updated and mail sent successfully');
@@ -1804,10 +1863,10 @@ class EmdDashboardController extends Controller
                         'courier_deadline' => 'nullable',
                         'bg_no' => 'nullable|string',
                         'bg_date' => 'nullable|date',
-                        'bg_soft_copy' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png',
-                        'sfms' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png',
+                        'bg_soft_copy' => 'nullable|file',
+                        'sfms' => 'nullable|file',
                         'fdr_per' => 'nullable|numeric|min:0',
-                        'fdr_copy' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png',
+                        'fdr_copy' => 'nullable|file',
                         'fdr_amt' => 'nullable|numeric|min:0',
                         'fdr_no' => 'nullable|string',
                         'fdr_validity' => 'nullable|date',
@@ -1868,7 +1927,7 @@ class EmdDashboardController extends Controller
                     if ($request->hasFile('bg_soft_copy')) {
                         $file = $request->file('bg_soft_copy');
                         $filename = time() . '_soft_copy.' . $file->getClientOriginalExtension();
-                        $file->move('uploads/emds/', $filename);
+                        $file->move('uploads/courier_docs/', $filename);
                         $bg->bg_soft_copy = $filename;
                         Log::info('BG Soft Copy updated', ['emd_id' => $id]);
                     }
@@ -2024,6 +2083,37 @@ class EmdDashboardController extends Controller
         return Excel::download(new PayOnPortalExport($pop), 'pay_on_portals.xlsx');
     }
 
+    public function export_bg($type)
+    {
+        $banks = [
+            'all' => [],
+            'pnb' => ['PNB_6011'],
+            'yes' => ['YESBANK_0771', 'YESBANK_0771'],
+            'hdfc' => ['HDFC_0026'],
+            'icici' => ['ICICI'],
+            'sbi' => ['SBI'],
+        ];
+        try {
+            Log::info('Export Bg called with type ' . $type);
+            if (!in_array($type, array_keys($banks))) {
+                Log::info("Invalid Bank Name Selected. Type: $type");
+                return back()->with('error', 'Invalid Bank Name Selected.');
+            }
+            $bankCodes = $banks[$type];
+            $bg = ($bankCodes == 'all') ? EmdBg::all() : EmdBg::whereIn('bg_bank', $bankCodes)->get();
+            Log::info("SQL Query: " . EmdBg::where('bg_bank', $bankCodes)->toSql() . " Bindings: " . json_encode($bankCodes));
+            if ($bg->isEmpty()) {
+                Log::info("No Bank Guarantee records found for the selected type: $type.");
+                return back()->with('error', 'No Bank Guarantee records found for the selected type.');
+            }
+            Log::info('Bank Guarantee records found, exporting to excel...');
+            return Excel::download(new BgExport($bg), "bank_guarantees_$type.xlsx");
+        } catch (\Throwable $th) {
+            Log::error('Export Bg Error:', ['error' => $th->getMessage()]);
+            return back()->with('error', $th->getMessage());
+        }
+    }
+
     // ===================== MAILS =====================
 
     public function bgAccountForm1Mail($id)
@@ -2108,6 +2198,7 @@ class EmdDashboardController extends Controller
                 'status' => $bg->bg_req,
                 'reason' => $bg->reason_req,
             ];
+            Log::info('BG Reject Data ' . json_encode($data));
 
             $sender = User::where('email', 'imran@volksenergie.in')->first();
             MailHelper::configureMailer($sender->email, $sender->app_password, $sender->name);
@@ -2240,6 +2331,7 @@ class EmdDashboardController extends Controller
             ]);
 
             $sender = User::where('email', 'goyal@volksenergie.in')->first();
+
             MailHelper::configureMailer($sender->email, $sender->app_password, $sender->name);
             $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
             Mail::mailer($mailer)->to($to)
@@ -2247,13 +2339,13 @@ class EmdDashboardController extends Controller
                 ->send(new BgRequestExtensionMail($data));
 
             Log::info('bgRequestExtensionMail Mail sent successfully.');
-            return redirect()->back()->with('success', 'Mail sent successfully.');
+            return true;
         } catch (\Throwable $th) {
             Log::error('bgRequestExtensionMail failed', [
                 'error' => $th->getMessage(),
                 'trace' => $th->getTraceAsString()
             ]);
-            return redirect()->back()->with('error', $th->getMessage());
+            return false;
         }
     }
 
@@ -2299,8 +2391,8 @@ class EmdDashboardController extends Controller
 
             $ccRoles = User::whereIn('role', ['coordinator', 'team-leader'])->pluck('email', 'role')->toArray();
             $ccMail = [
-                $ccRoles['coordinator'],
-                $ccRoles['team-leader'],
+                'kainaat@volksenergie.in',
+                'aditya@volksenergie.in',
                 'accounts@volksenergie.in',
                 'puja.gupta@yesbank.in',
                 'dlcorpdesknehruplace@yesbank.in'
@@ -2356,6 +2448,7 @@ class EmdDashboardController extends Controller
                 'bg_no' => $bg->beneficiary_name,
                 'bg_date' => $bg->beneficiary_name,
                 'bg_value' => $bg->beneficiary_name,
+                'beneficiary_name' => $bg->beneficiary_name,
                 'bg_amount' => $bg->beneficiary_name,
                 'fdr_no' => $bg->beneficiary_name,
                 'fdr_value' => $bg->beneficiary_name,
@@ -2446,7 +2539,7 @@ class EmdDashboardController extends Controller
             $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
 
             Mail::mailer($mailer)->to($recipientEmail)
-                // ->cc([$cooMail, $adminMail, 'accounts@volksenergie.in', $tlMail])
+                ->cc([$cooMail, $adminMail, 'accounts@volksenergie.in', $tlMail])
                 ->send(new PopStatusMail($data));
 
             return response()->json(['success' => true]);
@@ -2617,7 +2710,7 @@ class EmdDashboardController extends Controller
         try {
             $cheques = EmdCheque::whereNull('dd_id')->get();
 
-            Log::info("Cheque Due Date Reminder Data: " . json_encode($cheques));
+            Log::info("Cheque Due Date Reminder Data: " . json_encode(count($cheques)));
 
             foreach ($cheques as $cheque) {
                 $dueDate = Carbon::parse($cheque->duedate);
@@ -2625,7 +2718,7 @@ class EmdDashboardController extends Controller
                 $daysUntilDue = round($today->diffInDays($dueDate, false));
 
                 $reminderDays = [15, 7, 3, 2, 1];
-                Log::info("DD: {$dueDate} TD: {$today} DUD: {$daysUntilDue}");
+                Log::info("DueDate: {$dueDate} Today: {$today} remainingDays: {$daysUntilDue}");
                 if (in_array($daysUntilDue, $reminderDays)) {
                     $admin = User::where('role', 'admin')->pluck('email')->toArray();
                     $member = $cheque->emds->requested_by;
@@ -2635,7 +2728,7 @@ class EmdDashboardController extends Controller
                     $data = [
                         'for' => $cheque->cheque_reason,
                         'chequeNo' => $cheque->cheq_no,
-                        'amount' => format_inr($cheque->cheque_amt),
+                        'amount' => $cheque->cheque_amt,
                         'dueDate' => date('d-m-Y', strtotime($cheque->duedate)),
                         'partyName' => $cheque->cheque_favour,
                         'daysLeft' => $daysUntilDue,
@@ -2672,21 +2765,41 @@ class EmdDashboardController extends Controller
     public function DdChqAccept($id, $pdfFiles)
     {
         try {
-            $ddChq = EmdCheque::find($id);
-            Log::info('DD/Chq: ' . json_encode($ddChq));
+            Log::info("Starting DdChqAccept method with ID: $id");
 
+            $ddChq = EmdCheque::find($id);
+            if (!$ddChq) {
+                Log::error("EmdCheque not found for ID: $id");
+                return response()->json(['success' => false, 'error' => 'EmdCheque not found']);
+            }
+            Log::info('DD/Chq Retrieved: ' . json_encode($ddChq));
+
+            $te = User::where('name', 'LIKE', $ddChq->emds->requested_by . '%')->first();
             $sender = User::where('email', 'shivani@volksenergie.in')->first();
-            // $ccRoles = User::where('team', 'DC')
-            $ccRoles = User::whereIn('role', ['admin', 'team-leader', 'coordinator'])
+            if (!$sender) {
+                Log::error("Sender not found with email: shivani@volksenergie.in");
+                return response()->json(['success' => false, 'error' => 'Sender not found']);
+            }
+            Log::info('Sender Retrieved: ' . json_encode($sender));
+
+            $ccRoles = User::where('team', $te->team)->whereIn('role', ['admin', 'team-leader', 'coordinator'])
                 ->pluck('email', 'role')
                 ->toArray();
+            Log::info('CC Roles Emails: ' . json_encode($ccRoles));
+
             $ccMail = [
-                $ccRoles['admin'] ?? null,
+                'goyal@volksenergie.in',
                 $ccRoles['team-leader'] ?? 'abs.gyankr@gmail.com',
                 $ccRoles['coordinator'] ?? null,
                 'accounts@volksenergie.in'
             ];
             $ccMail = array_filter($ccMail);
+            Log::info('Final CC Emails: ' . json_encode($ccMail));
+
+            if (!$ddChq->emds) {
+                Log::error("No related EMD record found for EmdCheque ID: $id");
+                return response()->json(['success' => false, 'error' => 'Related EMD not found']);
+            }
 
             // =Tender due date time - Expected Courier Delivery time
             $tender = TenderInfo::find($ddChq->emds->tender_id)->first();
@@ -2697,46 +2810,48 @@ class EmdDashboardController extends Controller
                 $dueDT = "$tender->due_date $tender->due_time";
             }
             $eCD = time() - $ddChq->chqDd->courier_deadline * 3600;
-            Log::info("$dueDT - $eCD = " . (strtotime($dueDT) - $eCD));
+            Log::info("Tender Due DateTime: $dueDT");
+            Log::info("Expected Courier Delivery Offset: $eCD");
+            Log::info("Time Difference (secs): " . (strtotime($dueDT) - $eCD));
+
             $remainingHrs = (strtotime($dueDT) - $eCD) / 3600;
             $hrs = (int) floor($remainingHrs);
+
             $data = [
                 'purpose' => $ddChq->cheque_reason,
                 'cheque_no' => $ddChq->cheq_no,
                 'due_date' => date('d-m-Y', strtotime($ddChq->duedate)),
                 'amount' => $ddChq->cheque_amt,
-                'time_limit' => $hrs,
-                'beneficiary_name' => 'YESBANK',
-                'payable_at' => $ddChq->chqDd->dd_payable,
-                'courier_address' => $ddChq->chqDd->courier_add,
+                'time_limit' => $hrs ?? '0',
+                'beneficiary_name' => $ddChq->cheque_favour,
+                'payable_at' => $ddChq->chqDd->dd_payable ?? 'N/A',
+                'courier_address' => $ddChq->chqDd->courier_add ?? 'N/A',
                 'link' => route('dd-action', $ddChq->dd_id),
                 'files' => explode(',', $ddChq->cheq_img),
                 'pdf' => $pdfFiles
             ];
-            Log::info('DD/Chq Accept Mail Data: ' . json_encode($data));
+            Log::info('DD/Chq Accept Mail Data Prepared: ' . json_encode($data));
 
             MailHelper::configureMailer($sender->email, $sender->app_password, $sender->name);
             $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
-            $mail = Mail::mailer($mailer)->to(['kailash@volksenergie.in'])
+
+            Log::info("Using Mailer: $mailer");
+
+            Mail::mailer($mailer)
+                ->to(['kailash@volksenergie.in'])
                 ->cc($ccMail)
                 ->send(new DdChqAcceptMail($data));
 
-            if ($mail) {
-                Log::info("DD/Chq Accept Mail Sent Successfully");
-                foreach ($pdfFiles as $file) {
-                    Log::info("Deleting temp file: " . storage_path('app/temp/' . basename($file)));
-                    Storage::delete('temp/' . basename($file));
-                }
-            } else {
-                Log::error("Failed to send DD/Chq Accept Mail" . $mail);
-            }
+            Log::info("DD/Chq Accept Mail Sent Successfully");
 
             return response()->json(['success' => true]);
         } catch (\Throwable $th) {
-            Log::error("DD/Chq Accept Error: " . $th->getMessage());
+            Log::error("DD/Chq Accept Exception: " . $th->getMessage());
+            Log::error("Exception Trace: " . $th->getTraceAsString());
             return response()->json(['success' => false, 'error' => $th->getMessage()]);
         }
     }
+
 
     public function DdChqReject($id)
     {
@@ -2789,35 +2904,33 @@ class EmdDashboardController extends Controller
         try {
             $dd = EmdDemandDraft::find($id);
             Log::info('DD/Chq: ' . json_encode($dd));
-
-            $sender = User::where('email', 'shivani@volksenergie.in')->first();
-            // $ccRoles = User::where('team', 'DC')
-            $ccRoles = User::whereIn('role', ['admin', 'team-leader', 'coordinator'])
+            $te_name = User::where('name', $dd->emd->requested_by)->first()->name;
+            $te_email = User::where('name', $dd->emd->requested_by)->first()->email;
+            $team = User::where('name', $dd->emd->requested_by)->first()->team;
+            $sender = User::where('email', 'kailash@volksenergie.in')->first();
+            $ccRoles = User::where('team', $team)->whereIn('role', ['admin', 'team-leader', 'coordinator'])
                 ->pluck('email', 'role')
                 ->toArray();
             $ccMail = [
-                $ccRoles['admin'] ?? null,
+                'goyal@volksenergie.in',
                 $ccRoles['team-leader'] ?? 'abs.gyankr@gmail.com',
-                $ccRoles['coordinator'] ?? null,
+                'kainat@volksenergie.in',
                 'accounts@volksenergie.in'
             ];
             $ccMail = array_filter($ccMail);
-
-            $te_name = User::where('id', $dd->emd->tender->team_member)->first()->name;
-            $te_email = User::where('id', $dd->emd->tender->team_member)->first()->email;
 
             $data = [
                 'purpose' => $dd->cheque_reason,
                 'te_name' => $te_name,
                 'dd_date' => date('d-m-Y', strtotime($dd->dd_date)),
                 'dd_no' => $dd->dd_no,
-                'beneficiary_name' => 'YESBANK',
+                'beneficiary_name' => 'YORSELF FOR DD',
                 'payable_at' => $dd->dd_payable,
                 'amount' => format_inr($dd->dd_amt),
                 'docket_no' => $dd->courier->docket_no,
                 'status' => $dd->status,
                 'remarks' => $dd->remarks,
-                'files' => $dd->courier->courier_docs
+                'files' => $dd->courier->courier_docs ?? []
             ];
 
             Log::info("DD/Chq Account Form Mail Data: ", $data);
@@ -2837,6 +2950,7 @@ class EmdDashboardController extends Controller
             return response()->json(['success' => true]);
         } catch (\Throwable $th) {
             Log::error('DD/Chq Account Form Error: ' . $th->getMessage());
+            Log::error("Exception Trace: " . $th->getTraceAsString());
             return response()->json(['success' => false, 'error' => $th->getMessage()]);
         }
     }
@@ -2913,7 +3027,6 @@ class EmdDashboardController extends Controller
             }
 
             $admin = User::where('role', 'admin')->where('team', $user->team)->first();
-            $tl = User::where('role', 'team-leader')->where('team', $user->team)->first();
             $cord = User::where('role', 'coordinator')->where('team', $user->team)->first();
             $coo = User::where('designation', 'coo')->first();
             $cc = array_filter([
@@ -2921,7 +3034,6 @@ class EmdDashboardController extends Controller
                 $admin->email,
                 $cord->email,
                 $coo->email,
-                $tl->email
             ]);
 
             $data = [

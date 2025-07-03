@@ -4,21 +4,23 @@
     <section>
         <div class="row">
             <div class="col-md-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <a href="{{ route('checklists.create') }}" class="btn btn-primary btn-sm">+ Add New Checklist</a>
-                </div>
+                @if (in_array(Auth::user()->role, ['admin', 'coordinator']))
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{{ route('checklists.create') }}" class="btn btn-primary btn-sm">+ Add New Checklist</a>
+                    </div>
+                @endif
                 <div class="card">
                     @include('partials.messages')
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
                                         <th>Task Name</th>
                                         <th>Frequency</th>
-                                        <th>Responsibility</th>
+                                        <th>Responsible</th>
                                         <th>Timer</th>
-                                        <th>Accountability</th>
+                                        <th>Accountable</th>
                                         <th>Timer</th>
                                         <th>Actions</th>
                                     </tr>
@@ -33,15 +35,18 @@
                                                 <td></td>
                                                 <td>{{ $checklist->accountableUser->name ?? 'N/A' }}</td>
                                                 <td></td>
-                                                <td style="white-space: nowrap;">
-                                                    <a href="{{ route('checklists.show', $checklist->id) }}"
-                                                        class="btn btn-sm btn-secondary mb-1">View</a>
-                                                    <button class="btn btn-sm btn-info mb-1" data-bs-toggle="modal"
-                                                        data-bs-target="#respModal{{ $checklist->id }}">RESP</button>
-                                                    <button class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal"
-                                                        data-bs-target="#acctModal{{ $checklist->id }}">ACCT</button>
-                                                    <button class="btn btn-sm btn-success mb-1" data-bs-toggle="modal"
-                                                        data-bs-target="#uploadModal{{ $checklist->id }}">Upload</button>
+                                                <td style="white-space: wrap;">
+                                                    <a href="{{ route('checklists.show', $checklist->id) }}" class="btn btn-sm btn-secondary mb-1">View</a>
+
+                                                    @if ($userId == $checklist->responsibility)
+                                                        <button class="btn btn-sm btn-info mb-1" data-bs-toggle="modal" data-bs-target="#respModal{{ $checklist->id }}">RESP</button>
+                                                    @endif
+
+                                                    @if ($userId == $checklist->accountability)
+                                                        <button class="btn btn-sm btn-warning mb-1" data-bs-toggle="modal" data-bs-target="#acctModal{{ $checklist->id }}">ACCT</button>
+                                                    @endif
+
+                                                    <button class="btn btn-sm btn-success mb-1" data-bs-toggle="modal" data-bs-target="#uploadModal{{ $checklist->id }}">Upload</button>
                                                 </td>
                                             </tr>
                                         @endforeach

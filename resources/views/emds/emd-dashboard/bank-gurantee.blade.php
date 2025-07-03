@@ -3,50 +3,7 @@
 @section('content')
     @php
         use Carbon\Carbon;
-        $ferq = [
-            '1' => 'Daily',
-            '2' => 'Alternate Days',
-            '3' => '2 times a day',
-            '4' => 'Weekly (every Mon)',
-            '5' => 'Twice a Week (every Mon & Thu)',
-            '6' => 'Stop',
-        ];
-        $instrumentType = [
-            '0' => 'NA',
-            '1' => 'Demand Draft',
-            '2' => 'FDR',
-            '3' => 'Cheque',
-            '4' => 'BG',
-            '5' => 'Bank Transfer',
-            '6' => 'Pay on Portal',
-        ];
-        $bgStatus = [
-            1 => 'Accounts Form 1 - Request to Bank',
-            2 => 'Accounts Form 2 - After BG Creation',
-            3 => 'Accounts Form 3 - Capture FDR Details',
-            4 => 'Initiate Followup',
-            5 => 'Request Extension',
-            6 => 'Returned via courier',
-            7 => 'Request Cancellation',
-            8 => 'BG Cancellation Confirmation',
-            9 => 'FDR Cancellation Confirmation',
-        ];
-        $banks = [
-            'SBI' => 'State Bank of India',
-            'HDFC_0026' => 'HDFC Bank',
-            'ICICI' => 'ICICI Bank',
-            'YESBANK_2011' => 'Yes Bank 2011',
-            'YESBANK_0771' => 'Yes Bank 0771',
-            'PNB_6011' => 'Punjab National Bank',
-        ];
-        $color = [
-            'SBI' => 'bg-bank-sbi',
-            'HDFC_0026' => 'bg-bank-hdfc',
-            'ICICI' => 'bg-bank-icici',
-            'YESBANK_2011' => 'bg-bank-yes2011',
-            'YESBANK_0771' => 'bg-bank-yes0771',
-            'PNB_6011' => 'bg-bank-pnb',
-        ];
+
     @endphp
     <section>
         <div class="row">
@@ -54,7 +11,7 @@
                 @if ($groupedBg)
                     <div class="d-flex flex-wrap gap-2 justify-content-center align-items-center mb-3">
                         @foreach ($bankStats as $bankName => $stats)
-                            <div class="p-3 rounded shadow border position-relative {{ $color[$bankName] }}">
+                            <div class="p-3 rounded shadow border position-relative">
                                 <h5 class="">
                                     {{ $banks[$bankName] }}
                                 </h5>
@@ -77,9 +34,23 @@
                     <a href="{{ route('bg-old-entry') }}" class="btn btn-info btn-sm">
                         Update Old Entries
                     </a>
-                    <a href="{{ route('download-bgs') }}" class="btn btn-primary btn-sm">
-                        Download All Bgs
-                    </a>
+                    <div class="btn-group" role="group" aria-label="Download BGs">
+                        <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            Download BGs
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('emds.export.bg', ['type' => 'all']) }}">All Bgs</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('emds.export.bg', ['type' => 'pnb']) }}">PNB Bgs</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('emds.export.bg', ['type' => 'yes']) }}">YES Bgs</a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <div class="card">
                     <div class="card-body">
@@ -92,8 +63,13 @@
                                 </button>
                             </li>
                             <li class="nav-item">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#live" type="button">
-                                    Live
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#live_yes" type="button">
+                                    Live YES
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#live_pnb" type="button">
+                                    Live PNB
                                 </button>
                             </li>
                             <li class="nav-item">
@@ -108,7 +84,7 @@
                             </li>
                         </ul>
                         <div class="tab-content mt-3">
-                            @foreach (['new_requests', 'live', 'cancelled', 'rejected'] as $type)
+                            @foreach (['new_requests', 'live_yes', 'live_pnb', 'cancelled', 'rejected'] as $type)
                                 <div class="tab-pane fade {{ $type === 'new_requests' ? 'show active' : '' }}"
                                     id="{{ $type }}">
                                     <div class="table-responsive">
@@ -151,7 +127,7 @@
     <script>
         $(document).ready(function() {
             let bgTables = {};
-            let types = ['new_requests', 'live', 'cancelled', 'rejected'];
+            let types = ['new_requests', 'live_yes', 'live_pnb', 'cancelled', 'rejected'];
 
             function initDataTable(type) {
                 if (bgTables[type]) {
@@ -164,8 +140,8 @@
                     ajax: {
                         url: '{{ route('bg.getBgData', ':type') }}'.replace(':type', type),
                         type: 'POST',
-                        data: function(d) {
-                            d
+                        data: {
+                            _token: '{{ csrf_token() }}'
                         },
                         headers: {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -177,32 +153,6 @@
                             } else {
                                 console.error('Error loading data. Please try again.');
                             }
-                        }
-                    },
-                    createdRow: function(row, data, dataIndex) {
-                        let bankClass = '';
-                        switch (data.bg_bank) {
-                            case 'SBI':
-                                bankClass = 'bg-bank-sbi';
-                                break;
-                            case 'HDFC_0026':
-                                bankClass = 'bg-bank-hdfc';
-                                break;
-                            case 'ICICI':
-                                bankClass = 'bg-bank-icici';
-                                break;
-                            case 'YESBANK_2011':
-                                bankClass = 'bg-bank-yes2011';
-                                break;
-                            case 'YESBANK_0771':
-                                bankClass = 'bg-bank-yes0771';
-                                break;
-                            case 'PNB_6011':
-                                bankClass = 'bg-bank-pnb';
-                                break;
-                        }
-                        if (bankClass) {
-                            $(row).addClass(bankClass);
                         }
                     },
                     columns: [{
@@ -309,32 +259,4 @@
             }
         });
     </script>
-@endpush
-
-@push('styles')
-    <style>
-        .bg-bank-sbi {
-            background-color: #e3f2fd !important;
-        }
-
-        .bg-bank-hdfc {
-            background-color: #fff3e0 !important;
-        }
-
-        .bg-bank-icici {
-            background-color: #fce4ec !important;
-        }
-
-        .bg-bank-yes2011 {
-            background-color: #e8f5e9 !important;
-        }
-
-        .bg-bank-yes0771 {
-            background-color: #f9fbe7 !important;
-        }
-
-        .bg-bank-pnb {
-            background-color: #f3e5f5 !important;
-        }
-    </style>
 @endpush

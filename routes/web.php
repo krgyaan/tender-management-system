@@ -2,7 +2,6 @@
 
 use App\Models\EmdBg;
 use App\Models\Project;
-use App\Exports\BgExport;
 use Illuminate\Http\Request;
 use App\Exports\ProjectExport;
 use Illuminate\Support\Facades\Log;
@@ -238,13 +237,8 @@ Route::middleware('auth')->group(function () {
         Route::get('emds-dashboard/{id}/edit', [EmdDashboardController::class, 'edit'])->name('emds-dashboard.edit');
         Route::any('emds-dashboard/{id}/update', [EmdDashboardController::class, 'update'])->name('emds-dashboard.update');
         Route::delete('emds-dashboard/delete/{id}', [EmdDashboardController::class, 'destroy'])->name('emds-dashboard.destroy');
-        Route::get('download-bgs', function () {
-            Log::info('Downloading BGs Started');
-            $bgs = EmdBg::all();
-            Log::info('Collected All BGs ' . count($bgs));
-            return Excel::download(new BgExport($bgs), 'allbgs.xlsx');
-        })->name('download-bgs');
 
+        Route::get('emds/export/bg/{type}', [EmdDashboardController::class, 'export_bg'])->name('emds.export.bg');
         Route::get('emds/export/bt', [EmdDashboardController::class, 'export_bt'])->name('emds.export.bt');
         Route::get('emds/export/pop', [EmdDashboardController::class, 'export_pop'])->name('emds.export.pop');
 

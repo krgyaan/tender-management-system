@@ -27,11 +27,10 @@ class BgExport implements FromCollection, WithHeadings, WithMapping
             'Amount',
             'BG Expiry Date',
             'BG Claim Period',
-            'Expiry Date',
             'BG Charges paid',
             'BG Charges	Calculated',
             'FDR No',
-            'Tender Status',
+            'FDR Value',
             'BG Status',
         ];
     }
@@ -70,7 +69,7 @@ class BgExport implements FromCollection, WithHeadings, WithMapping
         $totalValue = $interestWithGST + $stampPaper + $bgStampPaperValue + $sfmsCharges;
 
         return [
-            $bg->created_at->format('d-m-Y'),
+            date('d-m-Y', strtotime($bg->bg_date)),
             $bg->bg_no ?? '',
             $bg->bg_favour ?? '',
             $bg->emds->project_name,
@@ -79,9 +78,9 @@ class BgExport implements FromCollection, WithHeadings, WithMapping
             date('d-m-Y', strtotime($bg->bg_claim)),
             format_inr($total),
             format_inr($totalValue),
-            $bg->dd_no ?? '',
-            $bg->emds->tender_id != '00' ? '' : $bg->emds->tender->statuses->name ?? '',
-            $bg->bg_status ? $actions[$bg->bg_status] : ''
+            $bg->fdr_no ?? '',
+            format_inr($bg->fdr_amt) ?? '',
+            $bg->action != null ? $actions[$bg->action] : ''
         ];
     }
 }

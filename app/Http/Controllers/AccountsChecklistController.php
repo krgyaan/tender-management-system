@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\Gst3B\Checklist;
 use Illuminate\Support\Facades\Storage;
@@ -13,13 +14,20 @@ class AccountsChecklistController extends Controller
 {
     public function index()
     {
-        $checklists = Checklist::with(['responsibleUser', 'accountableUser'])->get();
-        return view('accounts.checklist.index', compact('checklists'));
+        $userId = Auth::user()->id;
+        $checklists = (in_array(Auth::user()->role, ['admin', 'coordinator'])) ?
+            Checklist::with(['responsibleUser', 'accountableUser'])->get() :
+            Checklist::with(['responsibleUser', 'accountableUser'])
+            ->where('responsibility', $userId)
+            ->orWhere('accountability', $userId)
+            ->get();
+
+        return view('accounts.checklist.index', compact('checklists', 'userId'));
     }
 
     public function create()
     {
-        $users = User::where('role', 'like', 'account%')->where('status', '1')->get();
+        $teamMember
         return view('accounts.checklist.create', compact('users'));
     }
 
@@ -46,11 +54,11 @@ class AccountsChecklistController extends Controller
 
         // Ensure dates are properly cast
         if (is_string($checklist->responsibility_remark_date)) {
-            $checklist->responsibility_remark_date = \Carbon\Carbon::parse($checklist->responsibility_remark_date);
+            $checklist->responsibility_remark_date = Carbon::parse($checklist->responsibility_remark_date);
         }
 
         if (is_string($checklist->accountability_remark_date)) {
-            $checklist->accountability_remark_date = \Carbon\Carbon::parse($checklist->accountability_remark_date);
+            $checklist->accountability_remark_date = Carbon::parse($checklist->accountability_remark_date);
         }
 
         return view('accounts.checklist.show', compact('checklist'));
@@ -58,7 +66,7 @@ class AccountsChecklistController extends Controller
 
     public function edit(Checklist $checklist)
     {
-        $users = \App\Models\User::all();
+        $users = User::all();
         return view('accounts.checklist.edit', compact('checklist', 'users'));
     }
 

@@ -1,9 +1,4 @@
 <div>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-    </style>
     <p>Dear {{ $data['org'] }} Team,</p>
     <div>
         <p>
@@ -23,17 +18,17 @@
                 </thead>
                 <tbody>
                     @foreach ($data['items'] as $item)
-                    <tr>
-                        <td style="border: 1px solid black; padding: 5px;">{{ $item['requirement'] }}</td>
-                        <td style="border: 1px solid black; padding: 5px;">{{ $item['qty'] }}</td>
-                        <td style="border: 1px solid black; padding: 5px;">{{ $item['unit'] }}</td>
-                    </tr>
+                        <tr>
+                            <td style="border: 1px solid black; padding: 5px;">{{ $item['requirement'] }}</td>
+                            <td style="border: 1px solid black; padding: 5px;">{{ $item['qty'] }}</td>
+                            <td style="border: 1px solid black; padding: 5px;">{{ $item['unit'] }}</td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
         @endif
 
-        <pb>Here are the documents:</pb>
+        <b>Here are the documents:</b>
         <ul>
             <li>Scope of Work - {{ in_array('scope', $data['keys']) ? 'Attached' : 'NA' }}</li>
             <li>Technical Specifications - {{ in_array('technical', $data['keys']) ? 'Attached' : 'NA' }}</li>
@@ -42,6 +37,7 @@
             <li>MII Format - {{ in_array('mii', $data['keys']) ? 'Attached' : 'NA' }}</li>
             <li>List of Docs needed from manufacturer: {{ $data['list_of_docs'] }}</li>
         </ul>
+        <b>Please send the Techno-Commercial Offer before the due date {{ $data['due_date'] }}.</b>
         <b>Hoping for a prompt response.</b>
     </div>
     <div>

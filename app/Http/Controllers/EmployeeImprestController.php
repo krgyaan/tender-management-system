@@ -115,14 +115,30 @@ class EmployeeImprestController extends Controller
 
     public function employeeimprest_edit(Request $request)
     {
-        $category = Category::where('status', '1')->get();
-        $user = User::where('status', '1')->get();
-        $employeeimprest_update = Employeeimprest::where('id', Crypt::decrypt($request->id))->first();
-        return view('employeeimprest.employee_imprest_edit', ['employeeimprest_update' => $employeeimprest_update, 'user' => $user, 'category' => $category]);
+        try {
+            Log::info('Starting employee imprest edit process by ', [Auth::user()->name]);
+            $category = Category::where('status', '1')->get();
+            $user = User::where('status', '1')->get();
+            $employeeimprest_update = Employeeimprest::where('id', $request->id)->first();
+
+            if (!$employeeimprest_update) {
+                Log::error('Error in employee imprest edit process', ['error' => 'Employee record not found.']);
+                return redirect()->back()->with('error', 'Employee record not found.');
+            }
+
+            return view(
+                'employeeimprest.employee_imprest_edit',
+                ['imprest' => $employeeimprest_update, 'user' => $user, 'category' => $category]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error in employee imprest edit process', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Something went wrong. Please try again.');
+        }
     }
 
     public function employeeimprest_update(Request $request)
     {
+        Log::info('Starting employee imprest update process by ', [Auth::user()->name]);
         try {
             $update = Employeeimprest::where('id', $request->id)->first();
 
@@ -131,18 +147,20 @@ class EmployeeImprestController extends Controller
                 return redirect()->back()->with('error', 'Employee record not found.');
             }
 
-            $update->name_id = $request->name_id;
-            $update->party_name = $request->party_name;
-            $update->project_name = $request->project_name;
-            $update->amount = $request->amount;
-            $update->category_id = $request->category;
-            $update->team_id = $request->team_id;
-            $update->remark = $request->remark;
+            $update->name_id = $request->name_id ?? $update->name_id;
+            $update->party_name = $request->party_name ?? $update->party_name;
+            $update->project_name = $request->project_name ?? $update->project_name;
+            $update->amount = $request->amount ?? $update->amount;
+            $update->category_id = $request->category ?? $update->category_id;
+            $update->team_id = $request->team_id ?? $update->team_id;
+            $update->remark = $request->remark ?? $update->remark;
 
             if ($request->hasFile('invoice_proof')) {
                 Log::info('Invoice proof files received', ['invoice_proof' => $request->invoice_proof]);
                 $invoiceProofFiles = $request->file('invoice_proof');
-                $imagePaths = [];
+                $existingProofs = $update->invoice_proof ? json_decode($update->invoice_proof, true) : [];
+                $imagePaths = $existingProofs;
+
                 foreach ($invoiceProofFiles as $file) {
                     if (!$file) {
                         continue;
@@ -162,6 +180,37 @@ class EmployeeImprestController extends Controller
             Log::error('Error in employee imprest update process', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Something went wrong. Please try again.');
         }
+    }
+
+    public function deleteProof(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'proof' => 'required|string',
+        ]);
+
+        $imprest = Employeeimprest::find($request->id);
+        if (!$imprest) {
+            return response()->json(['success' => false, 'message' => 'Record not found.'], 404);
+        }
+
+        $proofs = $imprest->invoice_proof ? json_decode($imprest->invoice_proof, true) : [];
+        $proofToDelete = $request->proof;
+
+        if (($key = array_search($proofToDelete, $proofs)) !== false) {
+            unset($proofs[$key]);
+            // Remove file from storage if needed
+            $filePath = public_path("uploads/employeeimprest/{$proofToDelete}");
+            if (file_exists($filePath)) {
+                @unlink($filePath);
+            }
+            $imprest->invoice_proof = json_encode(array_values($proofs));
+            $imprest->save();
+            Log::info('Proof deleted by ', [Auth::user()->name]);
+            return response()->json(['success' => true, 'message' => 'Proof deleted.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Proof not found.'], 404);
     }
 
     public function employeeimprest_account(Request $request)

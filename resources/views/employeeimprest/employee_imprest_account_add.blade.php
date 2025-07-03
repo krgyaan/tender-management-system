@@ -1,7 +1,6 @@
 @extends('layouts.app')
 @section('page-title', ' Employees Imprest (Account)')
 @section('content')
-
     <div class="page-wrapper">
         @php
             $projects = App\Models\Project::all();

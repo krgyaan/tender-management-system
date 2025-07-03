@@ -380,6 +380,7 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/employeeimprest_delete/{id}', [EmployeeImprestController::class, 'employeeimprest_delete'])->name('employeeimprest_delete');
     Route::get('admin/employeeimprest_edit/{id}', [EmployeeImprestController::class, 'employeeimprest_edit'])->name('employeeimprest_edit');
     Route::post('admin/employeeimprest_update', [EmployeeImprestController::class, 'employeeimprest_update'])->name('employeeimprest_update');
+    Route::post('admin/delete_proof', [EmployeeImprestController::class, 'deleteProof'])->name('delete_proof');
 
     Route::post('admin/add_proof', [EmployeeImprestController::class, 'add_proof'])->name('add_proof');
     Route::get('admin/get_proof/{id}', [EmployeeImprestController::class, 'get_proof']);

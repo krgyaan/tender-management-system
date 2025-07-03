@@ -191,6 +191,11 @@
                                                             <i class="fa fa-trash"></i>
                                                         </button>
                                                     </form>
+
+                                                    <a href="{{ route('employeeimprest_edit', $employeedata->id) }}"
+                                                        class="btn btn-info btn-xs">
+                                                        Edit
+                                                    </a>
                                                 @endif
                                             </td>
                                         </tr>

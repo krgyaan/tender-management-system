@@ -21,7 +21,7 @@
                                 id="formatDistrict-update" class="row g-3 needs-validation" novalidate>
                                 @csrf
                                 <div class="col-md-6">
-                                    <label for="" class="form-label">Name<span class="text-danger">*</span></label>
+                                    <label for="" class="form-label">Name</label>
                                     @if (in_array(Auth::user()->role, ['admin', 'coordinator']))
                                         <select name="name_id" class="form-control" required>
                                             <option value="">Select Option</option>
@@ -42,7 +42,7 @@
 
                                 <div class="col-md-6" id="someOptional1">
                                     <label for="party_name" class="form-label">Party Name
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <input type="text" name="party_name" class="form-control" id=""
                                         placeholder="Party Name">
@@ -52,7 +52,7 @@
                                 </div>
                                 <div class="col-md-6" id="someOptional2">
                                     <label for="project_name" class="form-label">Project Name
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <select name="project_name" class="form-control" id="" required>
                                         <option value="">Select Project</option>
@@ -67,7 +67,7 @@
 
                                 <div class="col-md-6">
                                     <label for="amount" class="form-label">Amount
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <input type="number" name="amount" class="form-control"placeholder=" Amount" required>
                                     @error('amount')
@@ -79,7 +79,7 @@
 
                                 <div class="col-md-6">
                                     <label for="Category" class="form-label">Category
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <select name="category" class="form-control" id="category" required>
                                         <option value="">Select Option</option>
@@ -94,7 +94,7 @@
 
                                 <div class="col-md-6" id="name-container" style="display:none;">
                                     <label for="name" class="form-label">Team Name
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <select name="team_id" id="bsValidation8" class="form-control">
                                         <option value="">Select Option</option>
@@ -110,7 +110,7 @@
 
                                 <div class="col-md-6">
                                     <label for="invoice_proof" class="form-label">Invoice/Proof
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <input type="file" name="invoice_proof[]" id="proof" class="form-control"
                                         multiple>
@@ -118,7 +118,7 @@
 
                                 <div class="col-md-12">
                                     <label for="remark" class="form-label">Remarks
-                                        <span class="text-danger">*</span>
+
                                     </label>
                                     <textarea name="remark" id="" cols="80" rows="4" class="form-control" required></textarea>
                                     @error('remark')

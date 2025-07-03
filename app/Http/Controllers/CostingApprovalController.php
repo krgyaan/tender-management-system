@@ -181,6 +181,9 @@ class CostingApprovalController extends Controller
                 'costing_sheet_link' => $tender->sheet->driveid,
                 'due_date_time' => date('d-m-Y', strtotime($tender->due_date)) . ' ' . date('h:i A', strtotime($tender->due_time)),
                 'tl_name' => $tlName,
+                'tender_value' => format_inr($tender->gst_values),
+                'approved_final_price' => format_inr($tender->sheet->final_price),
+                'remarks' => $tender->costing_remarks,
             ];
 
             MailHelper::configureMailer($tlMail, $tlPass, $tlName);

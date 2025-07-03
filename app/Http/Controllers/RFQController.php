@@ -641,9 +641,9 @@ class RFQController extends Controller
     public function sendMail(Rfq $rfq, $files, $vendors)
     {
         try {
-            $adminMail = User::where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $tlMail = User::where('role', 'team-leader')->first()->email ?? 'gyanprakashk55@gmail.com';
             $user = User::find($rfq->tender->team_member);
+            $adminMail = User::where('role', 'admin')->where('team', $user->team)->first()->email ?? 'gyanprakashk55@gmail.com';
+            $tlMail = User::where('role', 'team-leader')->where('team', $user->team)->first()->email ?? 'gyanprakashk55@gmail.com';
             MailHelper::configureMailer($user->email, $user->app_password, $user->name);
             $mailer = Config::has('mail.mailers.dynamic') ?  'dynamic' : 'smtp';
 

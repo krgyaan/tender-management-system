@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\MailHelper;
 use App\Mail\CostingApprovedMail;
 use App\Mail\CostingRejectedMail;
+use App\Models\VendorOrg;
 use App\Models\Rfq;
 use App\Models\TenderInfo;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Services\TimerService;
+use Illuminate\Validation\Rule;
 
 class CostingApprovalController extends Controller
 {
@@ -47,8 +49,8 @@ class CostingApprovalController extends Controller
             ->get();
 
         // dd($pendingTenders, $approvedTenders);
-
-        return view('costing_approval.index', compact('pendingTenders', 'approvedTenders'));
+        $oems = VendorOrg::all();
+        return view('costing_approval.index', compact('pendingTenders', 'approvedTenders', 'oems'));
     }
 
     public function approveSheet(Request $request, $id)
@@ -57,8 +59,13 @@ class CostingApprovalController extends Controller
 
         try {
             $validated = $request->validate([
-                'costing_status' => 'required|in:Approved,Rejected/Redo',
-                'costing_remarks' => 'nullable|string',
+                'costing_status' => ['required', Rule::in(['Approved', 'Rejected/Redo'])],
+                'final_price' => 'required_if:costing_status,Approved|numeric|min:0',
+                'receipt' => 'required_if:costing_status,Approved|numeric|min:0',
+                'budget' => 'required_if:costing_status,Approved|numeric|min:0',
+                'gross_margin' => 'required_if:costing_status,Approved|numeric|min:0|max:100',
+                'oem' => 'required_if:costing_status,Approved|array|min:1',
+                'costing_remarks' => 'nullable|string|max:255',
             ]);
 
             $tender = TenderInfo::findOrFail($id);
@@ -67,6 +74,14 @@ class CostingApprovalController extends Controller
             $tender->costing_remarks = $validated['costing_remarks'] ?? null;
             $tender->status = 7;
             $tender->save();
+
+            $tender->sheet->update([
+                'final_price' => $validated['final_price'],
+                'receipt' => $validated['receipt'],
+                'budget' => $validated['budget'],
+                'gross_margin' => $validated['gross_margin'],
+                'oem' => implode(',', $validated['oem']),
+            ]);
 
             Log::info('✅ Costing sheet status updated', [
                 'tender_id' => $tender->id,
@@ -94,7 +109,7 @@ class CostingApprovalController extends Controller
                 $tender->status = 7;
                 $tender->save();
 
-                $this->CostingApproval($tender->id);
+                // $this->CostingApproval($tender->id);
             } elseif ($tender->costing_status === 'Rejected/Redo') {
                 $this->CostingRejected($tender->id);
 

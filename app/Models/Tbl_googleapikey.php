@@ -12,7 +12,12 @@ class Tbl_googleapikey extends Model
         'title',
         'type',
         'description',
-        'tenderid'
+        'tenderid',
+        'final_price',
+        'receipt',
+        'budget',
+        'gross_margin',
+        'oem',
     ];
 
     public function tender()

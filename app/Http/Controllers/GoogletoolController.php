@@ -328,6 +328,7 @@ class GoogletoolController extends Controller
 
         $updatedsheet = $sheet->update([
             'final_price' => $request->final_price,
+            'receipt' => $request->receipt,
             'budget' => $request->budget,
             'gross_margin' => $request->gross_margin,
             'remarks' => $request->remarks,
@@ -385,6 +386,7 @@ class GoogletoolController extends Controller
             'costingSheetLink' => $sheet->driveid,
             'tenderValue' => format_inr($tender->gst_values),
             'finalPrice' => format_inr($sheet->final_price),
+            'receipt' => format_inr($sheet->receipt),
             'budget' => format_inr($sheet->budget),
             'grossMargin' => $sheet->gross_margin,
             'remarks' => $sheet->remarks,

@@ -56,7 +56,7 @@
                                                             </td>
                                                             <td>{{ format_inr($tdr->emd) }}</td>
                                                             <td>{{ format_inr($tdr->gst_values) }}</td>
-                                                            <td>{{ format_inr($tdr->sheet->final_costing ?? '') }}</td>
+                                                            <td>{{ format_inr($tdr->sheet->final_price ?? '') }}</td>
                                                             <td>{{ format_inr($tdr->sheet->budget ?? '') }}</td>
                                                             <td>{{ $tdr->sheet->gross_margin ?? 'NA' }} %</td>
                                                             <td>{{ $tdr->users->name }}</td>
@@ -143,7 +143,7 @@
                                                             </td>
                                                             <td>{{ format_inr($tdr->emd) }}</td>
                                                             <td>{{ format_inr($tdr->gst_values) }}</td>
-                                                            <td>{{ format_inr($tdr->sheet->final_costing ?? '') }}</td>
+                                                            <td>{{ format_inr($tdr->sheet->final_price ?? '') }}</td>
                                                             <td>{{ format_inr($tdr->sheet->budget ?? '') }}</td>
                                                             <td>{{ $tdr->sheet->gross_margin ?? 'NA' }} %</td>
                                                             <td>{{ $tdr->users->name }}</td>
@@ -206,7 +206,7 @@
     {{-- Modal --}}
     <div class="modal fade" id="approveSheetModal" tabindex="-1" aria-labelledby="approveSheetModalLabel"
         aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <form action="" method="POST">
                     @csrf
@@ -214,14 +214,47 @@
                         <h5 class="modal-title" id="approveSheetModalLabel">Approve Costing Sheet</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
+                    <div class="modal-body row">
+                        <div class="mb-3 col-md-6">
                             <label for="costingStatus" class="form-label">Costing Sheet</label>
                             <select class="form-select" id="costingStatus" name="costing_status" required>
                                 <option value="">Select Status</option>
                                 <option value="Approved">Approved</option>
                                 <option value="Rejected/Redo">Rejected/Redo</option>
                             </select>
+                        </div>
+                        <div class="if_approved row" style="display: none;">
+                            <div class="mb-3 col-md-6">
+                                <input type="hidden" name="id" id="id">
+                                <label for="final_price" class="form-label">Final Price (GST Inclusive)</label>
+                                <input type="number" class="form-control" name="final_price" id="final_price"
+                                    min="0" step="any" required>
+                            </div>
+                            <div class="mb-3 col-md-6">
+                                <label for="receipt" class="form-label">Receipt (Pre GST)</label>
+                                <input type="number" class="form-control" name="receipt" id="receipt" min="0"
+                                    step="any" required>
+                            </div>
+                            <div class="mb-3 col-md-6">
+                                <label for="budget" class="form-label">Budget (Pre GST)</label>
+                                <input type="number" class="form-control" name="budget" id="budget" min="0"
+                                    step="any" required>
+                            </div>
+                            <div class="mb-3 col-md-6">
+                                <label for="gross_margin" class="form-label">Gross Margin %age</label>
+                                <input type="number" class="form-control" name="gross_margin" id="gross_margin"
+                                    min="0" max="100" step="any" readonly data-bs-toggle="tooltip"
+                                    title="(Receipt - Budget) / Receipt">
+                            </div>
+                            <div class="mb-3 col-md-6">
+                                <label for="oem" class="form-label">OEM Name</label>
+                                <select name="oem[]" class="form-select select2" id="oem" multiple>
+                                    <option value="">Select OEM</option>
+                                    @foreach ($oems as $oem)
+                                        <option value="{{ $oem->id }}">{{ $oem->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="costingRemarks" class="form-label">Costing Remarks (if any)</label>
@@ -245,7 +278,38 @@
                 var button = $(event.relatedTarget);
                 var tenderId = button.data('tender-id');
                 var form = $(this).find('form');
+                var $modal = $(this);
                 form.attr('action', '/costing-approval/approve-sheet/' + tenderId);
+
+                function toggleApprovedFields() {
+                    if ($modal.find('#costingStatus').val() === 'Approved') {
+                        $modal.find('.if_approved').show();
+                        $modal.find('.if_approved input:not([readonly]), .if_approved select').attr(
+                            'required', true);
+                    } else {
+                        $modal.find('.if_approved').hide();
+                        $modal.find('.if_approved input, .if_approved select').removeAttr('required');
+                    }
+                }
+                // Initial state
+                toggleApprovedFields();
+
+                // On status change
+                $modal.find('#costingStatus').off('change').on('change', toggleApprovedFields);
+
+                $modal.find('#receipt, #budget').off('input').on('input', function() {
+                    let receipt = parseFloat($(this).closest('.modal').find('#receipt').val()) || 0;
+                    let budget = parseFloat($(this).closest('.modal').find('#budget').val()) || 0;
+                    let gross_margin = receipt > 0 ? ((receipt - budget) / receipt) * 100 : 0;
+                    $(this).closest('.modal').find('#gross_margin').val(gross_margin.toFixed(2));
+                });
+
+                $modal.find('.select2').select2({
+                    placeholder: 'Select OEM',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $modal
+                });
             });
         });
 

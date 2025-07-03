@@ -34,6 +34,9 @@
                                             <th>Due Date <br>Time</th>
                                             <th>EMD</th>
                                             <th>Tender<br>Value</th>
+                                            <th>Final<br>Price</th>
+                                            <th>Budget</th>
+                                            <th>Gross<br>Margin</th>
                                             <th>Executive <br>Member</th>
                                             <th>Status</th>
                                             <th>Timer</th>
@@ -55,6 +58,9 @@
                                                     </td>
                                                     <td>{{ format_inr($tender->emd) }}</td>
                                                     <td>{{ format_inr($tender->gst_values) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->final_price) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->budget) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->gross_margin) }}</td>
                                                     <td>{{ $tender->users->name }}</td>
                                                     <td>{{ $tender->statuses->name }}</td>
                                                     <td>
@@ -121,6 +127,9 @@
                                             <th>Due Date <br>Time</th>
                                             <th>EMD</th>
                                             <th>Tender<br>Value</th>
+                                            <th>Final<br>Price</th>
+                                            <th>Budget</th>
+                                            <th>Gross<br>Margin</th>
                                             <th>Executive <br>Member</th>
                                             <th>Status</th>
                                             <th>Timer</th>
@@ -142,6 +151,9 @@
                                                     </td>
                                                     <td>{{ format_inr($tender->emd) }}</td>
                                                     <td>{{ format_inr($tender->gst_values) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->final_price) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->budget) }}</td>
+                                                    <td>{{ format_inr($tender->sheet?->gross_margin) }}</td>
                                                     <td>{{ $tender->users->name }}</td>
                                                     <td>{{ $tender->statuses->name }}</td>
                                                     <td>
@@ -221,6 +233,11 @@
                                 min="0" step="any" required>
                         </div>
                         <div class="mb-3">
+                            <label for="receipt" class="form-label">Receipt (Pre GST)</label>
+                            <input type="number" class="form-control" name="receipt" id="receipt" min="0"
+                                step="any" required>
+                        </div>
+                        <div class="mb-3">
                             <label for="budget" class="form-label">Budget (Pre GST)</label>
                             <input type="number" class="form-control" name="budget" id="budget" min="0"
                                 step="any" required>
@@ -228,7 +245,8 @@
                         <div class="mb-3">
                             <label for="gross_margin" class="form-label">Gross Margin %age</label>
                             <input type="number" class="form-control" name="gross_margin" id="gross_margin"
-                                min="0" max="100" step="any" required>
+                                min="0" max="100" step="any" readonly data-bs-toggle="tooltip"
+                                title="(Receipt - Budget)/Receipt">
                         </div>
                         <div class="mb-3">
                             <label for="remarks" class="form-label">Remarks</label>
@@ -250,6 +268,13 @@
             let button = $(event.relatedTarget);
             let id = button.data('id');
             $(this).find('input[name="id"]').val(id);
+
+            $(this).find('#receipt, #budget').off('input').on('input', function() {
+                let receipt = parseFloat($(this).closest('.modal').find('#receipt').val()) || 0;
+                let budget = parseFloat($(this).closest('.modal').find('#budget').val()) || 0;
+                let gross_margin = receipt > 0 ? ((receipt - budget) / receipt) * 100 : 0;
+                $(this).closest('.modal').find('#gross_margin').val(gross_margin.toFixed(2));
+            });
         });
 
         $('#submit_sheet').on('hidden.bs.modal', function() {

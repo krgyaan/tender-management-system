@@ -51,19 +51,19 @@
                                                     <td>
                                                         <p @class(['p-0', 'm-0', 'pt-1', 'fs-6'])>
                                                             Employee Name: <br>
-                                                            <b>{{ $abc[0]->user->name }}</b>
+                                                            <b>{{ $abc->name }}</b>
                                                         </p>
                                                     </td>
                                                     <td>
                                                         <p @class(['p-0', 'm-0', 'pt-1', 'fs-6'])>
                                                             Employee ID: <br>
-                                                            <b>ID00{{ $abc[0]->user->id }}</b>
+                                                            <b>ID00{{ $abc->id }}</b>
                                                         </p>
                                                     </td>
                                                     <td colspan="2">
                                                         <p @class(['p-0', 'm-0', 'pt-1', 'fs-6'])>
                                                             Team Name: <br>
-                                                            <b>{{ 'Team A' }}</b>
+                                                            <b>{{ $abc->team }}</b>
                                                         </p>
                                                     </td>
                                                 </tr>
@@ -76,7 +76,8 @@
                                                 <tr>
                                                     <th>Sr.No.</th>
                                                     <th>Category</th>
-                                                    <th>Description</th>
+                                                    <th>Project Code</th>
+                                                    <th>Project Name</th>
                                                     <th>Remarks</th>
                                                     <th>Amount</th>
                                                 </tr>
@@ -93,9 +94,8 @@
                                                     @foreach ($vo as $v)
                                                         <tr>
                                                             <td>{{ $loop->iteration }}</td>
-                                                            <td>
-                                                                {!! nl2br(wordwrap($v->category->category, 30, "\n")) !!}
-                                                            </td>
+                                                            <td>{!! nl2br(wordwrap($v->category->category, 30, "\n")) !!}</td>
+                                                            <td>{!! \App\Models\Project::where('project_name', $v->project_name)->first()?->project_code !!}</td>
                                                             <td>{!! nl2br(wordwrap($v->project_name, 30, "\n")) !!}</td>
                                                             <td>{!! nl2br(wordwrap($v->remark, 40, "\n")) !!}</td>
                                                             <td>{{ format_inr($v->amount) }}</td>
@@ -106,9 +106,9 @@
                                                     @endforeach
                                                 @endif
                                                 <tr>
-                                                    <td colspan="4" class="text-end fs-6">Total</td>
+                                                    <td colspan="5" class="text-end fs-6">Total</td>
                                                     <td class="fs-6">
-                                                        {{ number_format($total) }}
+                                                        {{ format_inr($total) }}
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -122,7 +122,7 @@
                                                         <p @class(['p-0', 'fs-6'])>Prepared By: </p>
                                                     </th>
                                                     <td>
-                                                        <p @class(['p-0', 'fs-6', 'text-start'])>{{ $abc[0]->user->name }}</p>
+                                                        <p @class(['p-0', 'fs-6', 'text-start'])>{{ $abc->name }}</p>
                                                     </td>
                                                     <th>
                                                         <p @class(['p-0', 'fs-6'])>Date: </p>
@@ -134,7 +134,7 @@
                                                         <p @class(['p-0', 'fs-6'])>Checked By: </p>
                                                     </th>
                                                     <td>
-                                                        @if ($voucher->account_sign != null)
+                                                        @if (optional($voucher)->acc_sign != null)
                                                             <img src="{{ asset('uploads/signs/' . $voucher->acc_sign) }}"
                                                                 alt="account-sign" height="40" width="120">
                                                         @else
@@ -145,9 +145,9 @@
                                                         <p @class(['p-0', 'fs-6'])>Date: </p>
                                                     </th>
                                                     <td>
-                                                        @if ($voucher->account_sign_date != null)
+                                                        @if (optional($voucher)->acc_sign_date != null)
                                                             <p>
-                                                                {{ date('d M, Y', strtotime($voucher->account_sign_date)) }}
+                                                                {{ date('d M, Y', strtotime($voucher->acc_sign_date)) }}
                                                             </p>
                                                         @else
                                                         @endif
@@ -158,7 +158,7 @@
                                                         <p @class(['p-0', 'fs-6'])>Approved By: </p>
                                                     </th>
                                                     <td>
-                                                        @if ($voucher->admin_sign != null)
+                                                        @if (optional($voucher)->admin_sign != null)
                                                             <img src="{{ asset('uploads/signs/' . $voucher->admin_sign) }}"
                                                                 alt="admin-sign" height="40" width="120">
                                                         @else
@@ -169,7 +169,7 @@
                                                         <p @class(['p-0', 'fs-6'])>Date: </p>
                                                     </th>
                                                     <td>
-                                                        @if ($voucher->admin_sign_date != null)
+                                                        @if (optional($voucher)->admin_sign_date != null)
                                                             <p>
                                                                 {{ date('d M, Y', strtotime($voucher->admin_sign_date)) }}
                                                             </p>
@@ -184,7 +184,7 @@
                             </div>
                             <div class="col-md-12">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    @if (auth()->user()->role == 'account')
+                                    @if (Str::startsWith(Auth::user()->role, 'account'))
                                         <button type="button" data-id="{{ $last }}" id="accSign"
                                             class="btn btn-outline-success btn-sm">
                                             Approve by Accounts
@@ -217,7 +217,7 @@
             $('#accSign').on('click', function() {
                 const voucherId = $(this).data('id'); // VE/24/V114
                 id = voucherId.split('/')[2].replace('V', ''); // 114
-
+                console.log(voucherId, id);
                 res = $('#response');
                 $.ajax({
                     url: '/imprest/account-sign/' + id,
@@ -242,9 +242,9 @@
             });
 
             $('#adminSign').on('click', function() {
-                const voucherId = $(this).data('id');
-                last = voucherId.split('/')[2];
-                id = voucherId.split('')[3];
+                const voucherId = $(this).data('id'); // VE/24/V114
+                id = voucherId.split('/')[2].replace('V', ''); // 114
+                console.log(voucherId, id);
                 res = $('#response');
                 $.ajax({
                     url: '/imprest/admin-sign/' + id,

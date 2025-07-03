@@ -181,7 +181,7 @@
                                                     data-bs-target="#remarkModal">
                                                     Add Remarks
                                                 </button>
-                                                @if (in_array(Auth::user()->role, ['admin', 'account']) || Auth::user()->id == $employeedata->name_id)
+                                                @if (Auth::user()->role == 'admin' || Str::startsWith(Auth::user()->role, 'account'))
                                                     <form action="{{ route('imprest.delete', $employeedata->id) }}"
                                                         method="POST" class="">
                                                         @csrf

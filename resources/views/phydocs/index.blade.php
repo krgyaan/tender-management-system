@@ -2,205 +2,182 @@
 @section('page-title', 'All Physical Documnents')
 @section('content')
     <section>
-        <div class="row">
-            <div class="col-md-12 m-auto">
+        <div class="card">
+            <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
-                    <a href="{{ route('phydocs.create') }}" class="btn btn-primary btn-sm">Courier Physical Documents</a>
+                    @if (Auth::user()->role == 'admin')
+                        <div class="form-group" style="max-width: 200px">
+                            <select id="team-filter" class="form-select">
+                                <option value="">All Teams</option>
+                                <option value="AC">AC</option>
+                                <option value="DC">DC</option>
+                            </select>
+                        </div>
+                    @endif
+                    <a href="{{ route('phydocs.create') }}" class="btn btn-primary btn-sm">Courier Physical
+                        Documents</a>
                 </div>
-                <div class="card">
-                    <div class="card-body">
-                        @include('partials.messages')
-                        <div class="bd-example">
-                            <nav>
-                                <div class="nav nav-tabs mb-3 justify-content-center" id="nav-tab" role="tablist">
-                                    <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home"
-                                        aria-selected="true">Physical Docs Pending</button>
-                                    <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-profile" type="button" role="tab"
-                                        aria-controls="nav-profile" aria-selected="false">RFQ Sumnitted</button>
-                                </div>
-                            </nav>
-                            <div class="tab-content" id="nav-tabContent">
-                                <div class="tab-pane fade show active" id="nav-home" role="tabpanel"
-                                    aria-labelledby="nav-home-tab">
-                                    <table class="table" id="allUsers">
-                                        <thead class="">
-                                            <tr>
-                                                <th>Tender No</th>
-                                                <th>Tender Name</th>
-                                                <th>Team Member</th>
-                                                <th>Due Date/Time</th>
-                                                <th>Courier Date</th>
-                                                <th>Timer</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($phydocPending as $info)
-                                                @if (Auth::user()->role == 'admin' ||
-                                                        Auth::user()->role == 'coordinator' ||
-                                                        Auth::user()->id == $info->team_member ||
-                                                        (Auth::user()->role == 'team-leader' && Auth::user()->team == $info->users->team))
-                                                    <tr>
-                                                        <td>{{ $info->tender_no }}</td>
-                                                        <td>{{ $info->tender_name }}</td>
-                                                        <td>{{ $info->users->name }}</td>
-                                                        <td>
-                                                            <span class="d-none">{{ strtotime($info->due_date) }}</span>
-                                                            {{ $info->due_date ? date('d-m-Y', strtotime($info->due_date)) : '' }}
-                                                        </td>
-                                                        <td>
-                                                            <span class="d-none">{{ strtotime($info->dead_date) }}</span>
-                                                            {{ $info->dead_date ? date('d-m-Y', strtotime($info->dead_date)) : '' }}
-                                                        </td>
-                                                        <td>
-                                                            @php
-                                                                $timer = $info->getTimer('physical_docs');
-                                                                if ($timer) {
-                                                                    $start = $timer->start_time;
-                                                                    $hrs = $timer->duration_hours;
-                                                                    $end = strtotime($start) + $hrs * 60 * 60;
-                                                                    $remaining = $end - time();
-                                                                } else {
-                                                                    $remained = $info->remainedTime('physical_docs');
-                                                                }
-                                                            @endphp
-                                                            @if ($timer)
-                                                                {{-- Sortable timer --}}
-                                                                <span class="d-none">{{ $remaining }}</span>
-                                                                <span class="timer" id="timer-{{ $info->id }}"
-                                                                    data-remaining="{{ $remaining }}"></span>
-                                                            @else
-                                                                <span class="d-none">0</span>
-                                                                {!! $remained !!}
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @if ($info->phydocs)
-                                                                <a href="{{ route('phydocs.show', $info->phydocs->id) }}"
-                                                                    class="btn btn-primary btn-xs">
-                                                                    View
-                                                                </a>
-                                                            @endif
-                                                            <a href="{{ route('phydocs.edit', $info->id) }}"
-                                                                class="btn btn-info btn-xs">
-                                                                Submit Docs
-                                                            </a>
-                                                            @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator' || Auth::user()->role == 'account')
-                                                                <form action="{{ route('phydocs.destroy', $info->id) }}"
-                                                                    method="POST" style="display: inline-block">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-danger btn-xs"
-                                                                        onclick="return confirm('Are you sure you want to delete this item?');">
-                                                                        Delete
-                                                                    </button>
-                                                                </form>
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="tab-pane fade" id="nav-profile" role="tabpanel"
-                                    aria-labelledby="nav-profile-tab">
-                                    <table class="table" id="allUsers">
-                                        <thead class="">
-                                            <tr>
-                                                <th>Tender No</th>
-                                                <th>Tender Name</th>
-                                                <th>Team Member</th>
-                                                <th>Due Date/Time</th>
-                                                <th>Courier Date</th>
-                                                <th>Timer</th>
-                                                <th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach ($phydocSent as $info)
-                                                @if (Auth::user()->role == 'admin' ||
-                                                        Auth::user()->role == 'coordinator' ||
-                                                        Auth::user()->id == $info->team_member ||
-                                                        (Auth::user()->role == 'team-leader' && Auth::user()->team == $info->users->team))
-                                                    <tr>
-                                                        <td>{{ $info->tender_no }}</td>
-                                                        <td>{{ $info->tender_name }}</td>
-                                                        <td>{{ $info->users->name }}</td>
-                                                        <td>
-                                                            <span class="d-none">{{ strtotime($info->due_date) }}</span>
-                                                            {{ $info->due_date ? date('d-m-Y', strtotime($info->due_date)) : '' }}
-                                                        </td>
-                                                        <td>
-                                                            <span class="d-none">{{ strtotime($info->dead_date) }}</span>
-                                                            {{ $info->dead_date ? date('d-m-Y', strtotime($info->dead_date)) : '' }}
-                                                        </td>
-                                                        <td>
-                                                            @php
-                                                                $timer = $info->getTimer('physical_docs');
-                                                                if ($timer) {
-                                                                    $start = $timer->start_time;
-                                                                    $hrs = $timer->duration_hours;
-                                                                    $end = strtotime($start) + $hrs * 60 * 60;
-                                                                    $remaining = $end - time();
-                                                                } else {
-                                                                    $remained = $info->remainedTime('physical_docs');
-                                                                }
-                                                            @endphp
-                                                            @if ($timer)
-                                                                {{-- Sortable timer --}}
-                                                                <span class="d-none">{{ $remaining }}</span>
-                                                                <span class="timer" id="timer-{{ $info->id }}"
-                                                                    data-remaining="{{ $remaining }}"></span>
-                                                            @else
-                                                                <span class="d-none">0</span>
-                                                                {!! $remained !!}
-                                                            @endif
-                                                        </td>
-                                                        <td>
-                                                            @if ($info->phydocs)
-                                                                <a href="{{ route('phydocs.show', $info->phydocs->id) }}"
-                                                                    class="btn btn-primary btn-xs">
-                                                                    View
-                                                                </a>
-                                                            @endif
-                                                            <a href="{{ route('phydocs.edit', $info->id) }}"
-                                                                class="btn btn-info btn-xs">
-                                                                Submit Docs
-                                                            </a>
-                                                            @if (Auth::user()->role == 'admin' || Auth::user()->role == 'coordinator' || Auth::user()->role == 'account')
-                                                                <form action="{{ route('phydocs.destroy', $info->id) }}"
-                                                                    method="POST" style="display: inline-block">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-danger btn-xs"
-                                                                        onclick="return confirm('Are you sure you want to delete this item?');">
-                                                                        Delete
-                                                                    </button>
-                                                                </form>
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endif
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                </div>
+                @include('partials.messages')
+                <ul class="nav nav-pills justify-content-center" id="phydocTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pending" type="button">
+                            Pending Physical Docs
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sent" type="button">
+                            Sent Physical Docs
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3">
+                    @foreach (['pending', 'sent'] as $type)
+                        <div class="tab-pane fade {{ $type === 'pending' ? 'show active' : '' }}" id="{{ $type }}">
+                            <div class="table-responsive">
+                                <table class="table-hover" id="{{ $type }}Table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tender</th>
+                                            <th>Team Member</th>
+                                            <th>Due Date/Time</th>
+                                            <th>Courier Date</th>
+                                            <th>Timer</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                </table>
                             </div>
                         </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
     </section>
 @endsection
+
 @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
+        // window.alert = function(msg) { console.log("Intercepted alert:", msg); }
+
+        const tables = {};
+        const tableTypes = ['pending', 'sent'];
+
+        function initializeTable(type) {
+            if (tables[type]) return;
+
+            tables[type] = $(`#${type}Table`).DataTable({
+                serverSide: true,
+                orderCellsTop: true,
+                processing: true,
+                pageLength: 50,
+                stateSave: true,
+                stateLoadParams: function(settings, data) {
+                    data.length = 50;
+                },
+                ajax: {
+                    url: `/phydocs/data/${type}`,
+                    method: 'GET',
+                    data: function(d) {
+                        d.team = $('#team-filter').val();
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables error:', error, thrown);
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            console.error(xhr.responseJSON.message);
+                        } else {
+                            console.error('Error loading data. Please try again.');
+                        }
+                    }
+                },
+                columns: [{
+                        data: 'tender_name',
+                        name: 'tender_name'
+                    },
+                    {
+                        data: 'users.name',
+                        name: 'users.name'
+                    },
+                    {
+                        data: 'due_date',
+                        name: 'due_date'
+                    },
+                    {
+                        data: 'courier_date',
+                        name: 'courier_date'
+                    },
+                    {
+                        data: 'timer',
+                        name: 'timer',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'action',
+                        name: 'action',
+                        orderable: false,
+                        searchable: false
+                    }
+                ],
+                order: [
+                    [2, 'desc']
+                ],
+                search: {
+                    return: true,
+                },
+                language: {
+                    zeroRecords: 'No matching records found',
+                    emptyTable: 'No data available in table',
+                    paginate: {
+                        first: 'First',
+                        previous: 'Previous',
+                        next: 'Next',
+                        last: 'Last'
+                    }
+                },
+                drawCallback: function() {
+                    handleTimers();
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            const savedTeam = localStorage.getItem('selectedTeam');
+            if (savedTeam) {
+                $('#team-filter').val(savedTeam);
+            }
+            $('#team-filter').on('change', function() {
+                const selectedTeam = $(this).val();
+                localStorage.setItem('selectedTeam', selectedTeam);
+
+                // Refresh only the active tab
+                const activeTab = $('#phydocTabs .nav-link.active').attr('data-bs-target').replace('#', '');
+
+                if (tables[activeTab]) {
+                    tables[activeTab].ajax.reload();
+                }
+            });
+
+            initializeTable('pending');
+
+            $('#phydocTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                const type = $(e.target).data('bs-target').replace('#', '');
+                initializeTable(type);
+            });
+
+            setInterval(function() {
+                tableTypes.forEach(type => {
+                    if (tables[type]) {
+                        tables[type].ajax.reload(null, false);
+                    }
+                });
+            }, 300000);
         });
+
+        function handleTimers() {
+            document.querySelectorAll('.timer').forEach(startCountdown);
+        }
     </script>
 @endpush

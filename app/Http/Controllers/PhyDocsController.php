@@ -2,23 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\PhyDocs;
+use App\Models\Documents;
+use App\Models\DocketSlip;
+use App\Models\TenderInfo;
 use App\Helpers\MailHelper;
 use App\Mail\PhydocsCreated;
-use App\Models\CourierDashboard;
-use App\Models\DocketSlip;
-use App\Models\Documents;
-use App\Models\DocumentSubmitted;
-use App\Models\PhyDocs;
+use Illuminate\Http\Request;
 use App\Models\PhydocsPerson;
-use App\Models\TenderInfo;
-use App\Models\TenderInformation;
-use App\Models\User;
 use App\Models\Clintdirectory;
 use App\Services\TimerService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
+use App\Models\CourierDashboard;
+use Yajra\DataTables\DataTables;
+use App\Models\DocumentSubmitted;
+use App\Models\TenderInformation;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Config;
 
 class PhyDocsController extends Controller
 {
@@ -31,23 +33,78 @@ class PhyDocsController extends Controller
 
     public function index()
     {
-        $phydocPending = TenderInfo::with('info', 'users', 'phydocs')
-            ->whereHas('info', function ($query) {
-                $query->where('phyDocs', 'Yes');
-            })
-            ->where('tlStatus', '1')->where('deleteStatus', '0')
-            ->whereDoesntHave('phydocs')
-            ->orderByDesc('due_date')->get();
+        return view('phydocs.index');
+    }
 
-        $phydocSent = TenderInfo::with('info', 'users', 'phydocs')
-            ->whereHas('info', function ($query) {
-                $query->where('phyDocs', 'Yes');
-            })
-            ->where('tlStatus', '1')->where('deleteStatus', '0')
-            ->whereHas('phydocs')
-            ->orderByDesc('due_date')->get();
+    public function phydocsData(Request $request, $type)
+    {
+        $user = Auth::user();
+        $team = $request->input('team');
 
-        return view('phydocs.index', compact('phydocPending', 'phydocSent'));
+        $query = TenderInfo::with(['info', 'users', 'phydocs'])
+            ->where('tlStatus', '1')
+            // ->whereIn('status', [])
+            ->where('deleteStatus', '0')
+            ->whereHas('info', function ($q) {
+                $q->where('phyDocs', 'Yes');
+            });
+
+        // Team filtering
+        if ($user->role != 'admin') {
+            $query->where('team', $user->team);
+        } elseif ($team) {
+            $query->where('team', $team);
+        }
+
+        // Filter by physical doc status
+        if ($type === 'pending') {
+            $query->whereDoesntHave('phydocs');
+        } elseif ($type === 'sent') {
+            $query->whereHas('phydocs');
+        }
+
+        // Order by due_date
+        $query->orderByDesc('due_date');
+
+        // Global search
+        if ($request->has('search') && !empty($request->search['value'])) {
+            $search = $request->search['value'];
+            $query->where(function ($q) use ($search) {
+                $q->where('tender_name', 'like', "%{$search}%")
+                    ->orWhere('tender_no', 'like', "%{$search}%")
+                    ->orWhere('gst_values', 'like', "%{$search}%")
+                    ->orWhere('due_date', 'like', "%{$search}%")
+                    ->orWhereHas('users', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tender_name', function ($tender) {
+                return "<strong>{$tender->tender_name}</strong> <br>
+                <span class='text-muted'>{$tender->tender_no}</span>";
+            })
+            ->addColumn('users.name', function ($tender) {
+                return optional($tender->users)->name ?? 'N/A';
+            })
+            ->addColumn('due_date', function ($tender) {
+                return '<span class="d-none">' . strtotime($tender->due_date) . '</span>' .
+                    date('d-m-Y', strtotime($tender->due_date)) . '<br>' .
+                    date('h:i A', strtotime($tender->due_time));
+            })
+            ->addColumn('courier_date', function ($tender) {
+                $phydoc = $tender->phydocs?->first();
+                return $phydoc && $phydoc->created_at ? '<span class="d-none">' . strtotime($phydoc->created_at) . '</span>' . date('d-m-Y', strtotime($phydoc->created_at)) : '-';
+            })
+            ->addColumn('timer', function ($tender) {
+                return view('partials.phydocs-timer', ['info' => $tender])->render();
+            })
+            ->addColumn('action', function ($tender) {
+                return view('partials.phydocs-action', ['info' => $tender])->render();
+            })
+            ->rawColumns(['due_date', 'action', 'courier_date', 'tender_name', 'timer'])
+            ->make(true);
     }
 
     public function create()

@@ -194,17 +194,5 @@
         function handleTimers() {
             document.querySelectorAll('.timer').forEach(startCountdown);
         }
-
-        function handleModalEvents() {
-            $('#exampleModal').on('show.bs.modal', function(event) {
-                const button = $(event.relatedTarget);
-                const id = button.data('id');
-                const name = button.data('name');
-                const modal = $(this);
-                modal.find('.modal-body #id').val(id);
-                modal.find('.modal-body #status option').prop('selected', false);
-                modal.find(`.modal-body #status option[value="${name}"]`).prop('selected', true);
-            });
-        }
     </script>
 @endpush

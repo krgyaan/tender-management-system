@@ -22,21 +22,28 @@
                                 <label for="status" class="form-label">
                                     TL's decision to bid on the tender
                                 </label>
-                                <select name="status" id="status" class="form-control" data-toggle-watch="true" required>
+                                <select name="status" id="status" class="form-control" data-toggle-watch="true"
+                                    required>
                                     <option value="">Select Status</option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '1' ? 'selected' : '' }} value="1">Yes</option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '2' ? 'selected' : '' }} value="2">No</option>
-                                    <option {{ $tenderInfo->tender->tlStatus == '3' ? 'selected' : '' }} value="3">Tender Sheet Incomplete</option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '1' ? 'selected' : '' }} value="1">Yes
+                                    </option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '2' ? 'selected' : '' }} value="2">No
+                                    </option>
+                                    <option {{ $tenderInfo->tender->tlStatus == '3' ? 'selected' : '' }} value="3">
+                                        Tender Sheet Incomplete</option>
                                 </select>
                             </div>
                             <div class="col-md-12">
                                 <div class="row" id="no" data-show-if="status:2">
                                     <div class="form-group mb-3 col-md-4">
                                         <label for="tender_status" class="form-label">Tender Status</label>
-                                        <select name="tender_status" id="tender_status" class="form-control" data-toggle-oem="true" data-oem-value="10" data-required-if="status:2">
+                                        <select name="tender_status" id="tender_status" class="form-control"
+                                            data-toggle-oem="true" data-oem-value="10" data-required-if="status:2">
                                             <option value="" disabled>Select Status</option>
                                             @php
-                                                $statuses = App\Models\Status::whereBetween('id', [9, 15])->orWhereBetween('id', [31, 32])->get();
+                                                $statuses = App\Models\Status::whereBetween('id', [9, 15])
+                                                    ->orWhereBetween('id', [31, 32])
+                                                    ->get();
                                             @endphp
                                             @foreach ($statuses as $status)
                                                 <option value="{{ $status->id }}"
@@ -46,7 +53,8 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="form-group mb-3 col-md-4" id="who_rejected" data-show-if="tender_status:10" data-required-if="tender_status:10">
+                                    <div class="form-group mb-3 col-md-4" id="who_rejected" data-show-if="tender_status:10"
+                                        data-required-if="tender_status:10">
                                         <label for="oem" class="form-label">OEM who didn't allow</label>
                                         <select name="oem_who_denied[]" id="oem" class="form-control w-100" multiple
                                             data-placeholder="Select OEMs">
@@ -70,8 +78,8 @@
                                 <div class="row" id="yes" data-show-if="status:1">
                                     <div class="form-group mb-3 col-md-4" id="rfqTo">
                                         <label for="rfq_to" class="form-label">Send RFQ to</label>
-                                        <select name="rfq_to[]" id="rfq_to" class="form-control w-100" multiple data-required-if="status:1"
-                                            data-placeholder="Select Vendor for RFQ">
+                                        <select name="rfq_to[]" id="rfq_to" class="form-control w-100" multiple
+                                            data-required-if="status:1" data-placeholder="Select Vendor for RFQ">
                                             @php
                                                 $vendors = App\Models\VendorOrg::all();
                                             @endphp
@@ -86,8 +94,8 @@
                                     </div>
                                     <div class="form-group mb-3 col-md-4" id="tenderFee">
                                         <label for="tender_fees" class="form-label">Select Mode of Tender Fees</label>
-                                        <select name="tender_fees[]" id="tender_fees" class="form-control" multiple data-required-if="status:1"
-                                            data-placeholder="Select Tender Fees Mode">
+                                        <select name="tender_fees[]" id="tender_fees" class="form-control" multiple
+                                            data-required-if="status:1" data-placeholder="Select Tender Fees Mode">
                                             @foreach (explode(',', $tenderInfo->tender_fees ?? '') as $key => $value)
                                                 @if (array_key_exists($value, $tenderFees))
                                                     <option value="{{ $value }}"
@@ -100,8 +108,8 @@
                                     </div>
                                     <div class="form-group mb-3 col-md-4" id="emdMode">
                                         <label for="emd_mode" class="form-label">Select Mode of EMD</label>
-                                        <select name="emd_mode[]" id="emd_mode" class="form-control" multiple data-required-if="status:1"
-                                            data-placeholder="Select EMD Mode">
+                                        <select name="emd_mode[]" id="emd_mode" class="form-control" multiple
+                                            data-required-if="status:1" data-placeholder="Select EMD Mode">
                                             @foreach (explode(',', $tenderInfo->emd_opt) as $key => $value)
                                                 @if (array_key_exists($value, $emdOpt))
                                                     <option value="{{ $value }}"
@@ -159,7 +167,7 @@
                                             </div>
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="fin_eligible"
-                                                    id="fin_eligible_no" value="0" >
+                                                    id="fin_eligible_no" value="0">
                                                 <label class="form-check-label" for="fin_eligible_no">
                                                     No
                                                 </label>
@@ -240,7 +248,7 @@
     <script>
         $(document).ready(function() {
             function setupConditionalToggles() {
-                $('[data-show-if]').each(function () {
+                $('[data-show-if]').each(function() {
                     const $target = $(this);
                     const condition = $target.data('show-if');
                     const [sourceId, showVal] = condition.split(':');
@@ -262,7 +270,7 @@
             setupConditionalToggles();
 
             function updateRequiredFields() {
-                $('[data-required-if]').each(function () {
+                $('[data-required-if]').each(function() {
                     const $field = $(this);
                     const condition = $field.data('required-if');
                     const [sourceId, requiredVal] = condition.split(':');

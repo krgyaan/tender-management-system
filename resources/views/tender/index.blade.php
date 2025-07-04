@@ -6,12 +6,21 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body">
-                    <div class="mb-3 d-flex justify-content-center" style="max-width: 200px">
-                        <select id="team-filter" class="form-select">
-                            <option value="">All Teams</option>
-                            <option value="AC">AC</option>
-                            <option value="DC">DC</option>
-                        </select>
+                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                        @if (Auth::user()->role == 'admin')
+                            <div class="form-group" style="max-width: 200px">
+                                <select id="team-filter" class="form-select">
+                                    <option value="">All Teams</option>
+                                    <option value="AC">AC</option>
+                                    <option value="DC">DC</option>
+                                </select>
+                            </div>
+                        @endif
+                        @if (in_array('tender-create', $permissions))
+                            <div class="">
+                                <a href="{{ route('tender.create') }}" class="btn btn-primary">Create New Tender</a>
+                            </div>
+                        @endif
                     </div>
                     <ul class="nav nav-pills justify-content-center" id="tenderTabs" role="tablist">
                         <li class="nav-item">
@@ -21,12 +30,12 @@
                         </li>
                         <li class="nav-item">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#dnb" type="button">
-                                Do Not Bid
+                                Did Not Bid
                             </button>
                         </li>
                         <li class="nav-item">
                             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#bid" type="button">
-                                Bidding
+                                Bid Submitted
                             </button>
                         </li>
                         <li class="nav-item">
@@ -140,6 +149,11 @@
                 serverSide: true,
                 orderCellsTop: true,
                 processing: true,
+                pageLength: 50,
+                stateSave: true,
+                stateLoadParams: function(settings, data) {
+                    data.length = 50;
+                },
                 ajax: {
                     url: `/tender/data/${type}`,
                     method: 'GET',
@@ -178,7 +192,7 @@
                     },
                     {
                         data: 'gst_values',
-                        name: 'gst_values',
+                        name: 'gst_values'
                     },
                     {
                         data: 'tender_fees',
@@ -221,7 +235,6 @@
                 search: {
                     return: true,
                 },
-                pageLength: 25,
                 language: {
                     zeroRecords: 'No matching records found',
                     emptyTable: 'No data available in table',
@@ -232,8 +245,6 @@
                         last: 'Last'
                     }
                 },
-                responsive: true,
-                stateSave: true,
                 drawCallback: function() {
                     handleTimers();
                     handleModalEvents();
@@ -288,7 +299,7 @@
             }
             $('#team-filter').on('change', function() {
                 const selectedTeam = $(this).val();
-                localStorage.setItem('selectedTeam', selected);
+                localStorage.setItem('selectedTeam', selectedTeam);
 
                 // Refresh only the active tab
                 const activeTab = $('#tenderTabs .nav-link.active').attr('data-bs-target').replace('#', '');

@@ -187,7 +187,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/tender/data/{type}', [TenderInfoController::class, 'getTenderData'])->name('tender.data');
-
+    Route::get('/approve-tender/data/{type}', [TenderInfoController::class, 'tlapprovalData'])->name('tlapproval.data');
+    
     Route::prefix('tender')->group(function () {
         Route::resource('courier', CourierDashboardController::class);
         Route::any('courier/despatch/{id}', [CourierDashboardController::class, 'despatch'])->name('courier.despatch');

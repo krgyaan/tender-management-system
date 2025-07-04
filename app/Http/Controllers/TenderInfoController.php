@@ -758,7 +758,7 @@ class TenderInfoController extends Controller
         return view('tender.tender-approval-form', compact('tenderInfo', 'tenderFees', 'emdOpt', 'pqr', 'finance'));
     }
 
-    public function tlapproval(Request $request)
+    public function tlapproval_old(Request $request)
     {
         $tenderInfo = (Auth::user()->role == 'admin') ?
             TenderInformation::with('tender')->get()
@@ -773,6 +773,93 @@ class TenderInfoController extends Controller
         $pending  = $tenderInfo->filter(fn($info) => in_array(optional($info->tender)->tlStatus, [0, 3]));
 
         return view('tender.tlapprove', compact('pending', 'approved', 'rejected'));
+    }
+
+    public function tlapproval(Request $request)
+    {
+        return view('tender.tlapprove');
+    }
+
+    public function tlapprovalData(Request $request, $type)
+    {
+        $user = Auth::user();
+        $team = $request->input('team');
+
+        $query = TenderInformation::query()
+            ->select('tender_information.*')
+            ->join('tender_infos', 'tender_information.tender_id', '=', 'tender_infos.id')
+            ->with(['tender', 'tender.organizations', 'tender.users', 'tender.itemName', 'tender.statuses']);
+
+        // Team filter for non-admins
+        if ($user->role != 'admin') {
+            $query->where('tender_infos.team', $user->team);
+        } elseif ($team) {
+            $query->where('tender_infos.team', $team);
+        }
+
+        // Status filter
+        if ($type === 'pending') {
+            $query->whereIn('tender_infos.tlStatus', ['0', '3']);
+        } elseif ($type === 'approved') {
+            $query->where('tender_infos.tlStatus', '1');
+        } elseif ($type === 'rejected') {
+            $query->where('tender_infos.tlStatus', '2');
+        }
+
+        // Order by due_date from tender_infos
+        $query->orderByDesc('tender_infos.due_date');
+
+        // Add search functionality for all fields
+        if ($request->has('search') && !empty($request->search['value'])) {
+            $search = $request->search['value'];
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('tender', function ($t) use ($search) {
+                    $t->where('tender_name', 'like', "%{$search}%")
+                        ->orWhere('tender_no', 'like', "%{$search}%")
+                        ->orWhere('gst_values', 'like', "%{$search}%")
+                        ->orWhere('due_date', 'like', "%{$search}%")
+                        ->orWhere('due_time', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('tender.users', function ($u) use ($search) {
+                        $u->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('tender.itemName', function ($i) use ($search) {
+                        $i->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('tender_information.reject_reason', 'like', "%{$search}%")
+                    ->orWhere('tender_information.reject_remarks', 'like', "%{$search}%");
+            });
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tender_name', function ($info) {
+                return "<strong>{$info->tender->tender_name}</strong> <br>
+                                <span class='text-muted'>{$info->tender->tender_no}</span>";
+            })
+            ->addColumn('users.name', function ($info) {
+                return optional(optional($info->tender)->users)->name ?? 'N/A';
+            })
+            ->addColumn('due_date', function ($info) {
+                $tender = $info->tender;
+                if (!$tender) return '';
+                return '<span class="d-none">' . strtotime($tender->due_date) . '</span>' .
+                    date('d-m-Y', strtotime($tender->due_date)) . '<br>' .
+                    date('h:i A', strtotime($tender->due_time));
+            })
+            ->addColumn('gst_values', function ($info) {
+                return format_inr($info->tender->gst_values) ?? '0';
+            })
+            ->addColumn('item_name.name', function ($info) {
+                return optional(optional($info->tender)->itemName)->name ?? 'N/A';
+            })
+            ->addColumn('timer', function ($info) {
+                return view('partials.tlapprove-timer', ['tender' => $info->tender])->render();
+            })
+            ->addColumn('action', function ($info) {
+                return view('partials.tlapprove-actions', compact('info'))->render();
+            })
+            ->rawColumns(['due_date', 'timer', 'action', 'tender_name'])
+            ->make(true);
     }
 
     public function tlapproved(Request $request)

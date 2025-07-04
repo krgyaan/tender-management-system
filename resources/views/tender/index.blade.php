@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('page-title', 'All Tenders Info')
-
 @section('content')
     <div class="row">
         <div class="col-md-12">

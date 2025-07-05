@@ -43,7 +43,7 @@ class PhyDocsController extends Controller
 
         $query = TenderInfo::with(['info', 'users', 'phydocs'])
             ->where('tlStatus', '1')
-            // ->whereIn('status', [])
+            ->whereNotIn('status', ['9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->where('deleteStatus', '0')
             ->whereHas('info', function ($q) {
                 $q->where('phyDocs', 'Yes');

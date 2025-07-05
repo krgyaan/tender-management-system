@@ -189,6 +189,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tender/data/{type}', [TenderInfoController::class, 'getTenderData'])->name('tender.data');
     Route::get('/approve-tender/data/{type}', [TenderInfoController::class, 'tlapprovalData'])->name('tlapproval.data');
     Route::get('/phydocs/data/{type}', [PhyDocsController::class, 'phydocsData'])->name('phydocs.data');
+    Route::get('/rfq/data/{type}', [RFQController::class, 'rfqData'])->name('rfq.data');
 
     Route::prefix('tender')->group(function () {
         Route::resource('courier', CourierDashboardController::class);

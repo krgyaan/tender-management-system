@@ -1,261 +1,55 @@
 @extends('layouts.app')
-@section('page-title', 'All RFQs')
+@section('page-title', 'All RFQs and Receipts')
 @section('content')
     <section>
-        <div class="row">
-            <div class="col-md-12 m-auto">
-                <div class="d-flex justify-content-between align-items-center">
-                    <a href="{{ route('rfq.create') }}" class="btn btn-primary btn-sm">Raise RFQ</a>
-                    <a href="{{ route('rfq.receipt') }}" class="btn btn-primary btn-sm">Receipt Dashboard</a>
-                </div>
-                <div class="card">
-                    <div class="card-body">
-                        @include('partials.messages')
-                        <div class="bd-example">
-                            <nav>
-                                <div class="nav nav-tabs mb-3 justify-content-center" id="nav-tab" role="tablist">
-                                    <button class="nav-link active" id="nav-home-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-home" type="button" role="tab" aria-controls="nav-home"
-                                        aria-selected="true">RFQ</button>
-                                    <button class="nav-link" id="nav-profile-tab" data-bs-toggle="tab"
-                                        data-bs-target="#nav-profile" type="button" role="tab"
-                                        aria-controls="nav-profile" aria-selected="false">RFQ Sumnitted</button>
-                                </div>
-                            </nav>
-                            <div class="tab-content" id="nav-tabContent">
-                                <div class="tab-pane fade show active" id="nav-home" role="tabpanel"
-                                    aria-labelledby="nav-home-tab">
-                                    <div class="table-responsive">
-                                        <table class="table" id="allUsers">
-                                            <thead>
-                                                <tr>
-                                                    <th>Tender No</th>
-                                                    <th>Tender Name</th>
-                                                    <th>Item Name</th>
-                                                    <th>RFQ to</th>
-                                                    <th>Due Date <br> and Time</th>
-                                                    <th>Timer</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse ($pendingRfqs as $tender)
-                                                    @php
-                                                        $canView =
-                                                            Auth::user()->role == 'admin' ||
-                                                            Auth::user()->role == 'coordinator' ||
-                                                            Auth::user()->id == $tender->team_member ||
-                                                            (Auth::user()->role == 'team-leader' &&
-                                                                Auth::user()->team == optional($tender->users)->team);
-                                                    @endphp
-
-                                                    @if ($canView)
-                                                        <tr>
-                                                            <td>{{ $tender->tender_no }}</td>
-                                                            <td>{{ $tender->tender_name }}</td>
-                                                            <td>{{ optional($tender->itemName)->name }}</td>
-
-                                                            <td>
-                                                                @foreach (explode(',', $tender->rfq_to ?? '') as $vendorId)
-                                                                    @php
-                                                                        $vendor = \App\Models\VendorOrg::find(
-                                                                            $vendorId,
-                                                                        );
-                                                                    @endphp
-                                                                    @if ($vendor)
-                                                                        {{ $vendor->name }}<br>
-                                                                    @endif
-                                                                @endforeach
-                                                            </td>
-
-                                                            <td>
-                                                                <span
-                                                                    class="d-none">{{ strtotime($tender->due_date) }}</span>
-                                                                {{ $tender->due_date ? date('d-m-Y', strtotime($tender->due_date)) : '' }}
-                                                            </td>
-
-                                                            <td>
-                                                                @php
-                                                                    $timer = $tender->getTimer('rfq');
-                                                                    if ($timer) {
-                                                                        $start = $timer->start_time;
-                                                                        $hrs = $timer->duration_hours;
-                                                                        $end = strtotime($start) + $hrs * 3600;
-                                                                        $remaining = $end - time(); // in seconds
-                                                                    } else {
-                                                                        $remained = $tender->remainedTime('rfq');
-                                                                    }
-                                                                @endphp
-
-                                                                @if ($timer)
-                                                                    {{-- Sortable timer --}}
-                                                                    <span class="d-none">{{ $remaining }}</span>
-                                                                    <span class="timer" id="timer-{{ $tender->id }}"
-                                                                        data-remaining="{{ $remaining }}"></span>
-                                                                @else
-                                                                    <span class="d-none">0</span>
-                                                                    {!! $remained !!}
-                                                                @endif
-                                                            </td>
-
-                                                            <td>
-                                                                <a href="{{ route('rfq.create', $tender->id) }}"
-                                                                    class="btn btn-primary btn-xs">
-                                                                    Send RFQ
-                                                                </a>
-
-                                                                @if ($tender->rfqs)
-                                                                    <a href="{{ route('rfq.recipient', $tender->rfqs) }}"
-                                                                        class="btn btn-success btn-xs">
-                                                                        Receipt
-                                                                    </a>
-                                                                    <a href="{{ route('rfq.show', $tender->rfqs) }}"
-                                                                        class="btn btn-primary btn-xs">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </a>
-                                                                @endif
-
-                                                                @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account']))
-                                                                    <form action="{{ route('rfq.destroy', $tender->id) }}"
-                                                                        method="POST" style="display:inline-block;">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button type="submit" class="btn btn-danger btn-xs"
-                                                                            onclick="return confirm('Are you sure you want to delete this item?');">
-                                                                            <i class="fa fa-trash"></i>
-                                                                        </button>
-                                                                    </form>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endif
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="7" class="text-center">No tenders found.</td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="nav-profile" role="tabpanel"
-                                    aria-labelledby="nav-profile-tab">
-                                    <div class="table-responsive">
-                                        <table class="table" id="allUsers">
-                                            <thead>
-                                                <tr>
-                                                    <th>Tender No</th>
-                                                    <th>Tender Name</th>
-                                                    <th>Item Name</th>
-                                                    <th>RFQ to</th>
-                                                    <th>Due Date <br> and Time</th>
-                                                    <th>Timer</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse ($sentRfqs as $tender)
-                                                    @php
-                                                        $canView =
-                                                            Auth::user()->role == 'admin' ||
-                                                            Auth::user()->role == 'coordinator' ||
-                                                            Auth::user()->id == $tender->team_member ||
-                                                            (Auth::user()->role == 'team-leader' &&
-                                                                Auth::user()->team == optional($tender->users)->team);
-                                                    @endphp
-
-                                                    @if ($canView)
-                                                        <tr>
-                                                            <td>{{ $tender->tender_no }}</td>
-                                                            <td>{{ $tender->tender_name }}</td>
-                                                            <td>{{ optional($tender->itemName)->name }}</td>
-
-                                                            <td>
-                                                                @foreach (explode(',', $tender->rfq_to ?? '') as $vendorId)
-                                                                    @php
-                                                                        $vendor = \App\Models\VendorOrg::find(
-                                                                            $vendorId,
-                                                                        );
-                                                                    @endphp
-                                                                    @if ($vendor)
-                                                                        {{ $vendor->name }}<br>
-                                                                    @endif
-                                                                @endforeach
-                                                            </td>
-
-                                                            <td>
-                                                                <span
-                                                                    class="d-none">{{ strtotime($tender->due_date) }}</span>
-                                                                {{ $tender->due_date ? date('d-m-Y', strtotime($tender->due_date)) : '' }}
-                                                            </td>
-
-                                                            <td>
-                                                                @php
-                                                                    $timer = $tender->getTimer('rfq');
-                                                                    if ($timer) {
-                                                                        $start = $timer->start_time;
-                                                                        $hrs = $timer->duration_hours;
-                                                                        $end = strtotime($start) + $hrs * 3600;
-                                                                        $remaining = $end - time(); // in seconds
-                                                                    } else {
-                                                                        $remained = $tender->remainedTime('rfq');
-                                                                    }
-                                                                @endphp
-
-                                                                @if ($timer)
-                                                                    {{-- Sortable timer --}}
-                                                                    <span class="d-none">{{ $remaining }}</span>
-                                                                    <span class="timer" id="timer-{{ $tender->id }}"
-                                                                        data-remaining="{{ $remaining }}"></span>
-                                                                @else
-                                                                    <span class="d-none">0</span>
-                                                                    {!! $remained !!}
-                                                                @endif
-                                                            </td>
-
-                                                            <td>
-                                                                <a href="{{ route('rfq.create', $tender->id) }}"
-                                                                    class="btn btn-primary btn-xs">
-                                                                    Send RFQ
-                                                                </a>
-
-                                                                @if ($tender->rfqs)
-                                                                    <a href="{{ route('rfq.recipient', $tender->rfqs) }}"
-                                                                        class="btn btn-success btn-xs">
-                                                                        Receipt
-                                                                    </a>
-                                                                    <a href="{{ route('rfq.show', $tender->rfqs) }}"
-                                                                        class="btn btn-primary btn-xs">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </a>
-                                                                @endif
-
-                                                                @if (in_array(Auth::user()->role, ['admin', 'coordinator', 'account']))
-                                                                    <form action="{{ route('rfq.destroy', $tender->id) }}"
-                                                                        method="POST" style="display:inline-block;">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <button type="submit" class="btn btn-danger btn-xs"
-                                                                            onclick="return confirm('Are you sure you want to delete this item?');">
-                                                                            <i class="fa fa-trash"></i>
-                                                                        </button>
-                                                                    </form>
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endif
-                                                @empty
-                                                    <tr>
-                                                        <td colspan="7" class="text-center">No tenders found.</td>
-                                                    </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+        <div class="card">
+            <div class="d-flex justify-content-between align-items-center m-2">
+                @if (Auth::user()->role == 'admin')
+                    <div class="form-group" style="max-width: 200px">
+                        <select id="team-filter" class="form-select">
+                            <option value="">All Teams</option>
+                            <option value="AC">AC</option>
+                            <option value="DC">DC</option>
+                        </select>
+                    </div>
+                @endif
+                <a href="{{ route('rfq.create') }}" class="btn btn-success btn-sm">Raise RFQ</a>
+                <a href="{{ route('rfq.receipt') }}" class="btn btn-primary btn-sm">Receipt Dashboard</a>
+            </div>
+            <div class="card-body">
+                @include('partials.messages')
+                <ul class="nav nav-pills justify-content-center" id="rfqTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pending" type="button">
+                            Pending RFQs
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#sent" type="button">
+                            Sent RFQs
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3">
+                    @foreach (['pending', 'sent'] as $type)
+                        <div class="tab-pane fade {{ $type === 'pending' ? 'show active' : '' }}" id="{{ $type }}">
+                            <div class="table-responsive">
+                                <table class="table-hover" id="{{ $type }}Table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tender</th>
+                                            <th>Team Member</th>
+                                            <th>Item Name</th>
+                                            <th>RFQ to</th>
+                                            <th>Due Date <br> and Time</th>
+                                            <th>Timer</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                </table>
                             </div>
                         </div>
-                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -264,9 +58,133 @@
 
 @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(startCountdown);
+        window.alert = function(msg) {
+            console.log("Intercepted alert:", msg);
+        }
+
+        const tables = {};
+        const tableTypes = ['pending', 'sent'];
+
+        function initializeTable(type) {
+            if (tables[type]) return;
+
+            tables[type] = $(`#${type}Table`).DataTable({
+                serverSide: true,
+                orderCellsTop: true,
+                processing: true,
+                pageLength: 50,
+                stateSave: true,
+                stateLoadParams: function(settings, data) {
+                    data.length = 50;
+                },
+                ajax: {
+                    url: `/rfq/data/${type}`,
+                    method: 'GET',
+                    data: function(d) {
+                        d.team = $('#team-filter').val();
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables error:', error, thrown);
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            console.error(xhr.responseJSON.message);
+                        } else {
+                            console.error('Error loading data. Please try again.');
+                        }
+                    }
+                },
+                columns: [{
+                        data: 'tender_name',
+                        name: 'tender_name'
+                    },
+                    {
+                        data: 'users.name',
+                        name: 'users.name'
+                    },
+                    {
+                        data: 'item_name',
+                        name: 'item_name'
+                    },
+                    {
+                        data: 'rfq_to',
+                        name: 'rfq_to'
+                    },
+                    {
+                        data: 'due_date',
+                        name: 'due_date'
+                    },
+                    {
+                        data: 'timer',
+                        name: 'timer',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'action',
+                        name: 'action',
+                        orderable: false,
+                        searchable: false
+                    }
+                ],
+                order: [
+                    [4, 'desc']
+                ],
+                search: {
+                    return: true,
+                },
+                language: {
+                    zeroRecords: 'No matching records found',
+                    emptyTable: 'No data available in table',
+                    paginate: {
+                        first: 'First',
+                        previous: 'Previous',
+                        next: 'Next',
+                        last: 'Last'
+                    }
+                },
+                drawCallback: function() {
+                    handleTimers();
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            const savedTeam = localStorage.getItem('selectedTeam');
+            if (savedTeam) {
+                $('#team-filter').val(savedTeam);
+            }
+            $('#team-filter').on('change', function() {
+                const selectedTeam = $(this).val();
+                localStorage.setItem('selectedTeam', selectedTeam);
+
+                // Refresh only the active tab
+                const activeTab = $('#rfqTabs .nav-link.active').attr('data-bs-target').replace('#', '');
+
+                if (tables[activeTab]) {
+                    tables[activeTab].ajax.reload();
+                }
+            });
+
+            initializeTable('pending');
+
+            $('#rfqTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+                const type = $(e.target).data('bs-target').replace('#', '');
+                initializeTable(type);
+            });
+
+            setInterval(function() {
+                tableTypes.forEach(type => {
+                    if (tables[type]) {
+                        tables[type].ajax.reload(null, false);
+                    }
+                });
+            }, 300000);
         });
+
+        function handleTimers() {
+            document.querySelectorAll('.timer').forEach(startCountdown);
+        }
     </script>
 @endpush

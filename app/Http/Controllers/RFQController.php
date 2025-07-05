@@ -2,27 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Helpers\MailHelper;
-use App\Mail\RfqSent;
 use App\Models\Rfq;
-use App\Models\RfqBoq;
-use App\Models\RfqItem;
-use App\Models\RfqMaf;
-use App\Models\RfqMii;
-use App\Models\RfqResponse;
-use App\Models\RfqScope;
-use App\Models\RfqTechnical;
-use App\Models\RfqVendor;
-use App\Models\TenderInfo;
 use App\Models\Item;
 use App\Models\User;
+use App\Mail\RfqSent;
+use App\Models\RfqBoq;
+use App\Models\RfqMaf;
+use App\Models\RfqMii;
 use App\Models\Vendor;
+use App\Models\RfqItem;
+use App\Models\RfqScope;
+use App\Models\RfqVendor;
 use App\Models\VendorOrg;
-use App\Services\TimerService;
+use App\Models\TenderInfo;
+use App\Helpers\MailHelper;
+use App\Models\RfqResponse;
+use App\Models\RfqTechnical;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
+use App\Services\TimerService;
+use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Config;
 
 class RFQController extends Controller
 {
@@ -34,19 +36,88 @@ class RFQController extends Controller
     }
     public function index()
     {
-        $pendingRfqs = TenderInfo::with('rfqs', 'itemName')
+        return view('rfq.index');
+    }
+
+    public function rfqData(Request $request,  $type)
+    {
+        $user = Auth::user();
+        $team = $request->input('team');
+
+        $query = TenderInfo::with(['rfqs', 'itemName', 'users'])
             ->where('deleteStatus', '0')
-            ->where('tlStatus', '1')
-            ->whereDoesntHave('rfqs')
-            ->orderByDesc('due_date')
-            ->get();
-        $sentRfqs = TenderInfo::with('rfqs', 'itemName')
-            ->where('deleteStatus', '0')
-            ->where('tlStatus', '1')
-            ->whereHas('rfqs')
-            ->orderByDesc('due_date')
-            ->get();
-        return view('rfq.index', compact('pendingRfqs', 'sentRfqs'));
+            ->whereNotIn( 'status', ['9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNot('rfq_to', '0')
+            ->where('tlStatus', '1');
+
+        // Team filtering
+        if ($user->role != 'admin') {
+            $query->where('team', $user->team);
+        } elseif ($team) {
+            $query->where('team', $team);
+        }
+
+        // Filter by RFQ status
+        if ($type === 'pending') {
+            $query->whereDoesntHave('rfqs');
+        } elseif ($type === 'sent') {
+            $query->whereHas('rfqs');
+        }
+
+        // Order by due_date
+        $query->orderByDesc('due_date');
+
+        // Global search
+        if ($request->has('search') && !empty($request->search['value'])) {
+            $search = $request->search['value'];
+            $query->where(function ($q) use ($search) {
+                $q->where('tender_name', 'like', "%{$search}%")
+                    ->orWhere('tender_no', 'like', "%{$search}%")
+                    ->orWhere('due_date', 'like', "%{$search}%")
+                    ->orWhereHas('users', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tender_name', function ($tender) {
+                return "<strong>{$tender->tender_name}</strong> <br>
+            <span class='text-muted'>{$tender->tender_no}</span>";
+            })
+            ->addColumn('users.name', function ($tender) {
+                return optional($tender->users)->name ?? 'N/A';
+            })
+            ->addColumn('item_name', function ($tender) {
+                return optional($tender->itemName)->name ?? '-';
+            })
+            ->addColumn('rfq_to', function ($tender) {
+                if (!empty($tender->rfq_to)) {
+                    $vendorNames = [];
+                    foreach (explode(',', $tender->rfq_to) as $vendorId) {
+                        $vendor = VendorOrg::find($vendorId);
+                        if ($vendor) {
+                            $vendorNames[] = $vendor->name;
+                        }
+                    }
+                    return implode('<br>', $vendorNames) ?: '-';
+                }
+                return '-';
+            })
+            ->addColumn('due_date', function ($tender) {
+                return '<span class="d-none">' . strtotime($tender->due_date) . '</span>' .
+                    date('d-m-Y', strtotime($tender->due_date)) . '<br>' .
+                    (isset($tender->due_time) ? date('h:i A', strtotime($tender->due_time)) : '');
+            })
+            ->addColumn('timer', function ($tender) {
+                // You can use a partial view or just a placeholder
+                return view('partials.rfq-timer', ['tender' => $tender])->render();
+            })
+            ->addColumn('action', function ($tender) {
+                return view('partials.rfq-action', ['tender' => $tender])->render();
+            })
+            ->rawColumns(['tender_name', 'due_date', 'rfq_to', 'timer', 'action'])
+            ->make(true);
     }
 
     public function create($id = null)

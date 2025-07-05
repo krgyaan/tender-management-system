@@ -88,8 +88,8 @@ class TenderInfoController extends Controller
         2 => 'NEFT/RTGS',
         3 => 'DD',
         4 => 'BG',
-        4 => 'FDR',
-        5 => 'Not Applicable',
+        5 => 'FDR',
+        6 => 'Not Applicable',
     ];
 
     public $revAuction = [

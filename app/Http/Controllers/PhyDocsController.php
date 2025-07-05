@@ -56,6 +56,14 @@ class PhyDocsController extends Controller
             $query->where('team', $team);
         }
 
+        if (!in_array($user->role, ['admin'])) {
+            if (in_array($user->role, ['team-leader', 'coordinator'])) {
+                $query->where('team', $user->team);
+            } else {
+                $query->where('team_member', $user->id);
+            }
+        }
+
         // Filter by physical doc status
         if ($type === 'pending') {
             $query->whereDoesntHave('phydocs');

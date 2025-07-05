@@ -46,7 +46,7 @@ class RFQController extends Controller
 
         $query = TenderInfo::with(['rfqs', 'itemName', 'users'])
             ->where('deleteStatus', '0')
-            ->whereNotIn( 'status', ['9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNotIn('status', ['9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->whereNot('rfq_to', '0')
             ->where('tlStatus', '1');
 
@@ -55,6 +55,14 @@ class RFQController extends Controller
             $query->where('team', $user->team);
         } elseif ($team) {
             $query->where('team', $team);
+        }
+
+        if (!in_array($user->role, ['admin'])) {
+            if (in_array($user->role, ['team-leader', 'coordinator'])) {
+                $query->where('team', $user->team);
+            } else {
+                $query->where('team_member', $user->id);
+            }
         }
 
         // Filter by RFQ status

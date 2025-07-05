@@ -351,8 +351,7 @@ class EmdsController extends Controller
                 }
             } else if ($finalData['instrument_type'] == 3) {
                 try {
-                    Log:
-                    info('Cheque Started by user ' . Auth::user()->name);
+                    Log::info('Cheque Started by user ' . Auth::user()->name);
                     $request->validate([
                         'cheque_favour' => 'nullable|required_without_all:cheque_amt,cheque_date',
                         'cheque_amt' => 'nullable|required_without_all:cheque_favour,cheque_date',
@@ -464,7 +463,7 @@ class EmdsController extends Controller
                             $filename = time() . '_bg_by_te_.' . $file->getClientOriginalExtension();
                             $file->move('uploads/emds/', $filename);
                             $bg->bg_format_te = $filename;
-                            Log::info('bg_format_te updated', ['emd_id' => $id]);
+                            Log::info('bg_format_te updated', ['bg_id' => $bg->id]);
                         }
                     } catch (\Exception $e) {
                         Log::error("bg_format_te file upload failed: " . $e->getMessage());
@@ -475,7 +474,7 @@ class EmdsController extends Controller
                             $filename = time() . '_po_.' . $file->getClientOriginalExtension();
                             $file->move('uploads/emds/', $filename);
                             $bg->bg_po = $filename;
-                            Log::info('BG PO updated', ['emd_id' => $id]);
+                            Log::info('BG PO updated', ['bg_id' => $bg->id]);
                         }
                     } catch (\Exception $e) {
                         Log::error("BG PO file upload failed: " . $e->getMessage());

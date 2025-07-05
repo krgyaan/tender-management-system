@@ -50,18 +50,14 @@ class PhyDocsController extends Controller
             });
 
         // Team filtering
-        if ($user->role != 'admin') {
-            $query->where('team', $user->team);
-        } elseif ($team) {
-            $query->where('team', $team);
-        }
-
         if (!in_array($user->role, ['admin'])) {
             if (in_array($user->role, ['team-leader', 'coordinator'])) {
                 $query->where('team', $user->team);
             } else {
                 $query->where('team_member', $user->id);
             }
+        } else if ($team) {
+            $query->where('team', $team);
         }
 
         // Filter by physical doc status

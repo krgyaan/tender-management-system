@@ -1081,6 +1081,16 @@
 
     @stack('scripts')
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toastElList = [].slice.call(document.querySelectorAll('.toast'))
+            toastElList.forEach(function(toastEl) {
+                const toast = new bootstrap.Toast(toastEl, {
+                    delay: 5000
+                });
+                toast.show();
+            });
+        });
+
         $(document).ready(function() {
             // which form field has required attribute add * on it's label
             $('input[required], select[required], textarea[required]').each(function() {

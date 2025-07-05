@@ -19,12 +19,12 @@ use App\Mail\BankTransferMail;
 use App\Models\EmdDemandDraft;
 use App\Services\TimerService;
 use App\Mail\ChequeCreatedMail;
+use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Storage;
 
 class EmdsController extends Controller
 {
@@ -48,17 +48,89 @@ class EmdsController extends Controller
 
     public function index()
     {
-        $pendingTenders = TenderInfo::where(function ($query) {
-            $query->where('emd', '>', '0')
-                ->orWhere('gst_values', '>', '0');
-        })->where('tlStatus', '1')->where('deleteStatus', '0')->whereDoesntHave('emds')->orderByDesc('due_date')->get();
+        return view('emds.index');
+    }
 
-        $sentTenders = TenderInfo::where(function ($query) {
-            $query->where('emd', '>', '0')
-                ->orWhere('gst_values', '>', '0');
-        })->where('tlStatus', '1')->where('deleteStatus', '0')->whereHas('emds')->orderByDesc('due_date')->get();
+    public function emdData(Request $request, $type)
+    {
+        $user = Auth::user();
+        $team = $request->input('team');
 
-        return view('emds.index', compact('pendingTenders', 'sentTenders'));
+        $query = TenderInfo::with(['emds', 'users'])
+            ->where(function ($query) {
+                $query->where('emd', '>', '0')
+                    ->orWhere('tender_fees', '>', '0');
+            })
+            ->where('tlStatus', '1')
+            ->where('deleteStatus', '0');
+
+        // Team filtering
+        if (!in_array($user->role, ['admin'])) {
+            if (in_array($user->role, ['team-leader', 'coordinator'])) {
+                $query->where('team', $user->team);
+            } else {
+                $query->where('team_member', $user->id);
+            }
+        } else if ($team) {
+            $query->where('team', $team);
+        }
+
+        // Filter by EMD status
+        if ($type === 'pending') {
+            $query->whereDoesntHave('emds');
+        } elseif ($type === 'sent') {
+            $query->whereHas('emds');
+        }
+
+        // Order by due_date
+        $query->orderByDesc('due_date');
+
+        // Global search
+        if ($request->has('search') && !empty($request->search['value'])) {
+            $search = $request->search['value'];
+            $query->where(function ($q) use ($search) {
+                $q->where('tender_name', 'like', "%{$search}%")
+                    ->orWhere('tender_no', 'like', "%{$search}%")
+                    ->orWhere('gst_values', 'like', "%{$search}%")
+                    ->orWhere('tender_fees', 'like', "%{$search}%")
+                    ->orWhere('emd', 'like', "%{$search}%")
+                    ->orWhere('due_date', 'like', "%{$search}%")
+                    ->orWhereHas('users', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tender_name', function ($tender) {
+                return "<strong>{$tender->tender_name}</strong> <br>
+                <span class='text-muted'>{$tender->tender_no}</span>";
+            })
+            ->addColumn('gst_values', function ($tender) {
+                return format_inr($tender->gst_values) ?? '-';
+            })
+            ->addColumn('tender_emd', function ($tender) {
+                return format_inr($tender->emd) ?? '-';
+            })
+            ->addColumn('tender_fees', function ($tender) {
+                return format_inr($tender->tender_fees) ?? '-';
+            })
+            ->addColumn('users.name', function ($tender) {
+                return optional($tender->users)->name ?? 'N/A';
+            })
+            ->addColumn('due_date', function ($tender) {
+                return '<span class="d-none">' . strtotime($tender->due_date) . '</span>' .
+                    date('d-m-Y', strtotime($tender->due_date)) . '<br>' .
+                    (isset($tender->due_time) ? date('h:i A', strtotime($tender->due_time)) : '');
+            })
+            ->addColumn('timer', function ($tender) {
+                return view('partials.emd-timer', ['tender' => $tender])->render();
+            })
+            ->addColumn('action', function ($tender) {
+                return view('partials.emd-action', ['tender' => $tender])->render();
+            })
+            ->rawColumns(['tender_name', 'due_date', 'timer', 'action'])
+            ->make(true);
     }
 
     public function create($id = null)
@@ -172,6 +244,7 @@ class EmdsController extends Controller
                     $draft->dd_purpose = $request->dd_purpose;
                     $draft->courier_add = $request->courier_add;
                     $draft->courier_deadline = $request->courier_deadline;
+                    $draft->status = 'DD requested';
                     $draft->save();
 
                     $chq = new EmdCheque();
@@ -180,9 +253,9 @@ class EmdsController extends Controller
                     $chq->cheque_favour = $request->dd_favour;
                     $chq->cheque_amt = $request->dd_amt;
                     $chq->cheque_date = date('Y-m-d');
-                    $chq->cheque_reason = $request->dd_purpose;
+                    $chq->cheque_reason = 'DD';
                     $chq->cheque_needs = $request->dd_needs;
-                    $chq->status = 'DD Created';
+                    $chq->status = 'DD requested';
                     $chq->save();
 
                     Log::info("Demand Draft ($draft->id and Cheque ($chq->id) created.");
@@ -207,8 +280,8 @@ class EmdsController extends Controller
                     $dd['cheque_favour'] = $request->dd_favour;
                     $pdfFiles = $this->pdfGenerator->generatePdfs('chqCret', $dd);
 
-                    $this->timerService->startTimer($chq, 'cheque_ac_form', $request->dd_needs);
-                    $this->timerService->startTimer($draft, 'dd_acc_form', $hrs);
+                    $this->timerService->startTimer($chq, 'cheque_ac_form', 3);
+                    $this->timerService->startTimer($draft, 'dd_acc_form', 3);
 
                     if ($emd->tender_id == '0') {
                         // return redirect()->route('emds.index')->with('success', 'Demand Draft EMD other than TMS created successfully');
@@ -243,7 +316,7 @@ class EmdsController extends Controller
                         'fdr_amt' => 'required',
                         'fdr_expiry' => 'required',
                         'fdr_needs' => 'required',
-                        'courier_add' => 'required',
+                        'courier_add' => 'nullable',
                         'courier_deadline' => 'nullable',
                         'fdr_date' => ($emd->tender_id == '00') ? 'required|date' : 'nullable|date',
                     ]);
@@ -260,9 +333,10 @@ class EmdsController extends Controller
                     $fdr->fdr_date = $request->fdr_date;
                     $fdr->fdr_source = 'Direct';
                     $fdr->save();
-
                     $request->session()->forget('emds');
-                    $this->timerService->startTimer($fdr, 'fdr_ac_form', $hrs);
+
+                    // $this->timerService->startTimer($fdr, 'fdr_ac_form', $hrs);
+
                     if ($emd->tender_id == '0') {
                         return redirect()->route('emds.index')->with('success', 'FDR EMD other than TMS created successfully');
                     } else {
@@ -436,7 +510,7 @@ class EmdsController extends Controller
                     $bg->save();
                     Log::info('Generated PDF files: ' . json_encode($pdfFiles));
 
-                    $this->timerService->startTimer($bg, 'bg_acc_form', $hrs);
+                    // $this->timerService->startTimer($bg, 'bg_acc_form', $hrs);
 
                     // Stop 'emd_request' timer
                     if ($emd->tender_id == '0') {
@@ -496,7 +570,6 @@ class EmdsController extends Controller
                         } else {
                             return redirect()->route('emds.index')->with('success', 'Bank Transfer EMD created but Mail not sent.');
                         }
-                        // dd($finalData);
                     } else {
                         Log::error('Bank Transfer Other Than Tender:' . json_encode($finalData));
                         if ($this->bankTransferMail($emd->id)) {
@@ -504,7 +577,6 @@ class EmdsController extends Controller
                         } else {
                             return redirect()->route('emds.index')->with('success', 'Bank Transfer EMD other than TMS created but Mail not sent.');
                         }
-                        // return redirect()->route('emds.index')->with('success', 'Bank Transfer EMD other than tms created successfully');
                     }
                 } catch (\Throwable $th) {
                     Log::error('Exception in processing instrument type 5:', ['error' => $th->getMessage()]);
@@ -888,6 +960,7 @@ class EmdsController extends Controller
             return redirect()->route('emds.index')->with('error', $th->getMessage());
         }
     }
+
     public function BgOldEntry(Request $request)
     {
         if ($request->isMethod('get')) {
@@ -1415,7 +1488,7 @@ class EmdsController extends Controller
                 $member = Auth::user();
             }
             $team = $member->team ?? 'DC';
-            $cooMail = User::where('role', 'cordinator')->where('team', $team)->value('email') ?? 'gyanprakashk55@gmail.com';
+            $cooMail = User::where('role', 'coordinator')->where('team', $team)->value('email') ?? 'gyanprakashk55@gmail.com';
             $adminMail = User::where('role', 'admin')->where('team', $team)->value('email') ?? 'gyanprakashk55@gmail.com';
             $tlMail = User::where('role', 'team-leader')->where('team', $team)->value('email') ?? 'gyanprakashk55@gmail.com';
             $tlName = User::where('role', 'team-leader')->where('team', $team)->value('name') ?? 'Gyan Prakash';
@@ -1425,7 +1498,7 @@ class EmdsController extends Controller
             $data = [
                 'assignee' => $member->name,
                 'purpose' => $cheq->cheque_reason,
-                'partyName' => $cheq->cheque_favour,
+                'partyName' => $cheq->dd_id ? 'Yourself for DD' : $cheq->cheque_favour,
                 'chequeDate' => date('d-m-Y', strtotime($cheq->cheque_date)),
                 'amount' => $cheq->cheque_amt,
                 'time_limit' => $cheq->cheque_needs,
@@ -1469,7 +1542,7 @@ class EmdsController extends Controller
                 $tender = TenderInfo::find($emd->tender_id);
                 $member = User::find($tender->team_member);
             } else {
-                $member = Auth::user();
+                $member = User::where('name', 'LIKE', "$emd->requested_by%")->first();
             }
             Log::info("DD EMD Member Data: " . json_encode($member));
 
@@ -1593,9 +1666,7 @@ class EmdsController extends Controller
                 $assigneeMail = $teamMember->email ?? 'gyanprakashk55@gmail.com';
             }
             $team = $teamMember->team ?? 'DC';
-            $userRoles = User::where('team', $team)
-                ->whereIn('role', ['admin', 'coordinator', 'team-leader'])
-                ->pluck('email', 'role')->toArray();
+            $userRoles = User::where('team', $team)->whereIn('role', ['admin', 'coordinator', 'team-leader'])->pluck('email', 'role')->toArray();
             $adminMail = $userRoles['admin'] ?? 'goyal@volksenergie.in';
             $tlMail = $userRoles['team-leader'] ?? 'gyanprakashk55@gmail.com';
             $cooMail = $userRoles['coordinator'] ?? 'gyanprakashk55@gmail.com';
@@ -1655,4 +1726,5 @@ class EmdsController extends Controller
 
         return $this->bgCreatedMail($bgId, $pdfs);
     }
+
 }

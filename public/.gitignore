@@ -32,7 +32,7 @@ upload/loanadvances/*
 upload/loadclose/*
 upload/tdsrecovery/*
 
-quotes/submitted_docs/*
+quotes/submitted_documents/*
 
 ra_results/*
 pdfimages/*

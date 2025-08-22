@@ -1,3 +1,5 @@
+images/*
+
 uploads/*.jpeg
 uploads/*.jpg
 uploads/*.png
@@ -20,6 +22,7 @@ uploads/chqcreate/*
 uploads/bgpdfs/*
 uploads/applicable/*
 uploads/accounts/*
+uploads/enquiries/*
 
 upload/acceptance/*
 upload/applicable/*
@@ -28,6 +31,8 @@ upload/finance/*
 upload/loanadvances/*
 upload/loadclose/*
 upload/tdsrecovery/*
+
+quotes/submitted_docs/*
 
 ra_results/*
 pdfimages/*

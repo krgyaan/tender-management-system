@@ -12,6 +12,7 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "google/apiclient": "^2.18",
         "laravel/framework": "^11.9",
+        "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "mpdf/mpdf": "^8.2",
@@ -33,9 +34,21 @@
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         },
+        "classmap": [
+            "app/Models/GoogletoolAjex_model.php",
+            "app/Models/Googletools_module.php",
+            "app/Models/Google_drive_model.php"
+        ],
         "files": [
             "app/Helpers/helper_funcs.php",
             "app/Helpers/MailHelper.php"
+        ],
+        "exclude-from-classmap": [
+            "tests/",
+            "database/factories/",
+            "database/seeders/",
+            "storage/",
+            "bootstrap/cache/"
         ]
     },
     "autoload-dev": {

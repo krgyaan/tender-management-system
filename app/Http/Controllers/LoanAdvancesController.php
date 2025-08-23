@@ -3,18 +3,27 @@
 namespace App\Http\Controllers;
 
 use File;
-use Crypt;
 use Carbon\Carbon;
 use App\Models\Dueemi;
 use App\Models\Tdsrecovery;
 use App\Models\Loanadvances;
 use App\Models\Loanpartname;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LoanAdvancesController extends Controller
 {
     public function loanadvances()
     {
+        if (Auth::user()->role == 'admin') {
+            // Get the total_loan, total_paid group by loanparty_name.
+            $data['loan_summary'] = Loanadvances::selectRaw('loanadvances.bank_name as bank_name, SUM(loanamount) as total_loan, SUM(dueemis.principle_paid) as total_paid')
+                ->leftJoin('dueemis', 'loanadvances.id', '=', 'dueemis.loneid')
+                ->leftJoin('loanpartnames', 'loanadvances.loanparty_name', '=', 'loanpartnames.id')
+                ->groupBy('loanadvances.bank_name')
+                ->get();
+        }
+
         $data['loanadvances'] = Loanadvances::where('status', '1')->with('loanadvances', 'dueemi')->get();
         return view('loanadvances.loanadvances', $data);
     }

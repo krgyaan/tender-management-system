@@ -6,6 +6,29 @@
 @section('content')
     <section>
         <div class="row">
+            @if (Auth::user()->role == 'admin')
+                <div class="col-md-12 text-center">
+                    <h5>Loan Summary</h5>
+                    <table class="table-bordered w-50 m-auto">
+                        <thead>
+                            <tr>
+                                <th class="fw-bold p-2 fs-6">Loan Party Name</th>
+                                <th class="fw-bold p-2 fs-6">Total Loan</th>
+                                <th class="fw-bold p-2 fs-6">Total Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($loan_summary as $summary)
+                                <tr>
+                                    <td class="text-left fs-6 p-1">{{ $summary->bank_name }}</td>
+                                    <td class="text-left fs-6 p-1">{{ format_inr($summary->total_loan) }}</td>
+                                    <td class="text-left fs-6 p-1">{{ format_inr($summary->total_paid) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
             <div class="col-md-12 m-auto">
                 <div class="d-flex justify-content-between align-items-center">
                     <a href="{{ route('loanadvancesadd') }}" class="btn btn-primary btn-sm">Add New Loan & Advance</a>
@@ -34,21 +57,14 @@
                                 <tbody>
                                     @foreach ($loanadvances as $key => $loan)
                                         @php
-                                            $principle_paid = Dueemi::where('loneid', $loan->id)->sum(
-                                                'principle_paid',
-                                            );
-                                            $interest_paid = Dueemi::where('loneid', $loan->id)->sum(
-                                                'interest_paid',
-                                            );
+                                            $principle_paid = Dueemi::where('loneid', $loan->id)->sum('principle_paid');
+                                            $interest_paid = Dueemi::where('loneid', $loan->id)->sum('interest_paid');
                                             $penal_charges_paid = Dueemi::where('loneid', $loan->id)->sum(
                                                 'penal_charges_paid',
                                             );
-                                            $tds = Dueemi::where('loneid', $loan->id)->sum(
-                                                'tdstobe_recovered',
-                                            );
+                                            $tds = Dueemi::where('loneid', $loan->id)->sum('tdstobe_recovered');
 
-                                            $remainingAmount =
-                                                (float) $loan->loanamount - (float) $principle_paid;
+                                            $remainingAmount = (float) $loan->loanamount - (float) $principle_paid;
 
                                             $totalEmisPaid = Dueemi::where('loneid', $loan->id)->count();
                                         @endphp
@@ -75,47 +91,82 @@
                                                 {{ \Carbon\Carbon::parse($loan->sanctionletter_date)->format('d-m-Y') }}
                                             </td>
                                             <td>
+                                                @php
+                                                    // Sanction Letter
+                                                    $sanctionPath = public_path(
+                                                        'upload/loanadvances/' . $loan->sanction_letter,
+                                                    );
+                                                    $sanctionExists = file_exists($sanctionPath);
+                                                    $sanctionStyle = $sanctionExists ? '' : 'style="color:white"';
+
+                                                    // Bank Loan Schedule
+                                                    $bankSchedulePath = public_path(
+                                                        'upload/loanadvances/' . $loan->bankloan_schedule,
+                                                    );
+                                                    $bankScheduleExists = file_exists($bankSchedulePath);
+                                                    $bankScheduleStyle = $bankScheduleExists
+                                                        ? ''
+                                                        : 'style="color:white"';
+
+                                                    // Loan Schedule
+                                                    $loanSchedulePath = public_path(
+                                                        'upload/loanadvances/' . $loan->loan_schedule,
+                                                    );
+                                                    $loanScheduleExists = false;
+                                                    $loanScheduleMime = '';
+
+                                                    if (file_exists($loanSchedulePath)) {
+                                                        $loanScheduleMime = mime_content_type($loanSchedulePath);
+                                                        $loanScheduleExists = true;
+                                                    } elseif (filter_var($loan->loan_schedule, FILTER_VALIDATE_URL)) {
+                                                        $headers = @get_headers($loan->loan_schedule, 1);
+                                                        if ($headers && isset($headers['Content-Type'])) {
+                                                            $loanScheduleMime = is_array($headers['Content-Type'])
+                                                                ? $headers['Content-Type'][0]
+                                                                : $headers['Content-Type'];
+                                                            $loanScheduleExists = true;
+                                                        }
+                                                    }
+
+                                                    $loanScheduleStyle = $loanScheduleExists
+                                                        ? ''
+                                                        : 'style="color:white"';
+                                                @endphp
+
+                                                {{-- Sanction Letter --}}
                                                 <a href="{{ asset('upload/loanadvances/' . $loan->sanction_letter) }}"
-                                                    title="Sanction Letter">
+                                                    title="Sanction Letter" {!! $sanctionStyle !!}>
                                                     Sanction Letter
                                                 </a>
                                                 <br>
+
+                                                {{-- Bank Loan Schedule --}}
                                                 <a href="{{ asset('upload/loanadvances/' . $loan->bankloan_schedule) }}"
-                                                    title="Bank Loan Schedule">
+                                                    title="Bank Loan Schedule" {!! $bankScheduleStyle !!}>
                                                     Bank Loan Schedule
                                                 </a>
                                                 <br>
-                                                @php
-                                                    $filePath = public_path('upload/loanadvances/' . $loan->loan_schedule);
-                                                    $fileMime = '';
-                                                
-                                                    if (file_exists($filePath)) {
-                                                        $fileMime = mime_content_type($filePath);
-                                                    } elseif (filter_var($loan->loan_schedule, FILTER_VALIDATE_URL)) {
-                                                        // It's a valid URL, try to get MIME type
-                                                        $headers = @get_headers($loan->loan_schedule, 1); // Suppress warnings with @
-                                                        if ($headers && isset($headers['Content-Type'])) {
-                                                            $fileMime = is_array($headers['Content-Type']) 
-                                                                        ? $headers['Content-Type'][0] 
-                                                                        : $headers['Content-Type'];
-                                                        }
-                                                    }
-                                                @endphp
-                                                
-                                                @if (strpos($fileMime, 'pdf') !== false)
-                                                    <a href="{{ asset('upload/loanadvances/' . $loan->loan_schedule) }}" title="Loan Schedule">
+
+                                                {{-- Loan Schedule --}}
+                                                @if (strpos($loanScheduleMime, 'pdf') !== false)
+                                                    <a href="{{ asset('upload/loanadvances/' . $loan->loan_schedule) }}"
+                                                        title="Loan Schedule" {!! $loanScheduleStyle !!}>
                                                         Loan Schedule
                                                     </a>
-                                                @elseif (strpos($fileMime, 'excel') !== false || strpos($fileMime, 'spreadsheetml') !== false)
-                                                    <a href="{{ asset('upload/loanadvances/' . $loan->loan_schedule) }}" title="Loan Schedule">
+                                                @elseif (strpos($loanScheduleMime, 'excel') !== false || strpos($loanScheduleMime, 'spreadsheetml') !== false)
+                                                    <a href="{{ asset('upload/loanadvances/' . $loan->loan_schedule) }}"
+                                                        title="Loan Schedule" {!! $loanScheduleStyle !!}>
                                                         Loan Schedule
                                                     </a>
                                                 @else
-                                                    <a href="{{ $loan->loan_schedule }}" target="_blank" class="whitespace-nowrap" title="Loan Schedule">
+                                                    <a href="{{ $loan->loan_schedule }}" target="_blank"
+                                                        class="whitespace-nowrap" title="Loan Schedule"
+                                                        {!! $loanScheduleStyle !!}>
                                                         Loan Schedule
                                                     </a>
                                                 @endif
                                             </td>
+
                                             <td>
                                                 {{ \Carbon\Carbon::parse($loan->emipayment_date)->format('d-m-Y') }}
                                             </td>

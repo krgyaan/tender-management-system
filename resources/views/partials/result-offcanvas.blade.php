@@ -5,7 +5,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-        <form action="" method="POST">
+        <form action="" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="mb-3">
                 <input type="hidden" name="emd_id" value="{{ $emdId }}">
@@ -13,11 +13,11 @@
                 <label for="emd_status" class="form-label">EMD Status</label>
                 <select class="form-select" id="emd_status" name="emd_status" required>
                     <option value="" disabled selected>Select EMD Status</option>
-                    <option value="2">Initiate Followup</option>
-                    <option value="4">Settled with Project Account</option>
+                    <option value="1">Initiate Followup</option>
+                    <option value="2">Settled with Project Account</option>
                 </select>
             </div>
-            <div class="followup">
+            <div class="followup" style="display:none;">
                 <div class="col-md-12">
                     <div class="form-group">
                         <label for="org_name" class="form-label">Organisation Name</label>
@@ -101,6 +101,21 @@
                     </div>
                 </div>
             </div>
+            @push('scripts')
+                <script>
+                    $(document).ready(function() {
+                        function toggleFollowup() {
+                            if ($('#emd_status').val() == '1') {
+                                $('.followup').show();
+                            } else {
+                                $('.followup').hide();
+                            }
+                        }
+                        $('#emd_status').on('change', toggleFollowup);
+                        toggleFollowup(); // Initial state
+                    });
+                </script>
+            @endpush
             <div class="mb-3">
                 <label for="remarks" class="form-label">Remarks</label>
                 <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>

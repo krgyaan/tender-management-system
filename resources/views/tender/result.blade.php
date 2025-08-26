@@ -367,6 +367,28 @@
 
 @push('scripts')
     <script>
+        $(document).on('shown.bs.offcanvas', function(e) {
+            // Find the offcanvas that was just shown
+            var $offcanvas = $(e.target);
+            var $emdStatus = $offcanvas.find('#emd_status');
+            var $followup = $offcanvas.find('.followup');
+
+            function toggleFollowup() {
+                if ($emdStatus.val() == '1') {
+                    $followup.show();
+                } else {
+                    $followup.hide();
+                }
+            }
+
+            $emdStatus.off('change.toggleFollowup').on('change.toggleFollowup', toggleFollowup);
+            toggleFollowup();
+        });
+    </script>
+@endpush
+
+@push('scripts')
+    <script>
         $(document).ready(function() {
             // Handle Upload Result1 button click (delegated)
             $(document).on('click', '.upload-result-btn1', function() {

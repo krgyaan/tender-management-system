@@ -10,7 +10,6 @@
                 <div class="card">
                     <div class="card-body">
                         @include('partials.messages')
-
                         <form action="{{ route('rfq.recipient', $rfq->id) }}" method="POST" enctype="multipart/form-data">
                             @csrf
                             <div class="row mb-3">
@@ -36,40 +35,88 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td>1</td>
-                                            <td>
-                                                <select name="items[0][item_id]" class="form-select" required>
-                                                    <option value="">Select Item</option>
-                                                    @foreach ($tenderItems as $item)
-                                                        <option value="{{ $item->id }}">{{ $item->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input type="text" name="items[0][description]" class="form-control">
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][quantity]"
-                                                    class="form-control quantity" required>
-                                            </td>
-                                            <td>
-                                                <input type="text" name="items[0][unit]" class="form-control" required>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][unit_price]"
-                                                    class="form-control unit-price" required>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="items[0][amount]" class="form-control amount"
-                                                    readonly>
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-danger btn-sm remove-row">
-                                                    <i class="fa fa-times"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
+                                        @if (isset($requirements) && count($requirements))
+                                            @foreach ($requirements as $i => $req)
+                                                <tr>
+                                                    <td>{{ $i + 1 }}</td>
+                                                    <td>
+                                                        <select name="items[{{ $i }}][item_id]"
+                                                            class="form-select" required>
+                                                            <option value="">Select Item</option>
+                                                            @foreach ($tenderItems as $item)
+                                                                <option value="{{ $item->id }}"
+                                                                    {{ $item->name == $rfq->item_name ? 'selected' : '' }}>
+                                                                    {{ $item->name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $i }}][description]"
+                                                            class="form-control" value="{{ $req->requirement }}">
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="items[{{ $i }}][quantity]"
+                                                            class="form-control quantity" value="{{ $req->qty }}"
+                                                            required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="items[{{ $i }}][unit]"
+                                                            class="form-control" value="{{ $req->unit }}" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="items[{{ $i }}][unit_price]"
+                                                            class="form-control unit-price" required>
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" name="items[{{ $i }}][amount]"
+                                                            class="form-control amount" readonly>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-danger btn-sm remove-row">
+                                                            <i class="fa fa-times"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td>1</td>
+                                                <td>
+                                                    <select name="items[0][item_id]" class="form-select" required>
+                                                        <option value="">Select Item</option>
+                                                        @foreach ($tenderItems as $item)
+                                                            <option value="{{ $item->id }}">{{ $item->name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="items[0][description]" class="form-control">
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="items[0][quantity]"
+                                                        class="form-control quantity" required>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="items[0][unit]" class="form-control"
+                                                        required>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="items[0][unit_price]"
+                                                        class="form-control unit-price" required>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="items[0][amount]"
+                                                        class="form-control amount" readonly>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-danger btn-sm remove-row">
+                                                        <i class="fa fa-times"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        @endif
                                     </tbody>
                                 </table>
                                 <div class="text-end">

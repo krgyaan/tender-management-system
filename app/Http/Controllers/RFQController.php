@@ -35,7 +35,7 @@ class RFQController extends Controller
     {
         $this->timerService = $timerService;
     }
-    
+
     public function index()
     {
         return view('rfq.index');
@@ -48,7 +48,7 @@ class RFQController extends Controller
 
         $query = TenderInfo::with(['rfqs', 'itemName', 'users'])
             ->where('deleteStatus', '0')
-            ->whereNotIn( 'status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNotIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->whereNot('rfq_to', '0')
             ->where('tlStatus', '1');
 
@@ -58,10 +58,10 @@ class RFQController extends Controller
             } else {
                 $query->where('team_member', $user->id);
             }
-        } else if($team) {
+        } else if ($team) {
             $query->where('team', $team);
         }
-        
+
         // Filter by RFQ status
         if ($type === 'pending') {
             $query->whereDoesntHave('rfqs');
@@ -612,11 +612,12 @@ class RFQController extends Controller
     {
         if (request()->isMethod('get')) {
             try {
-                $rfq = RFQ::findOrFail($id);
-                $tenderItems = Item::all();
+                $rfq = RFQ::with('rfqItems')->findOrFail($id);
+                $tenderItems = Item::where('status', '1')->get();
+                $requirements = $rfq->rfqItems;
                 Log::info('Showing RFQ Recipient Form', ['rfq_id' => $id]);
 
-                return view('rfq.recipient', compact('rfq', 'tenderItems'));
+                return view('rfq.recipient', compact('rfq', 'tenderItems', 'requirements'));
             } catch (\Throwable $th) {
                 Log::error('Error showing RFQ Recipient Form', ['rfq_id' => $id, 'error' => $th->getMessage()]);
                 return redirect()->back()->with('error', $th->getMessage());
@@ -769,7 +770,7 @@ class RFQController extends Controller
 
             Log::info("RFQ Mail Data: " . json_encode($data));
             Log::info("RFQ Vendors: " . json_encode($vendors));
-            
+
             foreach ($vendors as $vendorGroup) {
                 $org = $vendorGroup['org'];
                 $orgName = VendorOrg::find($org)->name;

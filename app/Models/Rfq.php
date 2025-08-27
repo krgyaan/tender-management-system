@@ -67,4 +67,9 @@ class Rfq extends Model
     {
         return $this->hasOne(RfqResponse::class, 'rfq_id', 'id');
     }
+
+    public function rfqItems()
+    {
+        return $this->hasMany(RfqItem::class, 'rfq_id', 'id');
+    }
 }

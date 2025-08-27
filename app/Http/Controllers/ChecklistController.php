@@ -35,7 +35,7 @@ class ChecklistController extends Controller
 
         $query = TenderInfo::with('users', 'statuses')
             ->where('deleteStatus', '0')
-            ->whereNotIn( 'status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNotIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->where('tlStatus', '1');
 
         // Team filtering
@@ -156,7 +156,7 @@ class ChecklistController extends Controller
     {
         try {
             $member = User::find($tender->team_member);
-            if(!$member) {
+            if (!$member) {
                 $member = Auth::User();
             }
             $adminMail = User::where('role', 'admin')->where('team', $member->team)->first()->email ?? 'gyanprakashk55@gmail.com';
@@ -177,9 +177,14 @@ class ChecklistController extends Controller
             MailHelper::configureMailer($member->email, $member->app_password, $member->name);
             $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
 
+            $ccRecipients = [$adminMail];
+            if ($coo && isset($coo->email)) {
+                $ccRecipients[] = $coo->email;
+            }
+
             // Send mail using the configured mailer
             $mail = Mail::mailer($mailer)->to($tl->email)
-                ->cc([$adminMail, $coo->mail])
+                ->cc($ccRecipients)
                 ->send(new DocumentChecklistMail($data));
 
             if ($mail) {

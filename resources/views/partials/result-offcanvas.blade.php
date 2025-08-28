@@ -5,10 +5,11 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-        <form action="" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('results.updateEmd') }}" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="mb-3">
                 <input type="hidden" name="emd_id" value="{{ $emdId }}">
+                <input type="hidden" name="mode" value="{{ $mode }}">
 
                 <label for="emd_status" class="form-label">EMD Status</label>
                 <select class="form-select" id="emd_status" name="emd_status" required>
@@ -116,10 +117,6 @@
                     });
                 </script>
             @endpush
-            <div class="mb-3">
-                <label for="remarks" class="form-label">Remarks</label>
-                <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
-            </div>
             <button type="submit" class="btn btn-primary">Update Status</button>
         </form>
     </div>

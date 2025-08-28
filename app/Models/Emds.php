@@ -48,10 +48,9 @@ class Emds extends Model
     {
         return $this->hasMany(PayOnPortal::class, 'emd_id', 'id');
     }
-    
+
     public function requestedByUser()
     {
         return $this->belongsTo(User::class, 'requested_by', 'name');
     }
-
 }

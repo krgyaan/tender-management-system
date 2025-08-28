@@ -36,7 +36,7 @@ class PayOnPortal extends Model
     {
         return $this->belongsTo(FollowUps::class, 'emd_id', 'id');
     }
-    
+
     public function timers()
     {
         return $this->hasMany(TimerTracker::class, 'tender_id', 'id');

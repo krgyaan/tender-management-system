@@ -20,6 +20,7 @@ class EmdDemandDraft extends Model
         'courier_deadline',
         'status',
         'req_no',
+        'action',
         'generated_dd'
     ];
 
@@ -36,7 +37,7 @@ class EmdDemandDraft extends Model
     public function courier() {
         return $this->belongsTo(CourierDashboard::class,'req_no');
     }
-    
+
     public function timers()
     {
         return $this->hasMany(TimerTracker::class, 'tender_id', 'id');

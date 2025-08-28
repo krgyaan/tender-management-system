@@ -20,14 +20,15 @@ class BankTransfer extends Model
         'reason',
         'date_time',
         'utr',
-        'remarks'
+        'remarks',
+        'action'
     ];
 
     public function emd()
     {
         return $this->belongsTo(Emds::class, 'emd_id');
     }
-    
+
     public function timers()
     {
         return $this->hasMany(TimerTracker::class, 'tender_id', 'id');

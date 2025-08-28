@@ -258,6 +258,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('results', ResultController::class);
         Route::post('/results/technical', [ResultController::class, 'storeTechnicalResult'])->name('results.storeTechnical');
         Route::post('/results/final', [ResultController::class, 'storeFinalResult'])->name('results.storeFinal');
+        Route::post('/results/update-emd', [ResultController::class, 'updateEmdStatus'])->name('results.updateEmd');
+
         Route::resource('checklist', ChecklistController::class);
 
         Route::resource('followups', FollowUpsController::class);

@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use App\Models\TenderResult;
 use Illuminate\Http\Request;
 use app\Mail\TenderResultMail;
+use App\Models\FollowUpPersons;
 use Yajra\DataTables\DataTables;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -266,6 +267,102 @@ class ResultController extends Controller
         }
     }
 
+    public function updateEmdStatus(Request $request)
+    {
+        $request->validate([
+            'emd_id' => 'required|exists:emds,id',
+            'mode' => 'required|in:1,2,3,4,5,6',
+            'emd_status' => 'required|in:1,2',
+            'org_name' => 'required_if:emd_status,2|string|max:255',
+            'start_date' => 'required_if:emd_status,2|string|max:255',
+            'fp.*.name' => 'required_if:emd_status,2|string|max:255',
+            'fp.*.phone' => 'required_if:emd_status,2|string|max:255',
+            'fp.*.email' => 'required_if:emd_status,2|string|max:255',
+            'frequency' => 'required_if:emd_status,2|string|max:255',
+        ]);
+
+        dd($request->all());
+        $type = $request->mode;
+        $emd = Emds::find($request->emd_id);
+
+        switch ($request->emd_status) {
+            case 1:
+                $this->updateEmdStatusToSettle($emd, $type);
+                break;
+            case 2:
+                $this->updateEmdSFollowup($emd, $type, $request->all());
+                break;
+        }
+
+        Log::info("EMD status updated successfully for emd_id: {$request->emd_id}");
+
+        return redirect()->back()->with('success', 'EMD status updated successfully.');
+    }
+
+    private function updateEmdStatusToSettle($emd, $type)
+    {
+        if ($type == 1) {
+            $dd = $emd->emdDemandDrafts->first();
+            $dd->update(['action' => 5]);
+        } elseif ($type == 2) {
+            $fdr = $emd->emdFdrs->first();
+            $fdr->update(['action' => 5]);
+        } elseif ($type == 3) {
+            $cheque = $emd->emdCheques->first();
+            return back()->with('success', 'Cheque cannot be settled with project.');
+        } elseif ($type == 4) {
+            $bg = $emd->emdBgs->first();
+            return back()->with('success', 'BG cannot be settled with project.');
+        } elseif ($type == 5) {
+            $bank = $emd->emdBankTransfers->first();
+            $bank->update(['action' => 4]);
+        } elseif ($type == 6) {
+            $portal = $emd->emdPayOnPortals->first();
+            $portal->update(['action' => 4]);
+        }
+    }
+
+    private function updateEmdSFollowup($emd, $type, $request)
+    {
+        if ($request->has('fp') && is_array($request->fp)) {
+            foreach ($request->fp as $person) {
+                $fup = new FollowUpPersons();
+                // $fup->follwup_id = $followup->id;
+                $fup->name = $person['name'] ?? null;
+                $fup->phone = $person['phone'] ?? null;
+                $fup->email = $person['email'] ?? null;
+                $fup->save();
+            }
+        }
+
+        if ($type == 1) {
+            $dd = $emd->emdDemandDrafts->first();
+
+            $dd->update(['action' => 2]);
+        } elseif ($type == 2) {
+            $fdr = $emd->emdFdrs->first();
+
+            $fdr->update(['action' => 2]);
+        } elseif ($type == 3) {
+            $cheque = $emd->emdCheques->first();
+
+            $cheque->update(['action' => 2]);
+        } elseif ($type == 4) {
+            $bg = $emd->emdBgs->first();
+
+            $bg->update(['action' => 4]);
+        } elseif ($type == 5) {
+            $bank = $emd->emdBankTransfers->first();
+
+            $bank->update(['action' => 2]);
+        } elseif ($type == 6) {
+            $portal = $emd->emdPayOnPortals->first();
+
+            $portal->update(['action' => 2]);
+        }
+    }
+
+
     // MAILS
     public function sendRaResultMail($id)
     {
@@ -323,44 +420,5 @@ class ResultController extends Controller
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }
-    }
-
-    public function updateEmdStatus(Request $request)
-    {
-        $request->validate([
-            'emd_id' => 'required|exists:emds,id',
-            'emd_status' => 'required|in:1,2',
-            'remarks' => 'nullable|string',
-            // Add validation for followup fields if needed
-        ]);
-
-        $emd = Emds::find($request->emd_id);
-        $emd->status = $request->emd_status;
-        $emd->remarks = $request->remarks;
-
-        // If status is '1', update followup fields
-        if ($request->emd_status == '1') {
-            $emd->org_name = $request->org_name;
-            $emd->start_date = $request->start_date;
-            $emd->frequency = $request->frequency;
-            $emd->stop_reason = $request->stop_reason;
-            $emd->proof_text = $request->proof_text;
-            $emd->stop_rem = $request->stop_rem;
-            // Save followup persons if needed
-            if ($request->has('fp')) {
-                $emd->followup_persons = json_encode($request->fp);
-            }
-            // Handle proof_img upload if needed
-            if ($request->hasFile('proof_img')) {
-                $file = $request->file('proof_img');
-                $fileName = 'proof_' . time() . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('uploads/emd-proofs'), $fileName);
-                $emd->proof_img = $fileName;
-            }
-        }
-
-        $emd->save();
-
-        return redirect()->back()->with('success', 'EMD status updated successfully.');
     }
 }

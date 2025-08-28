@@ -68,6 +68,7 @@ use App\Http\Controllers\EmployeePerformanceController;
 use App\Http\Controllers\LocationPerformanceController;
 use App\Http\Controllers\PrivateCostingSheetController;
 use App\Http\Controllers\OperationPerformanceController;
+use App\Http\Controllers\TdsFormController;
 
 Route::view('/', 'auth.login')->name('/');
 Route::get('repeat-email/{bgId}', [EmdsController::class, 'repeatEmail'])->name('repeat-email');
@@ -603,46 +604,26 @@ Route::middleware('auth')->group(function () {
 
 
         // TDS
-        Route::prefix('tds')->name('tds.')->controller(TdsFormController::class)->group(function () {
-            // Route::get('/', 'index')->name('index');
-            // Route::get('/create', 'create')->name('create');
-            // Route::post('/', 'store')->name('store');
-            // Route::get('/{id}', 'show')->name('show');
-            // Route::get('/{id}/edit', 'edit')->name('edit');
-            // Route::put('/{id}', 'update')->name('update');
-            // Route::delete('/{id}', 'destroy')->name('destroy');
+        Route::prefix('tds')->name('tds.')
+            ->controller(TdsFormController::class)->group(function () {
+                // Route::get('/', 'index')->name('index');
+                // Route::get('/create', 'create')->name('create');
+                // Route::post('/', 'store')->name('store');
+                // Route::get('/{id}', 'show')->name('show');
+                // Route::get('/{id}/edit', 'edit')->name('edit');
+                // Route::put('/{id}', 'update')->name('update');
+                // Route::delete('/{id}', 'destroy')->name('destroy');
 
-            Route::get('/', 'index')->name('index');
-            Route::get('/create', 'create')->name('create');
-            Route::post('/', 'store')->name('store');
-            Route::get('/{tds}/edit', 'edit')->name('edit');
-            Route::put('/{tds}', 'update')->name('update');
-            Route::get('/{tds}/show', 'show')->name('show');
-            Route::delete('/{tds}', 'destroy')->name('destroy');
-        });
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{tds}/edit', 'edit')->name('edit');
+                Route::put('/{tds}', 'update')->name('update');
+                Route::get('/{tds}/show', 'show')->name('show');
+                Route::delete('/{tds}', 'destroy')->name('destroy');
+            });
     });
 });
 
-// Error pages
-Route::get('/maintain', function () {
-    Artisan::call('down');
-    return "Application is now in maintenance mode.";
-});
-
-Route::get('/up', function () {
-    Artisan::call('up');
-    return "Application is now live.";
-});
+// Error pages;
 Route::fallback(fn() => view('errors.404'));
-
-Route::get('/check-path', function () {
-    $path = public_path('uploads/emds');
-
-    return [
-        'expected_path' => $path,
-        'exists' => file_exists($path),
-        'readable' => is_readable($path),
-        'is_dir' => is_dir($path),
-        'realpath' => realpath($path),
-    ];
-});

@@ -6,7 +6,8 @@
         <div class="card">
             <div class="card-body">
                 @include('partials.messages')
-                <form action="{{ route('customer_service.store') }}" method="POST" class="row g-3" enctype="multipart/form-data">
+                <form action="{{ route('customer_service.store') }}" method="POST" class="row g-3"
+                    enctype="multipart/form-data">
                     @csrf
 
                     <div class="col-md-4">
@@ -16,12 +17,12 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Organization</label>
-                        <input type="text" name="organization" class="form-control" >
+                        <input type="text" name="organization" class="form-control">
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">Designation</label>
-                        <input type="text" name="designation" class="form-control" >
+                        <input type="text" name="designation" class="form-control">
                     </div>
 
                     <div class="col-md-4">
@@ -51,12 +52,12 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Upload Photo/Video</label>
-                        <input type="file" name="attachment" class="form-control" >
+                        <input type="file" name="attachment" class="form-control">
                     </div>
 
                     <div class="col-md-12">
                         <label class="form-label">Issue Faced</label>
-                        <textarea name="issue_faced" rows="3" class="form-control" placeholder="Please write the issue faced..." ></textarea>
+                        <textarea name="issue_faced" rows="3" class="form-control" placeholder="Please write the issue faced..."></textarea>
                     </div>
 
                     {{-- Form Actions --}}
@@ -69,4 +70,3 @@
         </div>
     </section>
 @endsection
-

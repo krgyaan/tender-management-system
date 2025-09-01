@@ -1,0 +1,38 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+# Prevent overlapping deploys
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout (metadata only)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}          # e.g. 3.108.63.163
+          username: ${{ secrets.EC2_USER }}      # deploy
+          key: ${{ secrets.EC2_SSH_KEY }}        # private key for /home/deploy/.ssh/authorized_keys
+          port: 22
+          script_stop: true
+          timeout: 15m
+          script: |
+            set -euo pipefail
+            /opt/deploy/deploy.sh

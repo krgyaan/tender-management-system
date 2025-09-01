@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Emds;
 use Carbon\Carbon;
 use App\Models\Rfq;
 use App\Models\User;
@@ -80,9 +81,9 @@ class ResultController extends Controller
             })
             ->addColumn('emd_details', function ($tender) {
                 if ($tender->emds && $tender->emds->isNotEmpty()) {
-                $emd = $tender->emds->first();
-                $mode = $emd->instrument_type;
-            
+                    $emd = $tender->emds->first();
+                    $mode = $emd->instrument_type;
+
                     switch ($mode) {
                         case 1:
                             $status = optional($emd->emdDemandDrafts->first())->action;
@@ -111,7 +112,7 @@ class ResultController extends Controller
                         default:
                             $status = 'Unknown mode';
                     }
-                
+
                     return "$mode($status)";
                 } else if ($tender->emd > 0) {
                     return "Not Requested";
@@ -235,7 +236,7 @@ class ResultController extends Controller
             $tender = TenderInfo::find($request->tender_id);
             $status = $request->result === 'won' ? 25 : 24;
             $tender->update(['status' => $status]);
-            
+
             // send email to the team
             if ($this->sendRaResultMail($request->tender_id)) {
                 Log::info('RA result email sent successfully.');
@@ -248,7 +249,7 @@ class ResultController extends Controller
             return redirect()->back()->with('error', 'Error saving final result: ' . $e->getMessage());
         }
     }
-    
+
     public function show($id)
     {
         try {
@@ -264,7 +265,7 @@ class ResultController extends Controller
             return redirect()->back()->with('error', $th->getMessage());
         }
     }
-    
+
     // MAILS
     public function sendRaResultMail($id)
     {
@@ -279,7 +280,7 @@ class ResultController extends Controller
             }
 
             Log::error("Tender Result: " . json_encode($result));
-            
+
             $te = User::find($tender->team_member);
             if (!$te) {
                 Log::error("❌ Tender Executive not found for tender_id: {$tender->id}");
@@ -322,5 +323,44 @@ class ResultController extends Controller
         } catch (\Throwable $th) {
             return redirect()->back()->with('error', $th->getMessage());
         }
+    }
+
+    public function updateEmdStatus(Request $request)
+    {
+        $request->validate([
+            'emd_id' => 'required|exists:emds,id',
+            'emd_status' => 'required|in:1,2',
+            'remarks' => 'nullable|string',
+            // Add validation for followup fields if needed
+        ]);
+
+        $emd = Emds::find($request->emd_id);
+        $emd->status = $request->emd_status;
+        $emd->remarks = $request->remarks;
+
+        // If status is '1', update followup fields
+        if ($request->emd_status == '1') {
+            $emd->org_name = $request->org_name;
+            $emd->start_date = $request->start_date;
+            $emd->frequency = $request->frequency;
+            $emd->stop_reason = $request->stop_reason;
+            $emd->proof_text = $request->proof_text;
+            $emd->stop_rem = $request->stop_rem;
+            // Save followup persons if needed
+            if ($request->has('fp')) {
+                $emd->followup_persons = json_encode($request->fp);
+            }
+            // Handle proof_img upload if needed
+            if ($request->hasFile('proof_img')) {
+                $file = $request->file('proof_img');
+                $fileName = 'proof_' . time() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/emd-proofs'), $fileName);
+                $emd->proof_img = $fileName;
+            }
+        }
+
+        $emd->save();
+
+        return redirect()->back()->with('success', 'EMD status updated successfully.');
     }
 }

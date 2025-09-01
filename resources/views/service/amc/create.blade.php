@@ -4,6 +4,7 @@
     <section>
         <div class="card mb-4">
             <div class="card-body">
+                @include('partials.messages')
                 <form action="{{ route('amc.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <!-- Team and Project Selection -->
@@ -246,7 +247,8 @@
                                 </td>
                                 <td><input type="number" class="form-control" name="products[0][quantity]"
                                         value="1" min="1"></td>
-                                <td><button type="button" class="btn btn-sm btn-danger remove-product"><i class="fa fa-minus"></i></button>
+                                <td><button type="button" class="btn btn-sm btn-danger remove-product"><i
+                                            class="fa fa-minus"></i></button>
                                 </td>
                             </tr>
                         </tbody>

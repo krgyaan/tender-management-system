@@ -12,13 +12,11 @@
                     <table class="table-hover" id="complaints-table">
                         <thead>
                             <tr>
-                                <th>Ticket No.</th>
-                                <th>Customer Details</th>
+                                <th>Call No.</th>
                                 <th>Organization Name</th>
                                 <th>Site/Project Name</th>
                                 <th>Site Location</th>
                                 <th>Issue Faced</th>
-                                <th>Service Engineer</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                                 <th>Timer</th>
@@ -83,13 +81,9 @@
                 serverSide: true,
                 ajax: "{{ route('customer_service.getData') }}", // Your route for getCustomerComplaintsData
                 columns: [{
-                        data: 'ticket_no',
-                        name: 'ticket_no'
-                    }, // Ticket No.
-                    {
                         data: 'customer',
                         name: 'customer'
-                    }, // Call Name
+                    }, // Call No.
                     {
                         data: 'organization',
                         name: 'organization'
@@ -106,10 +100,6 @@
                         data: 'issue',
                         name: 'issue_faced'
                     }, // Issue Faced
-                    {
-                        data: 'service_engineer',
-                        name: 'service_engineer'
-                    }, // service engineer
                     {
                         data: 'status',
                         name: 'status'
@@ -141,4 +131,20 @@
             });
         });
     </script>
+
+    {{-- <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let addServiceEngineerBtns = document.querySelectorAll('#allotServiceEngineerBtn');
+            console.log(addServiceEngineerBtns);
+            addServiceEngineerBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    let complaintId = this.getAttribute('data-id');
+                    console.log("Clicked Complaint ID:", complaintId);
+
+                    // set complaintId inside hidden input of modal
+                    document.getElementById('complaintId').value = complaintId;
+                });
+            });
+        });
+    </script> --}}
 @endpush

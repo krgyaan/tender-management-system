@@ -87,6 +87,51 @@
             </form>
         </div>
     </div>
+
+
+    <!-- Upload Filled Service Report Modal -->
+    <div class="modal fade" id="uploadFilledReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('amc.service-report.upload') }}" enctype="multipart/form-data"
+                class="modal-content">
+                @csrf
+                <input type="hidden" name="amc_id" id="filledAmcId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Upload Filled Service Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="file" name="service_report" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Upload Signed Service Report Modal -->
+    <div class="modal fade" id="uploadSignedReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('amc.signed-service-report.upload') }}" enctype="multipart/form-data"
+                class="modal-content">
+                @csrf
+                <input type="hidden" name="amc_id" id="signedAmcId">
+                <div class="modal-header">
+                    <h5 class="modal-title">Upload Signed Service Report</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="file" name="signed_service_report" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
 @endsection
 
 @push('scripts')
@@ -119,8 +164,8 @@
                     }
                 },
                 columns: [{
-                        data: 'project.project_name',
-                        name: 'project.project_name'
+                        data: 'project_name',
+                        name: 'project_name'
                     },
                     {
                         data: 'site_name',
@@ -167,14 +212,30 @@
         }
 
         function handleModalEvents() {
-            $('#exampleModal').on('show.bs.modal', function(event) {
+            // Unbind previous events to prevent duplicate triggers
+            $('#uploadFilledReportModal').off('show.bs.modal');
+            $('#uploadSignedReportModal').off('show.bs.modal');
+            $('#editReportModal').off('show.bs.modal');
+
+            // Filled Report Modal
+            $('#uploadFilledReportModal').on('show.bs.modal', function(event) {
                 const button = $(event.relatedTarget);
-                const id = button.data('id');
-                const name = button.data('name');
-                const modal = $(this);
-                modal.find('#id').val(id);
-                modal.find('#status option').prop('selected', false);
-                modal.find(`#status option[value="${name}"]`).prop('selected', true);
+                const amcId = button.data('amc-id');
+                $(this).find('#filledAmcId').val(amcId);
+            });
+
+            // Signed Report Modal
+            $('#uploadSignedReportModal').on('show.bs.modal', function(event) {
+                const button = $(event.relatedTarget);
+                const amcId = button.data('amc-id');
+                $(this).find('#signedAmcId').val(amcId);
+            });
+
+            // Edit Report Modal
+            $('#editReportModal').on('show.bs.modal', function(event) {
+                const button = $(event.relatedTarget);
+                const amcId = button.data('amc-id');
+                $(this).find('#editAmcId').val(amcId);
             });
         }
 

@@ -23,7 +23,9 @@ class AmcController extends Controller
      */
     public function index()
     {
-        $amcs = Amc::with(['project', 'sites.contacts', 'engineers', 'products.item'])->latest();
+    $amcs = Amc::with(['project', 'sites.contacts', 'engineers', 'products.item'])
+               ->latest()
+               ->get();   // <-- actually runs the query
 
         return view('service.amc.index', compact('amcs'));
     }
@@ -44,6 +46,7 @@ class AmcController extends Controller
      */
     public function store(Request $request)
     {
+                // dd('hello');
         $validated = $request->validate([
             'team_name' => 'required|in:ac,dc',
             'project_id' => 'required|exists:projects,id',
@@ -75,6 +78,9 @@ class AmcController extends Controller
             'products.*.item_id' => 'required|exists:items,id',
             'products.*.quantity' => 'required|integer|min:1',
         ]);
+
+
+
 
         DB::beginTransaction();
 
@@ -153,7 +159,7 @@ class AmcController extends Controller
 
             DB::commit();
 
-            return redirect()->route('service.amc.index')->with('success', 'AMC created successfully!');
+            return redirect()->route('amc.index')->with('success', 'AMC created successfully!');
             
         } catch (\Exception $e) {
             DB::rollBack();
@@ -185,15 +191,17 @@ class AmcController extends Controller
         $items = Item::all();
         
         $amc->load(['sites.contacts', 'engineers', 'products']);
-
         return view('service.amc.edit', compact('amc', 'projects', 'items'));
     }
-
     /**
      * Update the specified AMC in storage.
      */
-    public function update(Request $request, Amc $amc)
+    public function update(Request $request, $id)
     {
+        // dd($id);
+        $amc = Amc::findOrFail($id);
+        // dd($amc);
+
         $validated = $request->validate([
             'team_name' => 'required|in:ac,dc',
             'project_id' => 'required|exists:projects,id',
@@ -224,6 +232,7 @@ class AmcController extends Controller
             'products' => 'required|array|min:1',
             'products.*.item_id' => 'required|exists:items,id',
             'products.*.quantity' => 'required|integer|min:1',
+
         ]);
 
         DB::beginTransaction();
@@ -309,7 +318,7 @@ class AmcController extends Controller
 
             DB::commit();
 
-            return redirect()->route('service.amc.show', $amc)->with('success', 'AMC updated successfully!');
+            return redirect()->route('amc.show', $amc)->with('success', 'AMC updated successfully!');
             
         } catch (\Exception $e) {
             DB::rollBack();
@@ -350,7 +359,6 @@ class AmcController extends Controller
             if (!in_array($type, ['serviceDue', 'serviceDone'])) {
                 return response()->json(['error' => 'Invalid type'], 400);
             }
-
         Log::info("Fetching $type Amc Data for team: $team by $user->name");
 
         $query = Amc::with(['sites', 'engineers', 'contacts', 'project'])
@@ -371,11 +379,18 @@ class AmcController extends Controller
         }
 
         return DataTables::of($query)
+            ->addColumn('project_name', function ($amc) {
+                return $amc->project->project_name;
+            })
             ->addColumn('site_name', function ($amc) {
-                return view('partials.amc-sites', ['sites' => $amc->sites])->render();
+                return $amc->sites->pluck('name')->implode('<br>');
             })
             ->addColumn('contact_details', function ($amc) {
-                return view('partials.amc-contacts', ['contacts' => $amc->contacts])->render();
+                return $amc->sites->flatMap(function ($site) {
+                    return $site->contacts->map(function ($contact) {
+                        return $contact->name . ' : ' . $contact->mobile;
+                    });
+                })->implode('<br>');
             })
             ->addColumn('next_service_due', function ($amc) {
                 return $amc->next_service_due
@@ -383,7 +398,7 @@ class AmcController extends Controller
                     : 'N/A';
             })
             ->addColumn('engineer_name', function ($amc) {
-                return view('partials.amc-engineers', ['engineers' => $amc->engineers])->render();
+                 return $amc->engineers->pluck('name')->implode('<br>');
             })
             ->addColumn('actions', function ($amc) {
                 return view('partials.amc-actions', ['amc' => $amc])->render();
@@ -398,47 +413,50 @@ class AmcController extends Controller
     }
 
 
-    public function uploadServiceReport(Request $request, $id)
-{
-    $request->validate(['service_report' => 'required|file|mimes:pdf,docx,jpg,png']);
-    $path = $request->file('service_report')->store('amc/service_reports');
-    $fileName = basename($path);
+    public function uploadServiceReport(Request $request,)
+    {
+        $id = $request->amc_id;
+        // dd($id);
+        $request->validate(['service_report' => 'required|file|mimes:pdf,docx,jpg,png']);
+        $path = $request->file('service_report')->store('amc/service_reports');
+        $fileName = basename($path);
 
 
-    $amc = Amc::findOrFail($id);
-    $amc->service_report_path = $fileName;
-    $amc->save();
-    return back()->with('success', 'Service report uploaded successfully.');
-}
-
-public function uploadSignedServiceReport(Request $request, $id)
-{
-    $request->validate(['signed_service_report' => 'required|file|mimes:pdf,docx,jpg,png']);
-    $path = $request->file('signed_service_report')->store('amc/signed_service_reports');
-    $fileName = basename($path);
-
-    $amc = Amc::findOrFail($id);
-    $amc->signed_service_report_path = $fileName;
-    $amc->save();
-
-    return back()->with('success', 'Signed report uploaded successfully.');
-}
-
-public function downloadSampleService($id)
-{
-    $amc = Amc::findOrFail($id);
-
-    if (!$amc->signed_service_report_path) {
-        return back()->with('error', 'No service report available for this AMC.');
+        $amc = Amc::findOrFail($id);
+        $amc->service_report_path = $fileName;
+        $amc->save();
+        return back()->with('success', 'Service report uploaded successfully.');
     }
 
-    $filePath = 'amc/signed_service_reports/' . $amc->signed_service_report_path;
+    public function uploadSignedServiceReport(Request $request,)
+    {
+        $id = $request->amc_id;
+        $request->validate(['signed_service_report' => 'required|file|mimes:pdf,docx,jpg,png']);
+        $path = $request->file('signed_service_report')->store('amc/signed_service_reports');
+        $fileName = basename($path);
 
-    if (!Storage::exists($filePath)) {
-        abort(404, 'Signed service report not found.');
+        $amc = Amc::findOrFail($id);
+        $amc->signed_service_report_path = $fileName;
+        $amc->save();
+
+        return back()->with('success', 'Signed report uploaded successfully.');
     }
 
-    return Storage::download($filePath, 'Signed-Service-Report.pdf');
-}
+    public function downloadSampleService($id)
+    {
+        $amc = Amc::findOrFail($id);
+
+        if (!$amc->signed_service_report_path) {
+            return back()->with('error', 'No service report available for this AMC.');
+        }
+
+        $filePath = 'amc/signed_service_reports/' . $amc->signed_service_report_path;
+
+        if (!Storage::exists($filePath)) {
+            abort(404, 'Signed service report not found.');
+        }
+
+        return Storage::download($filePath, 'Signed-Service-Report.pdf');
+    }
 
 }

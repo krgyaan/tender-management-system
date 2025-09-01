@@ -51,7 +51,10 @@ use App\Http\Controllers\TlPerformanceController;
 use App\Http\Controllers\KickoffmeetingController;
 use App\Http\Controllers\LeadAllocationController;
 use App\Http\Controllers\OemPerformanceController;
-use App\Http\Controllers\CustomerServiceController;
+use App\Http\Controllers\CustomerService\CustomerServiceController;
+use App\Http\Controllers\CustomerService\ConferenceCallController;
+use App\Http\Controllers\CustomerService\ServiceVisitController;
+use App\Http\Controllers\CustomerService\ServiceFeedbackController;
 use App\Http\Controllers\ClientDirectoryController;
 use App\Http\Controllers\CostingApprovalController;
 use App\Http\Controllers\EmployeeImprestController;
@@ -487,7 +490,9 @@ Route::middleware('auth')->group(function () {
     
     Route::get('/upload-csv', [CsvImportController::class, 'showUploadForm']);
     Route::post('/upload-csv', [CsvImportController::class, 'upload'])->name('csv.upload');
+
     
+    Route::post('/customer-service/allotServiceEngineer', [CustomerServiceController::class, 'allotServiceEngineer'])->name('customer_service.allotServiceEngineer');
     Route::prefix('services')->group(function () {
         Route::get('/customer-service', [CustomerServiceController::class, 'index'])->name('customer_service.index');
         Route::get('/customer-service/create', [CustomerServiceController::class, 'create'])->name('customer_service.create');
@@ -495,14 +500,24 @@ Route::middleware('auth')->group(function () {
         Route::get('/customer-service/show/{id}', [CustomerServiceController::class, 'show'])->name('customer_service.show');
         Route::get('/customer-service/getData', [CustomerServiceController::class, 'getCustomerComplaintsData'])->name('customer_service.getData');
         
+        Route::get('/customer-service/conference-call', [ConferenceCallController::class, 'index'])->name('customer_service.conference_call.index');
+        Route::get('/customer-service/conference-call/create/{complaintId}', [ConferenceCallController::class, 'create'])->name('customer_service.conference_call.create');
+        Route::get('/customer-service/conference-call/show/{complaintId}', [ConferenceCallController::class, 'show'])->name('customer_service.conference_call.show');
+        Route::post('/customer-service/conference-call/store', [ConferenceCallController::class, 'store'])->name('customer_service.conference_call.store');
+        Route::get('/customer-service/conference-call/getData', [ConferenceCallController::class, 'getCustomerComplaintsData'])->name('customer_service.conference_call.getData');
+        
+        Route::get('/customer-service/service-visit', [ServiceVisitController::class, 'index'])->name('customer_service.service_visit.index');
+        Route::get('/customer-service/service-visit/create', [ServiceVisitController::class, 'create'])->name('customer_service.service_visit.create');
+        Route::get('/customer-service/service-visit/getData', [ServiceVisitController::class, 'getCustomerComplaintsData'])->name('customer_service.service_visit.getData');
+        
         Route::prefix('amc')->name('amc.')->controller(AmcController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
-            Route::post('/service-report/upload/{id}', 'uploadServiceReport')->name('service-report.upload');
-            Route::post('/signed-service-report/upload/{id}', 'uploadSignedServiceReport')->name('signed-service-report.upload');
+            Route::post('/service-report/upload/', 'uploadServiceReport')->name('service-report.upload');
+            Route::post('/signed-service-report/upload/', 'uploadSignedServiceReport')->name('signed-service-report.upload');
             Route::post('/', 'store')->name('store');
             Route::get('/{amc}/edit', [AmcController::class, 'edit'])->name('edit');
-            Route::put('/update/{amc}', [AmcController::class, 'update'])->name('update');
+            Route::put('/update/{id}', [AmcController::class, 'update'])->name('update');
             Route::get('/{amc}', [AmcController::class, 'show'])->name('show');
             Route::get("/getData/{type}", [AmcController::class ,'getAmcData'])->name('getAmcData');
             Route::get('/amc/{id}/download-signed-service-report', [AmcController::class, 'downloadSampleService'])->name('signed-service-report.download');
@@ -635,6 +650,26 @@ Route::middleware('auth')->group(function () {
     });
 });
 
+Route::get('/register-complaint', [CustomerServiceController::class, 'createPublic'])->name('register_complaint.create');
+Route::get('/register-complaint/success', [CustomerServiceController::class, 'success'])->name('register_complaint.success');
+Route::post('/register-complaint/store', [CustomerServiceController::class, 'storePublic'])->name('register_complaint.store');
+
+Route::get('/customer-service/service-visit/public/success', [ServiceVisitController::class, 'success'])->name('service_visit.public.success');
+Route::get('/customer-service/service-visit/public/camera/{type}/{complaintId}', [ServiceVisitController::class, 'showCamera'])->name('service_visit.public.camera');
+Route::post('/customer-service/service-visit/public/storePhotos', [ServiceVisitController::class, 'storePhotos'])->name('service_visit.public.storePhotos');
+// Route::get('/customer-service/service-visit/public/{complaintId}', [ServiceVisitController::class, 'createPublic'])->name('service_visit.public.create');
+Route::get('/customer-service/service-visit/public/{complaintId}', [ServiceVisitController::class, 'step_1_show'])->name('service_visit.public.step1');
+Route::post('/customer-service/service-visit/public/store/step1', [ServiceVisitController::class, 'step_1_store'])->name('service_visit.public.store.step1');
+Route::get('/customer-service/service-visit/public/step-2/{complaintId}', [ServiceVisitController::class, 'step_2_show'])->name('service_visit.public.step2');
+Route::post('/customer-service/service-visit/public/store/step2', [ServiceVisitController::class, 'step_2_store'])->name('service_visit.public.store.step2');
+Route::get('/customer-service/service-visit/public/success', [ServiceVisitController::class, 'success'])->name('service_visit.public.success');
+Route::post('/customer-service/service-visit/public/store', [ServiceVisitController::class, 'storePublic'])->name('service_visit.public.store');
+
+Route::get('/customer-service/feedback/success', [ServiceFeedbackController::class, 'success'])->name('service_feedback.success');
+Route::get('/customer-service/feedback/{complaintId}', [ServiceFeedbackController::class, 'index'])->name('service_feedback.create');
+Route::post('/customer-service/feedback/store', [ServiceFeedbackController::class, 'store'])->name('service_feedback.store');
+
+
 // Error pages
 Route::get('/maintain', function () {
     Artisan::call('down');
@@ -643,7 +678,7 @@ Route::get('/maintain', function () {
 
 Route::get('/up', function () {
     Artisan::call('up');
-    return "Application is now live.";
+    return "Application is now live.";  
 });
 Route::fallback(fn () => view('errors.404'));
 

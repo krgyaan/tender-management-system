@@ -476,33 +476,23 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/upload-csv', [CsvImportController::class, 'showUploadForm']);
     Route::post('/upload-csv', [CsvImportController::class, 'upload'])->name('csv.upload');
-
-<<<<<<< HEAD
-=======
     
     Route::post('/customer-service/allotServiceEngineer', [CustomerServiceController::class, 'allotServiceEngineer'])->name('customer_service.allotServiceEngineer');
->>>>>>> 3020197327b192de1bebe2958c664f2fc0c7d26b
     Route::prefix('services')->group(function () {
         Route::get('/customer-service', [CustomerServiceController::class, 'index'])->name('customer_service.index');
         Route::get('/customer-service/create', [CustomerServiceController::class, 'create'])->name('customer_service.create');
         Route::post('/customer-service/store', [CustomerServiceController::class, 'store'])->name('customer_service.store');
         Route::get('/customer-service/show/{id}', [CustomerServiceController::class, 'show'])->name('customer_service.show');
         Route::get('/customer-service/getData', [CustomerServiceController::class, 'getCustomerComplaintsData'])->name('customer_service.getData');
-<<<<<<< HEAD
-
-=======
-        
         Route::get('/customer-service/conference-call', [ConferenceCallController::class, 'index'])->name('customer_service.conference_call.index');
         Route::get('/customer-service/conference-call/create/{complaintId}', [ConferenceCallController::class, 'create'])->name('customer_service.conference_call.create');
         Route::get('/customer-service/conference-call/show/{complaintId}', [ConferenceCallController::class, 'show'])->name('customer_service.conference_call.show');
         Route::post('/customer-service/conference-call/store', [ConferenceCallController::class, 'store'])->name('customer_service.conference_call.store');
         Route::get('/customer-service/conference-call/getData', [ConferenceCallController::class, 'getCustomerComplaintsData'])->name('customer_service.conference_call.getData');
-        
         Route::get('/customer-service/service-visit', [ServiceVisitController::class, 'index'])->name('customer_service.service_visit.index');
         Route::get('/customer-service/service-visit/create', [ServiceVisitController::class, 'create'])->name('customer_service.service_visit.create');
         Route::get('/customer-service/service-visit/getData', [ServiceVisitController::class, 'getCustomerComplaintsData'])->name('customer_service.service_visit.getData');
-        
->>>>>>> 3020197327b192de1bebe2958c664f2fc0c7d26b
+      
         Route::prefix('amc')->name('amc.')->controller(AmcController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
@@ -624,14 +614,6 @@ Route::middleware('auth')->group(function () {
 
         // TDS
         Route::prefix('tds')->name('tds.')->controller(TdsFormController::class)->group(function () {
-            // Route::get('/', 'index')->name('index');
-            // Route::get('/create', 'create')->name('create');
-            // Route::post('/', 'store')->name('store');
-            // Route::get('/{id}', 'show')->name('show');
-            // Route::get('/{id}/edit', 'edit')->name('edit');
-            // Route::put('/{id}', 'update')->name('update');
-            // Route::delete('/{id}', 'destroy')->name('destroy');
-
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
@@ -662,27 +644,4 @@ Route::get('/customer-service/feedback/success', [ServiceFeedbackController::cla
 Route::get('/customer-service/feedback/{complaintId}', [ServiceFeedbackController::class, 'index'])->name('service_feedback.create');
 Route::post('/customer-service/feedback/store', [ServiceFeedbackController::class, 'store'])->name('service_feedback.store');
 
-
-// Error pages
-Route::get('/maintain', function () {
-    Artisan::call('down');
-    return "Application is now in maintenance mode.";
-});
-
-Route::get('/up', function () {
-    Artisan::call('up');
-    return "Application is now live.";  
-});
 Route::fallback(fn() => view('errors.404'));
-
-Route::get('/check-path', function () {
-    $path = public_path('uploads/emds');
-
-    return [
-        'expected_path' => $path,
-        'exists' => file_exists($path),
-        'readable' => is_readable($path),
-        'is_dir' => is_dir($path),
-        'realpath' => realpath($path),
-    ];
-});

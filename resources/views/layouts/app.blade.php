@@ -138,21 +138,24 @@
                                     <span class="item-name fw-normal">RFQs</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['request-emd', 'all'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['request-emd', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('emds.*') ? 'active' : '' }}"
                                     href="{{ route('emds.index') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">EMD/Tender Fees</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['tender-info', 'all'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['tender-info', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a href="{{ route('checklist.index') }}"
                                     class="nav-link d-flex align-items-center {{ request()->routeIs('checklist.*') ? 'active' : '' }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Document Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['costing-sheet', 'all'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['costing-sheet', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('googlesheet') ? 'active' : '' }}"
                                     href="{{ url('/admin/googlesheet') }}">
                                     <i class="fa fa-arrow-right"></i>
@@ -239,14 +242,25 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a data-bs-toggle="collapse" href="#sidebar-ops" role="button"
-                            @class(['nav-link']) aria-expanded="false" aria-controls="sidebar-ops">
+                        <a data-bs-toggle="collapse" href="#sidebar-ops" role="button" @class(['nav-link'])
+                            aria-expanded="false" aria-controls="sidebar-ops">
                             <i class="icon">
-                                <svg width="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M11.9951 16.6766V14.1396" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M18.19 5.33008C19.88 5.33008 21.24 6.70008 21.24 8.39008V11.8301C18.78 13.2701 15.53 14.1401 11.99 14.1401C8.45 14.1401 5.21 13.2701 2.75 11.8301V8.38008C2.75 6.69008 4.12 5.33008 5.81 5.33008H18.19Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path d="M15.4951 5.32576V4.95976C15.4951 3.73976 14.5051 2.74976 13.2851 2.74976H10.7051C9.48512 2.74976 8.49512 3.73976 8.49512 4.95976V5.32576" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path d="M2.77441 15.4829L2.96341 17.9919C3.09141 19.6829 4.50041 20.9899 6.19541 20.9899H17.7944C19.4894 20.9899 20.8984 19.6829 21.0264 17.9919L21.2154 15.4829" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <svg width="22" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M11.9951 16.6766V14.1396" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                        d="M18.19 5.33008C19.88 5.33008 21.24 6.70008 21.24 8.39008V11.8301C18.78 13.2701 15.53 14.1401 11.99 14.1401C8.45 14.1401 5.21 13.2701 2.75 11.8301V8.38008C2.75 6.69008 4.12 5.33008 5.81 5.33008H18.19Z"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                    <path
+                                        d="M15.4951 5.32576V4.95976C15.4951 3.73976 14.5051 2.74976 13.2851 2.74976H10.7051C9.48512 2.74976 8.49512 3.73976 8.49512 4.95976V5.32576"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                    <path
+                                        d="M2.77441 15.4829L2.96341 17.9919C3.09141 19.6829 4.50041 20.9899 6.19541 20.9899H17.7944C19.4894 20.9899 20.8984 19.6829 21.0264 17.9919L21.2154 15.4829"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
                                 </svg>
                             </i>
                             <span class="item-name">Operations</span>
@@ -305,11 +319,22 @@
                         <a data-bs-toggle="collapse" href="#sidebar-service" role="button"
                             @class(['nav-link']) aria-expanded="false" aria-controls="sidebar-service">
                             <i class="icon">
-                                <svg width="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M11.9951 16.6766V14.1396" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M18.19 5.33008C19.88 5.33008 21.24 6.70008 21.24 8.39008V11.8301C18.78 13.2701 15.53 14.1401 11.99 14.1401C8.45 14.1401 5.21 13.2701 2.75 11.8301V8.38008C2.75 6.69008 4.12 5.33008 5.81 5.33008H18.19Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path d="M15.4951 5.32576V4.95976C15.4951 3.73976 14.5051 2.74976 13.2851 2.74976H10.7051C9.48512 2.74976 8.49512 3.73976 8.49512 4.95976V5.32576" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                    <path d="M2.77441 15.4829L2.96341 17.9919C3.09141 19.6829 4.50041 20.9899 6.19541 20.9899H17.7944C19.4894 20.9899 20.8984 19.6829 21.0264 17.9919L21.2154 15.4829" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <svg width="22" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M11.9951 16.6766V14.1396" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round"></path>
+                                    <path fill-rule="evenodd" clip-rule="evenodd"
+                                        d="M18.19 5.33008C19.88 5.33008 21.24 6.70008 21.24 8.39008V11.8301C18.78 13.2701 15.53 14.1401 11.99 14.1401C8.45 14.1401 5.21 13.2701 2.75 11.8301V8.38008C2.75 6.69008 4.12 5.33008 5.81 5.33008H18.19Z"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                    <path
+                                        d="M15.4951 5.32576V4.95976C15.4951 3.73976 14.5051 2.74976 13.2851 2.74976H10.7051C9.48512 2.74976 8.49512 3.73976 8.49512 4.95976V5.32576"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
+                                    <path
+                                        d="M2.77441 15.4829L2.96341 17.9919C3.09141 19.6829 4.50041 20.9899 6.19541 20.9899H17.7944C19.4894 20.9899 20.8984 19.6829 21.0264 17.9919L21.2154 15.4829"
+                                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round"></path>
                                 </svg>
                             </i>
                             <span class="item-name">Services</span>
@@ -326,8 +351,8 @@
                                 class="nav-item {{ array_intersect(['wo-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link d-flex align-items-center',
-                                    'active' => request()->routeIs('customer_service.*')])
-                                    href="{{ route('customer_service.index') }}">
+                                    'active' => request()->routeIs('customer_service.index'),
+                                ]) href="{{ route('customer_service.index') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Customer Service</span>
                                 </a>
@@ -364,8 +389,9 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('emds-dashboard.*') ? 'active' : '' }}" data-bs-toggle="collapse" href="#sidebar-bi" role="button"
-                            aria-expanded="false" aria-controls="sidebar-bi">
+                        <a class="nav-link {{ request()->routeIs('emds-dashboard.*') ? 'active' : '' }}"
+                            data-bs-toggle="collapse" href="#sidebar-bi" role="button" aria-expanded="false"
+                            aria-controls="sidebar-bi">
                             <i class="icon">
                                 <svg width="22" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
@@ -598,35 +624,40 @@
                                     <span class="item-name fw-normal">Projects</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'account-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'account-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('checklists.*') ? 'active' : '' }}"
                                     href="{{ url('/accounts/checklists') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Account Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'expense-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'expense-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('fixed-expenses.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/fixed-expenses') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">Expense Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'gstr1-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'gstr1-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('gstr1.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/gstr1') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">GST R1 Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'gst3b-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'gst3b-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('gst3b.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/gst3b') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">GST 3B Checklist</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'tds-checklist'], $permissions) ? '' : 'd-none' }}">
+                            <li
+                                class="nav-item {{ array_intersect(['all', 'tds-checklist'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('tds.index') ? 'active' : '' }}"
                                     href="{{ url('/accounts/tds') }}">
                                     <i class="fa fa-arrow-right"></i>
@@ -833,8 +864,7 @@
                                     'd-flex',
                                     'align-items-center',
                                     'active' => request()->routeIs('emd-responsibility.*'),
-                                ])
-                                    href="{{ route('emd-responsibility.index') }}">
+                                ]) href="{{ route('emd-responsibility.index') }}">
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">EMD Responsibilities</span>
                                 </a>
@@ -1121,7 +1151,7 @@
 
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         // echo finfo_file($finfo, 'uploads/docs/GeM-Bidding-7771730.pdf_1745655322_1368714793.pdf');
-
+        
         $required_extensions = ['fileinfo', 'gd', 'mbstring', 'xml', 'zip', 'dom', 'curl', 'json', 'intl'];
 
         echo '<h5>PHP Extension Check</h5>';

@@ -19,6 +19,56 @@ class ChecklistController extends Controller
 {
     protected $timerService;
 
+    public $reason = [
+        9 => 'OEM Bidders only',
+        10 => 'Not allowed by OEM',
+        11 => 'Not Eligible',
+        12 => 'Product type bid',
+        13 => 'Small Value Tender',
+        14 => 'Product not available',
+        15 => 'An electrical Contractor license needed',
+    ];
+
+    public $commercial = [
+        1 => 'Item Wise GST Inclusive',
+        2 => 'Item Wise Pre GST',
+        3 => 'Overall GST Inclusive',
+        4 => 'Overall Pre GST',
+    ];
+
+    public $maf = [
+        1 => 'Yes (project specific)',
+        2 => 'Yes (general)',
+        3 => 'No',
+    ];
+
+    public $tenderFees = [
+        1 => 'Pay on Portal',
+        2 => 'NEFT/RTGS',
+        3 => 'DD',
+        4 => 'Not Applicable',
+    ];
+
+    public $emdReq = [
+        1 => 'Yes',
+        2 => 'No',
+        3 => 'Exempt',
+    ];
+
+    public $emdOpt = [
+        1 => 'Pay on Portal',
+        2 => 'NEFT/RTGS',
+        3 => 'DD',
+        4 => 'BG',
+        5 => 'FDR',
+        6 => 'Not Applicable',
+    ];
+
+    public $revAuction = [
+        1 => 'Yes',
+        2 => 'No',
+    ];
+
     public function __construct(TimerService $timerService)
     {
         $this->timerService = $timerService;
@@ -35,7 +85,7 @@ class ChecklistController extends Controller
 
         $query = TenderInfo::with('users', 'statuses')
             ->where('deleteStatus', '0')
-            ->whereNotIn( 'status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNotIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->where('tlStatus', '1');
 
         // Team filtering
@@ -156,7 +206,7 @@ class ChecklistController extends Controller
     {
         try {
             $member = User::find($tender->team_member);
-            if(!$member) {
+            if (!$member) {
                 $member = Auth::User();
             }
             $adminMail = User::where('role', 'admin')->where('team', $member->team)->first()->email ?? 'gyanprakashk55@gmail.com';
@@ -177,9 +227,14 @@ class ChecklistController extends Controller
             MailHelper::configureMailer($member->email, $member->app_password, $member->name);
             $mailer = Config::has('mail.mailers.dynamic') ? 'dynamic' : 'smtp';
 
+            $ccRecipients = [$adminMail];
+            if ($coo && isset($coo->email)) {
+                $ccRecipients[] = $coo->email;
+            }
+
             // Send mail using the configured mailer
             $mail = Mail::mailer($mailer)->to($tl->email)
-                ->cc([$adminMail, $coo->mail])
+                ->cc($ccRecipients)
                 ->send(new DocumentChecklistMail($data));
 
             if ($mail) {
@@ -193,5 +248,19 @@ class ChecklistController extends Controller
             Log::error("Document Checklist Mail Error: " . $th->getMessage());
             return false;
         }
+    }
+
+    public function show($id)
+    {
+        $reason = $this->reason;
+        $commercial = $this->commercial;
+        $maf = $this->maf;
+        $tenderfees = $this->tenderFees;
+        $emdReq = $this->emdReq;
+        $emdopt = $this->emdOpt;
+        $revAuction = $this->revAuction;
+        $tender = TenderInfo::with('checklist', 'info', 'phydocs', 'rfqs')->findOrFail($id);
+        $rfq = $tender->rfqs;
+        return view('tender.checklist-show', compact('tender', 'rfq', 'reason', 'commercial', 'maf', 'tenderfees', 'emdReq', 'emdopt', 'revAuction'));
     }
 }

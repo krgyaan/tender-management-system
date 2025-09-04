@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Exports\VendorExport;
+use App\Models\VendorFiles;
 use Maatwebsite\Excel\Facades\Excel;
 
 class VendorController extends Controller
@@ -297,9 +298,64 @@ class VendorController extends Controller
             return response()->json(['success' => false], 500);
         }
     }
-    
+
     public function exportToExcel()
     {
         return Excel::download(new VendorExport(), 'vendors.xlsx');
+    }
+
+    // OEM Files
+    public function oemFiles()
+    {
+        $vendors = VendorOrg::with('vendors')->get();
+        return view('master.oem-files', compact('vendors'));
+    }
+
+    public function uploadFiles(Request $request, VendorOrg $vendor)
+    {
+        Log::info("uploadFiles called with vendor id: $vendor->id");
+
+        $request->validate([
+            'file_names.*' => 'required|string|max:255',
+            'files.*' => 'required|file|max:10240', // Max 10MB per file
+        ]);
+
+        Log::info('Validation successful');
+
+        foreach ($request->file('files') as $index => $file) {
+            Log::info('Processing file ' . $index . ' of ' . count($request->file('files')));
+
+            $fileName = rand(1000, 9999) . '_' . $request->file_names[$index] . '_' . $file->getClientOriginalName();
+            Log::info("Generated file name: $fileName");
+
+            $file->move(public_path('uploads/vendors'), $fileName);
+            $path = $fileName;
+
+            Log::info("File saved to: $path");
+
+            $vendor->files()->create([
+                'name' => $request->file_names[$index],
+                'file_path' => $path,
+            ]);
+
+            Log::info('File details saved to database');
+        }
+
+        Log::info('All files uploaded successfully');
+
+        return redirect()->back()->with('success', 'Files uploaded successfully.');
+    }
+    public function deleteFile($id)
+    {
+        try {
+            $file = VendorFiles::findOrFail($id);
+            if (file_exists(public_path($file->path))) {
+                unlink(public_path($file->path));
+            }
+            $file->delete();
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false], 500);
+        }
     }
 }

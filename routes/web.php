@@ -101,7 +101,7 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('admin')->group(function () {
             Route::resource('statuses', StatusController::class);
-            
+
             Route::controller(OrganizationController::class)->group(function () {
                 Route::match(['get', 'post'], 'org-industries/add', 'addIndustry')->name('org-industries.add');
                 Route::get('org-industries/edit/{id}', 'editIndustry')->name('org-industries.edit');
@@ -109,9 +109,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('org-industries/delete/{id}', 'deleteIndustry')->name('org-industries.delete');
                 Route::resource('organizations', OrganizationController::class);
             });
-            
+
             Route::resource('emd-responsibility', EmdResponsiblityController::class);
-           
+
             Route::controller(ItemController::class)->group(function () {
                 Route::post('items/approve/{id}', 'approve')->name('items.approve');
                 Route::post('items/delete/{id}', 'delete')->name('items.delete');
@@ -122,9 +122,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('items/get-headings', 'getHeadings')->name('items.get-headings');
                 Route::resource('items', ItemController::class);
             });
-            
+
             Route::controller(VendorController::class)->group(function () {
-                Route::resource('vendors', VendorController::class)->except(['edit', 'update']);
+                Route::resource('vendors', VendorController::class)->except(['edit', 'update', 'show']);
                 // Route::resource('vendors', VendorController::class);
                 Route::any('vendors/edit/{id}', 'edit')->name('vendors.edit');
                 Route::any('vendors/update/{id}', 'update')->name('vendors.update');
@@ -133,7 +133,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/vendors/delete-contact/{id}', 'deleteContact')->name('vendors.delete-contact');
                 Route::get('vendors/export/excel', 'exportToExcel')->name('vendors.export');
             });
-            
+
             Route::resource('websites', WebsitesController::class);
             Route::resource('locations', LocationController::class);
             Route::resource('submitteddocs', DocumentSubmittedController::class);
@@ -162,26 +162,12 @@ Route::middleware('auth')->group(function () {
             $projects = Project::orderBy('id', 'desc')->get(['po_no', 'location_id', 'project_code', 'project_name', 'po_date']);
             return Excel::download(new ProjectExport($projects), 'projects.xlsx');
         })->name('download-projects');
-        
+
         Route::get('/admin/cache-optimize', [CacheOptimizeController::class, 'optimize']);
     });
+    Route::get('tender-vendor/oem-files', [VendorController::class, 'oemFiles'])->name('vendors.oem-files');
+    Route::post('/vendors/{vendor}/files', [VendorController::class, 'uploadFiles'])->name('vendors.uploadFiles');
 
-    Route::middleware('role:coordinator')->group(function () {
-        Route::get('/dashboard/coordinator', [CoordinatorController::class, 'index'])->name('dashboard.coordinator');
-    });
-
-    Route::middleware('role:account')->group(function () {
-        Route::get('/dashboard/account', [AccountantController::class, 'index'])->name('dashboard.account');
-    });
-
-    Route::middleware('role:employee')->group(function () {
-        Route::get('/dashboard/employee', [EmployeeController::class, 'index'])->name('dashboard.employee');
-    });
-
-    Route::middleware('role:team-leader')->group(function () {
-        Route::get('/dashboard/team-leader', [TeamLeaderController::class, 'index'])->name('dashboard.team-leader');
-    });
-    
     Route::get('/tender/data/{type}', [TenderInfoController::class, 'getTenderData'])->name('tender.data');
     Route::get('/approve-tender/data/{type}', [TenderInfoController::class, 'tlapprovalData'])->name('tlapproval.data');
     Route::get('/phydocs/data/{type}', [PhyDocsController::class, 'phydocsData'])->name('phydocs.data');
@@ -194,7 +180,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tq/data/{type}', [TQController::class, 'getTqData'])->name('tq.data');
     Route::get('/ra/data/{type}', [RaMgmtController::class, 'getRaData'])->name('ra.data');
     Route::get('/result/data/{type}', [ResultController::class, 'getResultData'])->name('result.data');
-    Route::get('/leads/data/{type}', [LeadController::class, 'getLeadsData'])->name('leads.data'); 
+    Route::get('/leads/data/{type}', [LeadController::class, 'getLeadsData'])->name('leads.data');
     Route::get('/enquiries/data/{type}', [EnquiryController::class, 'getEnquiriesData'])->name('enquiries.data');
     Route::get('/pvt-costing-approval/data/{type}', [PrivateCostingSheetController::class, 'getCostingSheet'])->name('pvt-costing-approval.data');
     Route::get('/pvt-quote/data/{type}', [PrivateQuoteController::class, 'getQuoteData'])->name('pvt-quote.data');
@@ -205,9 +191,9 @@ Route::middleware('auth')->group(function () {
         Route::any('courier/despatch/{id}', [CourierDashboardController::class, 'despatch'])->name('courier.despatch');
         Route::any('courier/updateStatus', [CourierDashboardController::class, 'updateStatus'])->name('courier.updateStatus');
         Route::post('courier/data/{type}', [CourierDashboardController::class, 'getCourierData'])->name('courier.getCourierData');
-        
+
         Route::resource('phydocs', PhyDocsController::class);
-        
+
         Route::controller(EmdsController::class)->group(function () {
             Route::resource('emds', EmdsController::class)->except('create');
             Route::get('emds/create/{id?}', 'create')->name('emds.create');
@@ -239,7 +225,7 @@ Route::middleware('auth')->group(function () {
         Route::get('emds-dashboard', [EmdDashboardController::class, 'dashboard'])->name('emds-dashboard.index');
         Route::get('emds-dashboard/bank-gurantee', [EmdDashboardController::class, 'BG'])->name('emds-dashboard.bg');
         Route::post('bg/data/{type}', [EmdDashboardController::class, 'getBgData'])->name('bg.getBgData');
-        
+
         Route::get('emds-dashboard/demand-draft', [EmdDashboardController::class, 'DD'])->name('emds-dashboard.dd');
         Route::get('emds-dashboard/bank-transfer', [EmdDashboardController::class, 'BT'])->name('emds-dashboard.bt');
         Route::get('emds-dashboard/bank-transfer/data', [EmdDashboardController::class, 'getBtData'])->name('emds-dashboard.bt.data');
@@ -247,16 +233,16 @@ Route::middleware('auth')->group(function () {
         Route::get('emds-dashboard/pay-on-portal/data', [EmdDashboardController::class, 'getPopData'])->name('emds-dashboard.pop.data');
         Route::get('emds-dashboard/cheque', [EmdDashboardController::class, 'CHQ'])->name('emds-dashboard.chq');
         Route::get('emds-dashboard/fdr', [EmdDashboardController::class, 'FDR'])->name('emds-dashboard.fdr');
-        
+
         Route::get('emds-dashboard/show/{id}', [EmdDashboardController::class, 'show'])->name('emds-dashboard.show');
         Route::get('emds-dashboard/{id}/edit', [EmdDashboardController::class, 'edit'])->name('emds-dashboard.edit');
         Route::any('emds-dashboard/{id}/update', [EmdDashboardController::class, 'update'])->name('emds-dashboard.update');
         Route::delete('emds-dashboard/delete/{id}', [EmdDashboardController::class, 'destroy'])->name('emds-dashboard.destroy');
 
-        Route::get('emds/export/bg/{type}', [EmdDashboardController::class, 'export_bg'])->name('emds.export.bg');    
+        Route::get('emds/export/bg/{type}', [EmdDashboardController::class, 'export_bg'])->name('emds.export.bg');
         Route::get('emds/export/bt', [EmdDashboardController::class, 'export_bt'])->name('emds.export.bt');
         Route::get('emds/export/pop', [EmdDashboardController::class, 'export_pop'])->name('emds.export.pop');
-        
+
         Route::any('dd-status/update/{id}', [EmdDashboardController::class, 'DemandDraftDashboard'])->name('dd-status.update');
         Route::any('cheque-status/update/{id}', [EmdDashboardController::class, 'ChequeDashboard'])->name('cheque-status.update');
         Route::any('bt-action/{id}', [EmdDashboardController::class, 'BankTransferDashboard'])->name('bt-action');
@@ -267,7 +253,7 @@ Route::middleware('auth')->group(function () {
 
         Route::any('emds/bg/old-entry', [EmdsController::class, 'BgOldEntry'])->name('bg-old-entry');
         Route::any('emds/dd/old-entry', [EmdsController::class, 'DdOldEntry'])->name('dd-old-entry');
-        
+
         Route::any('emds/cheque/ott-entry', [EmdsController::class, 'ChequeOTTEntry'])->name('cheque-ott-entry');
         Route::any('emds/bg/ott-entry', [EmdsController::class, 'BgOTTEntry'])->name('bg-ott-entry');
         Route::any('emds/dd/ott-entry', [EmdsController::class, 'DdOTTEntry'])->name('dd-ott-entry');
@@ -276,7 +262,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/results/technical', [ResultController::class, 'storeTechnicalResult'])->name('results.storeTechnical');
         Route::post('/results/final', [ResultController::class, 'storeFinalResult'])->name('results.storeFinal');
         Route::resource('checklist', ChecklistController::class);
-        
+
         Route::resource('followups', FollowUpsController::class);
         Route::delete('followups/person-delete/{id}', [FollowUpsController::class, 'deletePerson'])->name('followups.person-delete');
         Route::post('followups/status-update/{id}', [FollowUpsController::class, 'updateFollowup'])->name('updateFollowup');
@@ -424,7 +410,7 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/basicdetailupdate/{id}', [WorkorderController::class, 'basicdetailupdate'])->name('basicdetailupdate');
     Route::post('admin/basicdetailupdatepost', [WorkorderController::class, 'basicdetailupdatepost'])->name('basicdetailupdatepost');
     Route::get('admin/basicdetaildelete/{id}', [WorkorderController::class, 'basicdetaildelete'])->name('basicdetaildelete');
-    
+
     Route::get('admin/wodetailadd/{id}', [WorkorderController::class, 'wodetailadd'])->name('wodetailadd');
     Route::post('admin/wodetailaddpost', [WorkorderController::class, 'wodetailaddpost'])->name('wodetailaddpost');
     Route::get('admin/wodetailupdate/{id}', [WorkorderController::class, 'wodetailupdate'])->name('wodetailupdate');
@@ -463,7 +449,7 @@ Route::middleware('auth')->group(function () {
     Route::post('admin/tq_replied_form_post', [TQController::class, 'tq_replied_form_post'])->name('tq_replied_form_post');
     Route::get('admin/tq_missed_form/{id}', [TQController::class, 'tq_missed_form'])->name('tq_missed_form');
     Route::post('admin/tq_missed_form_post', [TQController::class, 'tq_missed_form_post'])->name('tq_missed_form_post');
-        Route::group(['prefix' => 'ra-management'], function () {
+    Route::group(['prefix' => 'ra-management'], function () {
         Route::get('/', [RaMgmtController::class, 'index'])->name('ra.index');
         Route::get('/{id}', [RaMgmtController::class, 'show'])->name('ra.show');
         Route::post('/schedule/{id}', [RaMgmtController::class, 'schedule'])->name('ra-management.schedule');
@@ -487,10 +473,9 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/googletoolview/{id}', [GoogletoolController::class, 'googletoolview'])->name('googletoolview');
     Route::post('admin/googletoolssave', [GoogletoolController::class, 'googletoolssave'])->name('googletoolssave');
     Route::put('admin/googletoolssubmitsheet', [GoogletoolController::class, 'submitSheet'])->name('googletoolssubmitsheet');
-    
+
     Route::get('/upload-csv', [CsvImportController::class, 'showUploadForm']);
     Route::post('/upload-csv', [CsvImportController::class, 'upload'])->name('csv.upload');
-
     
     Route::post('/customer-service/allotServiceEngineer', [CustomerServiceController::class, 'allotServiceEngineer'])->name('customer_service.allotServiceEngineer');
     Route::prefix('services')->group(function () {
@@ -499,17 +484,15 @@ Route::middleware('auth')->group(function () {
         Route::post('/customer-service/store', [CustomerServiceController::class, 'store'])->name('customer_service.store');
         Route::get('/customer-service/show/{id}', [CustomerServiceController::class, 'show'])->name('customer_service.show');
         Route::get('/customer-service/getData', [CustomerServiceController::class, 'getCustomerComplaintsData'])->name('customer_service.getData');
-        
         Route::get('/customer-service/conference-call', [ConferenceCallController::class, 'index'])->name('customer_service.conference_call.index');
         Route::get('/customer-service/conference-call/create/{complaintId}', [ConferenceCallController::class, 'create'])->name('customer_service.conference_call.create');
         Route::get('/customer-service/conference-call/show/{complaintId}', [ConferenceCallController::class, 'show'])->name('customer_service.conference_call.show');
         Route::post('/customer-service/conference-call/store', [ConferenceCallController::class, 'store'])->name('customer_service.conference_call.store');
         Route::get('/customer-service/conference-call/getData', [ConferenceCallController::class, 'getCustomerComplaintsData'])->name('customer_service.conference_call.getData');
-        
         Route::get('/customer-service/service-visit', [ServiceVisitController::class, 'index'])->name('customer_service.service_visit.index');
         Route::get('/customer-service/service-visit/create', [ServiceVisitController::class, 'create'])->name('customer_service.service_visit.create');
         Route::get('/customer-service/service-visit/getData', [ServiceVisitController::class, 'getCustomerComplaintsData'])->name('customer_service.service_visit.getData');
-        
+      
         Route::prefix('amc')->name('amc.')->controller(AmcController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
@@ -519,12 +502,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/{amc}/edit', [AmcController::class, 'edit'])->name('edit');
             Route::put('/update/{id}', [AmcController::class, 'update'])->name('update');
             Route::get('/{amc}', [AmcController::class, 'show'])->name('show');
-            Route::get("/getData/{type}", [AmcController::class ,'getAmcData'])->name('getAmcData');
+            Route::get("/getData/{type}", [AmcController::class, 'getAmcData'])->name('getAmcData');
             Route::get('/amc/{id}/download-signed-service-report', [AmcController::class, 'downloadSampleService'])->name('signed-service-report.download');
             Route::delete('/{amc}', [AmcController::class, 'destroy'])->name('delete');
         });
     });
-    
+
     Route::prefix('bdm')->group(function () {
         Route::controller(LeadController::class)->group(function () {
             Route::get('lead/sample', 'sample')->name('lead.sample');
@@ -615,8 +598,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/{id}/approve', 'approve')->name('approve');
             Route::post('/{id}/reject', 'reject')->name('reject');
         });
-        
-        
+
+
         //Gst r1 routes
         Route::prefix('gstr1')->name('gstr1.')->controller(GstR1Controller::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -628,17 +611,9 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{gstR1}', 'destroy')->name('destroy');
         });
 
-        
+
         // TDS
         Route::prefix('tds')->name('tds.')->controller(TdsFormController::class)->group(function () {
-            // Route::get('/', 'index')->name('index');
-            // Route::get('/create', 'create')->name('create');
-            // Route::post('/', 'store')->name('store');
-            // Route::get('/{id}', 'show')->name('show');
-            // Route::get('/{id}/edit', 'edit')->name('edit');
-            // Route::put('/{id}', 'update')->name('update'); 
-            // Route::delete('/{id}', 'destroy')->name('destroy');
-            
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
@@ -669,27 +644,4 @@ Route::get('/customer-service/feedback/success', [ServiceFeedbackController::cla
 Route::get('/customer-service/feedback/{complaintId}', [ServiceFeedbackController::class, 'index'])->name('service_feedback.create');
 Route::post('/customer-service/feedback/store', [ServiceFeedbackController::class, 'store'])->name('service_feedback.store');
 
-
-// Error pages
-Route::get('/maintain', function () {
-    Artisan::call('down');
-    return "Application is now in maintenance mode.";
-});
-
-Route::get('/up', function () {
-    Artisan::call('up');
-    return "Application is now live.";  
-});
-Route::fallback(fn () => view('errors.404'));
-
-Route::get('/check-path', function () {
-    $path = public_path('uploads/emds');
-
-    return [
-        'expected_path' => $path,
-        'exists' => file_exists($path),
-        'readable' => is_readable($path),
-        'is_dir' => is_dir($path),
-        'realpath' => realpath($path),
-    ];
-});
+Route::fallback(fn() => view('errors.404'));

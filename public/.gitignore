@@ -32,6 +32,8 @@ upload/loanadvances/*
 upload/loadclose/*
 upload/tdsrecovery/*
 
+uploads/vendors/*
+
 quotes/submitted_documents/*
 
 ra_results/*

@@ -227,6 +227,17 @@
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">PQR Dashboard</span>
                                 </a>
+                            <li
+                                class="nav-item {{ array_intersect(['pqr-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
+                                <a @class([
+                                    'nav-link',
+                                    'd-flex',
+                                    'align-items-center',
+                                    'active' => request()->routeIs('vendors.oem-files'),
+                                ]) href="{{ route('vendors.oem-files') }}">
+                                    <i class="fa fa-arrow-right"></i>
+                                    <span class="item-name fw-normal">OEM Files</span>
+                                </a>
                             </li>
                         </ul>
                     </li>
@@ -1137,12 +1148,12 @@
 
     <div class="d-none">
         <?php
-        
+
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         // echo finfo_file($finfo, 'uploads/docs/GeM-Bidding-7771730.pdf_1745655322_1368714793.pdf');
         
         $required_extensions = ['fileinfo', 'gd', 'mbstring', 'xml', 'zip', 'dom', 'curl', 'json', 'intl'];
-        
+
         echo '<h5>PHP Extension Check</h5>';
         foreach ($required_extensions as $ext) {
             echo $ext . ': ' . (extension_loaded($ext) ? '✅ Enabled' : '❌ Disabled') . '<br>';

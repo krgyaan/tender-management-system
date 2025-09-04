@@ -1,26 +1,23 @@
 @extends('layouts.app')
-@section('page-title', 'Customer Service')
+@section('page-title', 'Service Visit')
 @section('content')
     <section>
         <div class="card">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <a href="{{ route('customer_service.create') }}" class="btn btn-sm btn-primary">Register New Complaint</a>
-                </div>
                 @include('partials.messages')
                 <div class="table-responsive">
                     <table class="table-hover" id="complaints-table">
                         <thead>
                             <tr>
                                 <th>Ticket No.</th>
-                                <th>Customer Details</th>
+                                <th>Customer</th>
                                 <th>Organization Name</th>
                                 <th>Site/Project Name</th>
                                 <th>Site Location</th>
                                 <th>Issue Faced</th>
-                                <th>Service Engineer</th>
+                                <th>Service Visit</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th>Service Engineer</th>
                                 <th>Timer</th>
                             </tr>
                         </thead>
@@ -30,8 +27,7 @@
         </div>
     </section>
 
-    <div class="modal fade" id="allotEngineerModal" tabindex="-1" aria-labelledby="allotEngineerModalLabel"
-        aria-hidden="true">
+    <div class="modal fade" id="allotEngineerModal" tabindex="-1" aria-labelledby="allotEngineerModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
 
@@ -81,15 +77,15 @@
             $('#complaints-table').DataTable({
                 processing: true,
                 serverSide: true,
-                ajax: "{{ route('customer_service.getData') }}", // Your route for getCustomerComplaintsData
+                ajax: "{{ route('customer_service.service_visit.getData') }}", // Your route for getCustomerComplaintsData
                 columns: [{
                         data: 'ticket_no',
                         name: 'ticket_no'
-                    }, // Ticket No.
+                    }, // Call No.
                     {
                         data: 'customer',
                         name: 'customer'
-                    }, // Call Name
+                    }, // Organization Name
                     {
                         data: 'organization',
                         name: 'organization'
@@ -107,18 +103,16 @@
                         name: 'issue_faced'
                     }, // Issue Faced
                     {
-                        data: 'service_engineer',
-                        name: 'service_engineer'
-                    }, // service engineer
+                        data: 'service_visit',
+                        name: 'service_visit'
+                    }, // Status
                     {
                         data: 'status',
                         name: 'status'
                     }, // Status
                     {
-                        data: 'action',
-                        name: 'action',
-                        orderable: false,
-                        searchable: false
+                        data: 'serviceEngineer',
+                        name: 'serviceEngineer',
                     }, // Actions
                     {
                         data: 'timer',

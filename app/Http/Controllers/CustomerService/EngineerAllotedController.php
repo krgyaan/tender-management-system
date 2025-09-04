@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\CustomerService;
 
 use Illuminate\Http\Request;
 use Yajra\DataTables\DataTables;
 use App\Helpers\MailHelper;
 use App\Services\TimerService;
 use App\Models\CustomerComplaint;
+use App\Models\ServiceEngineer;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cookie;
 
 class CustomerServiceController extends Controller
 {
@@ -33,15 +35,31 @@ class CustomerServiceController extends Controller
         return view('service.customer.index');
     }
 
+    public function conferenceCallIndex()
+    {
+        return view('service.customer.conference_call_index');
+    }
+
 
     public function create()
     {
         return view('service.customer.create');
     }
 
+    public function createPublic()
+    {
+        $complaintCookie = Cookie::get('complaint');
+
+        // Decode JSON into an array if it exists
+        $complaintFromCookie = $complaintCookie ? json_decode($complaintCookie, true) : null;
+
+        return view('service.customer.create-public', compact('complaintFromCookie', 'complaintCookie'));
+    }
+
     public function show($id)
     {
-        $complaint = CustomerComplaint::findOrFail($id);
+        $complaint = CustomerComplaint::with('serviceEngineer')->findOrFail($id);
+
 
         return view('service.customer.show', compact('complaint'));
     }
@@ -77,26 +95,26 @@ class CustomerServiceController extends Controller
 
             $complaint = CustomerComplaint::create($data);
 
-            if ($this->mailToServiceCoordinator($complaint->id)) {
-                Log::info('Mail sent to Service Co-ordinator successfully');
-            } else {
-                Log::error('Mail not sent to Service Co-ordinator');
-                return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Service Co-ordinator');
-            }
+            // if ($this->mailToServiceCoordinator($complaint->id)) {
+            //     Log::info('Mail sent to Service Co-ordinator successfully');
+            // } else {
+            //     Log::error('Mail not sent to Service Co-ordinator');
+            //     return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Service Co-ordinator');
+            // }
 
-            if ($this->mailToCustomer($complaint->id)) {
-                Log::info('Mail sent to Customer successfully');
-            } else {
-                Log::error('Mail not sent to Customer');
-                return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Customer');
-            }
+            // if ($this->mailToCustomer($complaint->id)) {
+            //     Log::info('Mail sent to Customer successfully');
+            // } else {
+            //     Log::error('Mail not sent to Customer');
+            //     return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Customer');
+            // }
 
-            if ($this->allotServiceEngineer($complaint->id)) {
-                Log::info('Mail sent to Service Engineer successfully');
-            } else {
-                Log::error('Mail not sent to Service Engineer');
-                return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Service Engineer');
-            }
+            // if ($this->allotServiceEngineer($complaint->id)) {
+            //     Log::info('Mail sent to Service Engineer successfully');
+            // } else {
+            //     Log::error('Mail not sent to Service Engineer');
+            //     return redirect()->route('customer_service.index')->with('error', 'Service Complaint created successfully but mail not sent to Service Engineer');
+            // }
 
 
             return redirect()->route('customer_service.index')
@@ -108,6 +126,101 @@ class CustomerServiceController extends Controller
         }
        
     }
+
+    
+    public function storePublic(Request $request)
+    {
+        try{
+            $user = auth()->user();
+            // dd($user);
+            // if($user->role != 'coordinator' && $user->role !='admin'){
+            //      return redirect()->back()->with('error', 'Unauthorized User. Logged in user is not co-ordinator or Admin');
+            // }
+            $request->validate([
+                'name'              => 'required|string|max:255',
+                'phone'             => 'required|string|max:20',
+                'email'             => 'required|email|max:255',
+                'site_project_name' => 'required|string|max:255',
+                'po_no'             => 'required|string|max:100',
+                'site_location'     => 'required|string|max:255',
+                'attachment'        => 'nullable|file|mimes:jpg,jpeg,png,mp4,mov|max:20480',
+                'issue_faced'       => 'nullable|string',
+            ]);
+
+            $data = $request->all();
+
+            // Handle file upload
+            if ($request->hasFile('attachment')) {
+
+                $fileName = time() . '_' . $request->file('attachment')->getClientOriginalName();
+                $request->file('attachment')->storeAs('complaints', $fileName, 'public');
+                $data['attachment'] = $fileName;
+            }
+
+            $complaint = CustomerComplaint::create($data);
+            // dd($complaint);
+            if ($this->mailToServiceCoordinator($complaint->id)) {
+                Log::info('Mail sent to Service Co-ordinator successfully');
+            } else {
+                Log::error('Mail not sent to Service Co-ordinator');
+            }
+
+            if ($this->mailToCustomer($complaint->id)) {
+                Log::info('Mail sent to Customer successfully');
+            } else {
+                Log::error('Mail not sent to Customer');
+            }
+
+            if ($this->allotServiceEngineer($complaint->id)) {
+                Log::info('Mail sent to Service Engineer successfully');
+            } else {
+                Log::error('Mail not sent to Service Engineer');
+            }
+
+                    // Build a compact payload (exclude large/needless fields)
+
+        $payload = [
+            'name'              => $complaint->name,
+            'email'             => $complaint->email,
+            'phone'             => $complaint->phone,
+            'site_project_name' => $complaint->site_project_name,
+            'po_no'             => $complaint->po_no,
+            'site_location'     => $complaint->site_location,
+            'issue_faced'       => $complaint->issue_faced,
+        ];
+
+        $minutes = 60 * 72; // 3 days
+
+        $cookie = cookie(
+            name: 'complaint',
+            value: json_encode($payload, JSON_UNESCAPED_UNICODE),
+            minutes: $minutes,
+            path: '/',                                   // make it available site-wide
+            domain: config('session.domain'),            // null, or ".volksenergie.in" for cross-subdomain
+            secure: app()->environment('production'),    // true on HTTPS in prod
+            httpOnly: true,                              // JS can't read it (safer)
+            raw: false,
+            sameSite: config('session.same_site', 'Lax') // "Lax" works for POST->redirect flows
+        );
+
+        // Attach to the final response after redirects:
+        Cookie::queue($cookie);
+            // dd($cookie);
+            
+            return redirect()->route('register_complaint.success')
+                            ->with('success', 'Customer complaint registered successfully.');
+        }
+        catch(\Throwable $th){
+            Log::error('Error service complaint store: ' . $th);
+            return redirect()->back()->with('error', $th->getMessage());
+        }
+       
+    }
+
+    public function success(){
+        return view('service.customer.success');
+    }
+
 
     public function getCustomerComplaintsData(Request $request)
     {
@@ -124,7 +237,8 @@ class CustomerServiceController extends Controller
                     ->orWhere('site_project_name', 'like', "%{$search}%")
                     ->orWhere('po_no', 'like', "%{$search}%")
                     ->orWhere('site_location', 'like', "%{$search}%")
-                    ->orWhere('issue_faced', 'like', "%{$search}%");
+                    ->orWhere('issue_faced', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
             });
         }
 
@@ -146,13 +260,42 @@ class CustomerServiceController extends Controller
                 return 'N/A';
             })
             ->addColumn('issue', fn($complaint) => str($complaint->issue_faced)->limit(50))
-            ->addColumn('status', fn() => '-')
+            ->addColumn('status', fn($complaint) => empty($complaint->status) ? '-' : str($complaint->status))
             ->addColumn('action', function($complaint) {
-                return '<a href="'.route('customer_service.show', $complaint->id).'" class="btn btn-sm btn-secondary">View</a>';
+               return view('partials.customer-service-actions', compact('complaint'))->render();
             })
             ->addColumn('timer', fn() => '<button class="btn btn-primary btn-sm ">No Timer</button>')
             ->rawColumns(['customer', 'project', 'attachment', 'action', 'timer'])
             ->make(true);
+    }
+
+    
+    public function allotServiceEngineer(Request $request)  {
+        // Validate input
+        $data = $request->validate([
+                'name' => 'required|string|max:255',
+                'phone' => 'required|string|max:20',
+                'email' => 'required|email|max:255',
+                'complaint_id' => 'required|string|max:20',
+        ]);
+
+        $complaintId = $request->input('complaint_id');
+        $complaint = CustomerComplaint::findOrFail($complaintId);
+        
+        $data['status'] = '1';       
+
+        $engineer = ServiceEngineer::create($data);
+
+        $complaint->update(['status' => 'Assigned Service Engineer']);
+
+        if ($this->mailToServiceEngineer($complaint->id)) {
+            Log::info('Mail sent to Service Engineer successfully');
+        } else {
+            Log::error('Mail not sent to Service Engineer');
+        }
+
+        // Redirect back with success message
+        return redirect()->back()->with('success', 'Service engineer successfully allotted.');
     }
 
     public function destroy(Lead $lead)
@@ -169,19 +312,21 @@ class CustomerServiceController extends Controller
         try {
             $complaint = CustomerComplaint::findOrFail($id);
 
-            $coordinator = auth()->user();            
+            $coordinator = User::where('role' ,'=','coordinator')->where('team', '=', 'DC')->first(); 
+             
             // if($coordinator->role != 'coordintor'){
             //     return redirect()->back()->with('error', 'Authorization error, User Role is not Co-ordinator');
             // }
             $user = User::where('role' ,'=','coordinator')->where('team', '=', 'service')->first();
             // dd($user);
+
             
             $serviceCoordinatorEmail = $user->email;
             // $serviceCoordinatorEmail = "abhijeetgaur777@gmail.com";
             $serviceCoordinatorName = $user->name;
             $coordinatorName = $coordinator->name;
             // $coordinatorEmail = $coordinator->email;
-            
+            // dd($complaint);
 
             $clientName = $complaint->name;
             $organization= $complaint->organization;
@@ -222,12 +367,12 @@ class CustomerServiceController extends Controller
         try {
             $complaint = CustomerComplaint::findOrFail($id);
             $serviceCoordinator =  User::where('role' ,'=','coordinator')->where('team', '=', 'service')->first();
-            $customerEmail = "abhijeetgaur777@gmail.com"; //using hardcoded Email for now otherwise we will use customerEmail given below
-            // $customerEmail = $complaint->email; 
+            // $customerEmail = "abhijeetgaur777@gmail.com"; //using hardcoded Email for now otherwise we will use customerEmail given below
+            $customerEmail = $complaint->email; 
             $customerName = $complaint->name;
             // dd($user);
             
-            $complaint->name;
+            $clientName= $complaint->name;
             $siteName = $complaint->site_project_name;
             $issueFaced = $complaint->issue_faced;
 
@@ -252,18 +397,15 @@ class CustomerServiceController extends Controller
         }
     }
 
-
-    public function allotServiceEngineer($id)
+    public function mailToServiceEngineer($id)
     {
         try {
             $complaint = CustomerComplaint::findOrFail($id);
             $serviceCoordinator =  User::where('role' ,'=','coordinator')->where('team', '=', 'service')->first();
             //$serviceEngineer = "abhijeetgaur777@gmail.com"; //using hardcoded Email for now otherwise we will use customerEmail given below
-            $serviceEngineer = optional(User::where('role', 'service-engineer')
-                                ->where('team', 'service')
-                                ->first())->email;
-            
+            $serviceEngineer = ServiceEngineer::where('complaint_id', $id)->where('status','=','1')->firstOrFail();
         
+
             $clientName = $complaint->name;
             $organization= $complaint->organization;
             $siteName = $complaint->site_project_name;

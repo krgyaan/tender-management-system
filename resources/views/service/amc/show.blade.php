@@ -7,10 +7,10 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">AMC Details</h5>
                 <div>
-                    <a href="{{ route('accounts.amc.edit', $amc->id) }}" class="btn btn-sm btn-primary me-2">
+                    <a href="{{ route('amc.edit', $amc->id) }}" class="btn btn-sm btn-primary me-2">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <form action="{{ route('accounts.amc.delete', $amc->id) }}" method="POST" class="d-inline">
+                    <form action="{{ route('amc.delete', $amc->id) }}" method="POST" class="d-inline">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-sm btn-danger"

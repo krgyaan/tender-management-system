@@ -19,6 +19,56 @@ class ChecklistController extends Controller
 {
     protected $timerService;
 
+    public $reason = [
+        9 => 'OEM Bidders only',
+        10 => 'Not allowed by OEM',
+        11 => 'Not Eligible',
+        12 => 'Product type bid',
+        13 => 'Small Value Tender',
+        14 => 'Product not available',
+        15 => 'An electrical Contractor license needed',
+    ];
+
+    public $commercial = [
+        1 => 'Item Wise GST Inclusive',
+        2 => 'Item Wise Pre GST',
+        3 => 'Overall GST Inclusive',
+        4 => 'Overall Pre GST',
+    ];
+
+    public $maf = [
+        1 => 'Yes (project specific)',
+        2 => 'Yes (general)',
+        3 => 'No',
+    ];
+
+    public $tenderFees = [
+        1 => 'Pay on Portal',
+        2 => 'NEFT/RTGS',
+        3 => 'DD',
+        4 => 'Not Applicable',
+    ];
+
+    public $emdReq = [
+        1 => 'Yes',
+        2 => 'No',
+        3 => 'Exempt',
+    ];
+
+    public $emdOpt = [
+        1 => 'Pay on Portal',
+        2 => 'NEFT/RTGS',
+        3 => 'DD',
+        4 => 'BG',
+        5 => 'FDR',
+        6 => 'Not Applicable',
+    ];
+
+    public $revAuction = [
+        1 => 'Yes',
+        2 => 'No',
+    ];
+
     public function __construct(TimerService $timerService)
     {
         $this->timerService = $timerService;
@@ -198,5 +248,19 @@ class ChecklistController extends Controller
             Log::error("Document Checklist Mail Error: " . $th->getMessage());
             return false;
         }
+    }
+
+    public function show($id)
+    {
+        $reason = $this->reason;
+        $commercial = $this->commercial;
+        $maf = $this->maf;
+        $tenderfees = $this->tenderFees;
+        $emdReq = $this->emdReq;
+        $emdopt = $this->emdOpt;
+        $revAuction = $this->revAuction;
+        $tender = TenderInfo::with('checklist', 'info', 'phydocs', 'rfqs')->findOrFail($id);
+        $rfq = $tender->rfqs;
+        return view('tender.checklist-show', compact('tender', 'rfq', 'reason', 'commercial', 'maf', 'tenderfees', 'emdReq', 'emdopt', 'revAuction'));
     }
 }

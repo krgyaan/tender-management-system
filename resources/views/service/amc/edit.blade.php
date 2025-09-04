@@ -21,11 +21,12 @@
             </div>
         @endif
 
-        <form action="{{ route('accounts.amc.update', $amc->id) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('amc.update', $amc->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             <div class="card mb-4">
                 <div class="card-body">
+                    <input type="hidden" value={{ $amc->id }} name="amc_id">
                     <!-- Team and Project Selection -->
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -361,7 +362,7 @@
 
                     <div class="d-flex justify-content-end">
                         <button type="submit" class="btn btn-primary me-2">Update</button>
-                        <a href="{{ route('accounts.amc.index') }}" class="btn btn-secondary">
+                        <a href="{{ route('amc.index') }}" class="btn btn-secondary">
                             Cancel
                         </a>
                     </div>

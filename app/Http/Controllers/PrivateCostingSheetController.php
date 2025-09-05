@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use Google\Client;
 use App\Models\Enquiry;
 use App\Models\VendorOrg;
 use Illuminate\Http\Request;
-use App\Models\PrivateCostingSheet;
+use Yajra\DataTables\DataTables;
 use App\Traits\HandlesGoogleSheet;
 use Illuminate\Support\Facades\DB;
+use App\Models\PrivateCostingSheet;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Google\Service\Sheets\Spreadsheet;
-use Yajra\DataTables\DataTables;
+use App\Models\Tbl_google_access_token;
 
 class PrivateCostingSheetController extends Controller
 {
@@ -30,10 +31,25 @@ class PrivateCostingSheetController extends Controller
 
             $parentFolder = '1t3zhQjJRIWXgu2pS4JnIr-1mTm4wllaL';
 
+            $this->setGoogleRedirectUri(route('private-costing-sheet.googleSheetsCallback'));
+
             $sheetData = $this->createGoogleSheet($title, '', $parentFolder);
 
-            if (!$sheetData) {
-                return redirect()->route('enquiries.index')->with('error', 'Failed to create private costing sheet. Please check your Google integration.');
+            // Handle OAuth redirect
+            if (is_array($sheetData) && isset($sheetData['status']) && $sheetData['status'] === 'redirect') {
+                session([
+                    'pending_private_sheet' => [
+                        'title'     => $title,
+                        'folderId'  => $parentFolder,
+                        'enquiry_id' => $end_id
+                    ]
+                ]);
+                return redirect()->away($sheetData['auth_url']);
+            }
+
+            if (!is_array($sheetData) || !isset($sheetData['status']) || $sheetData['status'] !== true) {
+                $msg = is_array($sheetData) && isset($sheetData['message']) ? $sheetData['message'] : 'Failed to create private costing sheet. Please check your Google integration.';
+                return redirect()->route('enquiries.index')->with('error', $msg);
             }
 
             // Store record in DB
@@ -51,6 +67,80 @@ class PrivateCostingSheetController extends Controller
         }
     }
 
+    public function googleSheetsCallback(Request $request)
+    {
+        Log::info('PrivateCostingSheet Google OAuth Callback hit', $request->all());
+
+        if ($request->has('error')) {
+            Log::info('PrivateCostingSheet Google OAuth Callback Error: ', ['error' => $request->error]);
+            return redirect()->route('enquiries.index')->with('error', 'Google authentication failed.');
+        }
+        if (!$request->has('code')) {
+            Log::info('PrivateCostingSheet Google OAuth Callback Error: No code received.');
+            return redirect()->route('enquiries.index')->with('error', 'Invalid Google authentication response.');
+        }
+
+        $client = new Client();
+        $client->setAuthConfig(storage_path('app/google/credentials.json'));
+        $this->setGoogleRedirectUri(route('private-costing-sheet.googleSheetsCallback'));
+        $client->setAccessType('offline');
+        $client->setPrompt('consent');
+
+        try {
+            $tokenData = $client->fetchAccessTokenWithAuthCode($request->code);
+            if (isset($tokenData['error'])) {
+                Log::info('PrivateCostingSheet Google OAuth Callback error: ', ['error' => json_encode($tokenData['error'])]);
+                return redirect()->route('enquiries.index')->with('error', 'Google authentication failed.');
+            }
+
+            $accessToken  = $tokenData['access_token'] ?? null;
+            $refreshToken = $tokenData['refresh_token'] ?? null;
+
+            if (!$accessToken) {
+                Log::info('PrivateCostingSheet Google OAuth Callback error: Access token not found.');
+                return redirect()->route('enquiries.index')->with('error', 'Google authentication failed.');
+            }
+
+            // Save token to DB
+            Tbl_google_access_token::updateOrCreate(
+                ['userid' => auth()->id()],
+                [
+                    'access_token'  => json_encode($tokenData),
+                    'refresh_token' => $refreshToken,
+                    'expires_in'    => $tokenData['expires_in'] ?? null,
+                    'token_type'    => $tokenData['token_type'] ?? null,
+                    'scope'         => $tokenData['scope'] ?? null,
+                    'updated_at'    => now(),
+                    'ip'            => request()->ip(),
+                ]
+            );
+
+            // Resume pending sheet creation if exists
+            if (session()->has('pending_private_sheet')) {
+                $pending = session()->pull('pending_private_sheet');
+                $sheetData = $this->createGoogleSheet($pending['title'], '', $pending['folderId']);
+
+                if (!is_array($sheetData) || !isset($sheetData['status']) || $sheetData['status'] !== true) {
+                    $msg = is_array($sheetData) && isset($sheetData['message']) ? $sheetData['message'] : 'Failed to create private costing sheet after authentication.';
+                    return redirect()->route('enquiries.index')->with('error', $msg);
+                }
+
+                // Store record in DB
+                $privateSheet = new PrivateCostingSheet();
+                $privateSheet->title = $pending['title'];
+                $privateSheet->enquiry_id = $pending['enquiry_id'] ?? null;
+                $privateSheet->sheet_url = $sheetData['sheet_url'];
+                $privateSheet->prepared_by = Auth::user()->id;
+                $privateSheet->save();
+
+                return redirect()->route('enquiries.index')->with('success', 'Private costing sheet created successfully.');
+            }
+
+            return redirect()->route('enquiries.index')->with('success', 'Google Sheets connected successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('enquiries.index')->with('error', 'Something went wrong during Google authentication.');
+        }
+    }
     // Submit costing sheet
     public function submitCosting(Request $request)
     {

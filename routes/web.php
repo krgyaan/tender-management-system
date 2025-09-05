@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TdsFormController;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Exports\ProjectExport;
@@ -476,7 +477,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/upload-csv', [CsvImportController::class, 'showUploadForm']);
     Route::post('/upload-csv', [CsvImportController::class, 'upload'])->name('csv.upload');
-    
+
     Route::post('/customer-service/allotServiceEngineer', [CustomerServiceController::class, 'allotServiceEngineer'])->name('customer_service.allotServiceEngineer');
     Route::prefix('services')->group(function () {
         Route::get('/customer-service', [CustomerServiceController::class, 'index'])->name('customer_service.index');
@@ -492,7 +493,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/customer-service/service-visit', [ServiceVisitController::class, 'index'])->name('customer_service.service_visit.index');
         Route::get('/customer-service/service-visit/create', [ServiceVisitController::class, 'create'])->name('customer_service.service_visit.create');
         Route::get('/customer-service/service-visit/getData', [ServiceVisitController::class, 'getCustomerComplaintsData'])->name('customer_service.service_visit.getData');
-      
+
         Route::prefix('amc')->name('amc.')->controller(AmcController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
@@ -539,6 +540,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/private-costing-sheet/approval', [PrivateCostingSheetController::class, 'approvalSheet'])->name('private-costing-sheet.approval');
         Route::post('/private-costing-sheet/{id}/approval', [PrivateCostingSheetController::class, 'approvalSheetDetail'])->name('private-costing-sheet.approval.detail');
         Route::get('/private-costing-sheet/{id}', [PrivateCostingSheetController::class, 'show'])->name('private-costing-sheet.show');
+        Route::get('/private-costing-sheet/google/callback', [PrivateCostingSheetController::class, 'googleSheetsCallback'])->name('private-costing-sheet.googleSheetsCallback');
 
         Route::get('/pvt-quotes', [PrivateQuoteController::class, 'index'])->name('pvt-quotes.index');
         Route::post('/pvt-quotes/submit', [PrivateQuoteController::class, 'submitQuote'])->name('pvt-quotes.submit');

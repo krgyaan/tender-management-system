@@ -227,6 +227,7 @@
                                     <i class="fa fa-arrow-right"></i>
                                     <span class="item-name fw-normal">PQR Dashboard</span>
                                 </a>
+                            </li>
                             <li
                                 class="nav-item {{ array_intersect(['pqr-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
@@ -347,8 +348,9 @@
                             </i>
                         </a>
                         <ul class="sub-nav collapse" id="sidebar-service" data-bs-parent="#sidebar">
+
                             <li
-                                class="nav-item {{ array_intersect(['wo-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
+                                class="nav-item {{ array_intersect(['customer-service', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link d-flex align-items-center',
                                     'active' => request()->routeIs('customer_service.index'),
@@ -357,8 +359,9 @@
                                     <span class="item-name fw-normal">Customer Service</span>
                                 </a>
                             </li>
+
                             <li
-                                class="nav-item {{ array_intersect(['wo-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
+                                class="nav-item {{ array_intersect(['conference-call', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link d-flex align-items-center',
                                     'active' => request()->routeIs('customer_service.conference_call.index'),
@@ -368,8 +371,9 @@
                                     <span class="item-name fw-normal">Conference Call</span>
                                 </a>
                             </li>
+
                             <li
-                                class="nav-item {{ array_intersect(['wo-dashboard', 'all'], $permissions) ? '' : 'd-none' }}">
+                                class="nav-item {{ array_intersect(['service-visit', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link d-flex align-items-center',
                                     'active' => request()->routeIs('customer_service.service_visit.index'),
@@ -379,7 +383,8 @@
                                     <span class="item-name fw-normal">Service Visit</span>
                                 </a>
                             </li>
-                            <li class="nav-item {{ array_intersect(['all', 'amc'], $permissions) ? '' : 'd-none' }}">
+
+                            <li class="nav-item {{ array_intersect(['amc', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a class="nav-link d-flex align-items-center {{ request()->routeIs('amc.*') ? 'active' : '' }}"
                                     href="{{ route('amc.index') }}">
                                     <i class="fa fa-arrow-right"></i>
@@ -1033,7 +1038,7 @@
                                 </a>
                             </li>
                             <li
-                                class="nav-item {{ array_intersect(['enquiry', 'all'], $permissions) ? '' : 'd-none' }}">
+                                class="nav-item {{ array_intersect(['enquiries', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -1045,7 +1050,7 @@
                                 </a>
                             </li>
                             <li
-                                class="nav-item {{ array_intersect(['approvalPvtCosting', 'all'], $permissions) ? '' : 'd-none' }}">
+                                class="nav-item {{ array_intersect(['pvt-costing', 'all'], $permissions) ? '' : 'd-none' }}">
                                 <a @class([
                                     'nav-link',
                                     'd-flex',
@@ -1148,12 +1153,12 @@
 
     <div class="d-none">
         <?php
-
+        
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         // echo finfo_file($finfo, 'uploads/docs/GeM-Bidding-7771730.pdf_1745655322_1368714793.pdf');
         
         $required_extensions = ['fileinfo', 'gd', 'mbstring', 'xml', 'zip', 'dom', 'curl', 'json', 'intl'];
-
+        
         echo '<h5>PHP Extension Check</h5>';
         foreach ($required_extensions as $ext) {
             echo $ext . ': ' . (extension_loaded($ext) ? '✅ Enabled' : '❌ Disabled') . '<br>';

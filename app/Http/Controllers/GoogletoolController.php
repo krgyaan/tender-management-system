@@ -148,7 +148,7 @@ class GoogletoolController extends Controller
             };
 
             $sheetData = $this->createGoogleSheet($title, '', $parentFolder);
-            
+
             // Handle OAuth redirect
             if ($sheetData['status'] === 'redirect') {
                 session([
@@ -160,7 +160,7 @@ class GoogletoolController extends Controller
                 ]);
                 return redirect()->away($sheetData['auth_url']);
             }
-    
+
             if ($sheetData['status'] !== true) {
                 return redirect()->route('googlesheet')->with('error', $sheetData['message']);
             }
@@ -184,7 +184,7 @@ class GoogletoolController extends Controller
             return redirect()->route('googlesheet')->with('error', 'Failed to create costing sheet: ' . $e->getMessage());
         }
     }
-    
+
     public function connectGoogle()
     {
         $client = new Client();
@@ -196,50 +196,50 @@ class GoogletoolController extends Controller
             \Google\Service\Sheets::SPREADSHEETS,
             \Google\Service\Drive::DRIVE
         ]);
-        
+
         $redirectUri = config('app.url') . 'admin/google/sheets/callback';
         $client->setRedirectUri($redirectUri);
-        
+
         // Debug logging
         Log::info('OAuth Redirect URI set to: ' . $redirectUri);
         Log::info('APP_URL from config: ' . config('app.url'));
-        
+
         $authUrl = $client->createAuthUrl();
         Log::info('Generated auth URL: ' . $authUrl);
-        
+
         return redirect()->away($authUrl);
     }
-    
+
     public function googleSheetsCallback(Request $request)
     {
         Log::info('Google OAuth Callback hit', $request->all());
-    
+
         if ($request->has('error')) {
             return redirect()->route('googlesheet')->with('error', 'Google authentication failed.');
         }
         if (!$request->has('code')) {
             return redirect()->route('googlesheet')->with('error', 'Invalid Google authentication response.');
         }
-    
+
         $client = new Client();
         $client->setAuthConfig(storage_path('app/google/credentials.json'));
         $client->setRedirectUri(config('app.url') . 'admin/google/sheets/callback');
         $client->setAccessType('offline');
         $client->setPrompt('consent');
-    
+
         try {
             $tokenData = $client->fetchAccessTokenWithAuthCode($request->code);
             if (isset($tokenData['error'])) {
                 return redirect()->route('googlesheet')->with('error', 'Google authentication failed.');
             }
-    
+
             $accessToken  = $tokenData['access_token'] ?? null;
             $refreshToken = $tokenData['refresh_token'] ?? null;
-    
+
             if (!$accessToken) {
                 return redirect()->route('googlesheet')->with('error', 'Google authentication failed.');
             }
-    
+
             // Save token to DB (ensure same column names as Trait uses)
             Tbl_google_access_token::updateOrCreate(
                 ['userid' => auth()->id()],
@@ -253,16 +253,16 @@ class GoogletoolController extends Controller
                     'ip'            => request()->ip(),
                 ]
             );
-    
+
             // Resume pending sheet creation if exists
             if (session()->has('pending_sheet')) {
                 $pending = session()->pull('pending_sheet');
                 $sheetData = $this->createGoogleSheet($pending['title'], '', $pending['folderId']);
-    
+
                 if ($sheetData['status'] !== true) {
                     return redirect()->route('googlesheet')->with('error', $sheetData['message']);
                 }
-    
+
                 // Save to Tbl_googleapikey
                 $user = new Tbl_googleapikey();
                 $user->staffid     = Auth::id();
@@ -274,10 +274,10 @@ class GoogletoolController extends Controller
                 $user->description = '';
                 $user->tenderid    = $pending['tenderid'] ?? null;
                 $user->save();
-    
+
                 return redirect()->route('googlesheet')->with('success', 'Costing sheet created successfully.');
             }
-    
+
             return redirect()->route('googlesheet')->with('success', 'Google Sheets connected successfully.');
         } catch (\Exception $e) {
             return redirect()->route('googlesheet')->with('error', 'Something went wrong during Google authentication.');

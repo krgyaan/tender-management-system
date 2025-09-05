@@ -31,24 +31,27 @@ class EnquiryController extends Controller
         // Type-based filtering
         switch ($type) {
             case 'ac':
-                $query->whereHas('lead', fn($q) => $q->where('team', 'AC'));
+                $query->whereHas('lead', fn($q) => $q->where('team', 'AC'))
+                    ->orWhere('team', 'AC');
                 break;
             case 'dc':
-                $query->whereHas('lead', fn($q) => $q->where('team', 'DC'));
+                $query->whereHas('lead', fn($q) => $q->where('team', 'DC'))
+                    ->orWhere('team', 'DC');
                 break;
             case 'ib':
-                $query->whereHas('lead', fn($q) => $q->where('team', 'IB'));
+                $query->whereHas('lead', fn($q) => $q->where('team', 'IB'))
+                    ->orWhere('team', 'IB');
                 break;
         }
 
         return DataTables::of($query)
             ->addColumn('enquiry_no', fn($enquiry) => 'ENQ-' . str_pad($enquiry->id, 5, '0', STR_PAD_LEFT))
             ->addColumn('enquiry_name', fn($enquiry) => $enquiry->enq_name)
-            ->addColumn('bd_lead', fn($enquiry) => $enquiry->lead ? $enquiry->lead->name : 'N/A')
+            ->addColumn('bd_lead', fn($enquiry) => $enquiry->lead ? $enquiry->lead->name : $enquiry->creator->name)
             ->addColumn('company_name', fn($enquiry) => $enquiry->lead ? $enquiry->lead->company_name : 'N/A')
             ->addColumn('organization_name', fn($enquiry) => $enquiry->organisation ? $enquiry->organisation->name : 'N/A')
             ->addColumn('item_name', fn($enquiry) => $enquiry->item ? $enquiry->item->name : 'N/A')
-            ->addColumn('approx_value', fn($enquiry) => '₹' . number_format($enquiry->approx_value))
+            ->addColumn('approx_value', fn($enquiry) => format_inr($enquiry->approx_value))
             ->addColumn(
                 'site_visit',
                 fn($enquiry) =>
@@ -70,7 +73,7 @@ class EnquiryController extends Controller
 
     public function create(Lead $lead = null)
     {
-        return view('enquiries.create', [
+        return view('crm.enquiry.create', [
             'lead' => $lead,
             'organisations' => Organization::orderBy('name')->get(),
             'items' => Item::orderBy('name')->get(),
@@ -92,6 +95,7 @@ class EnquiryController extends Controller
         try {
             $enquiry = new Enquiry();
             $enquiry->lead_id = $request->lead_id;
+            $enquiry->team = Lead::find($request->lead_id)?->team ?? $request->team;
             $enquiry->enq_name = $request->enq_name;
             $enquiry->organisation_id = $validated['organisation'];
             $enquiry->item_id = $validated['item'];

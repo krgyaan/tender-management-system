@@ -33,6 +33,11 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'Please contact the admin to update your role and permission.');
         }
         $data['role'] = $this->roles[$user->role];
+
+        // Check Google OAuth connection status
+        $googleToken = $user->oauth;
+        $data['google_oauth_connected'] = $googleToken?->access_token && $googleToken?->refresh_token;
+
         $data['userCount'] = User::where('role', '!=', 'admin')->where('status', 1)->count();
         $tenderInfoQuery = TenderInfo::query()->where('deleteStatus', '0');
 

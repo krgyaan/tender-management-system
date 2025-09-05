@@ -2,6 +2,15 @@
 @section('page-title', ($data['role'] ?? 'Admin') . ' Dashboard | Team ' . ($user->team ?? ''))
 @section('content')
     <div class="row">
+        @if (!$data['google_oauth_connected'])
+            <div class="my-3">
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong>Google OAuth Not Connected!</strong> Please connect your Google account.
+                    <a href="{{ route('google.connect') }}" class="btn btn-sm btn-outline-success ms-3">Connect Now</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
+        @endif
         <div class="col-lg-3 {{ $data['role'] != 'Admin' ? 'd-none' : '' }}">
             <div class="card shining-card">
                 <div class="card-body">

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\TdsFormController;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Exports\ProjectExport;
@@ -29,6 +28,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\PhyDocsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TdsFormController;
 use App\Http\Controllers\IndustryController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\WebsitesController;
@@ -52,10 +52,6 @@ use App\Http\Controllers\TlPerformanceController;
 use App\Http\Controllers\KickoffmeetingController;
 use App\Http\Controllers\LeadAllocationController;
 use App\Http\Controllers\OemPerformanceController;
-use App\Http\Controllers\CustomerService\CustomerServiceController;
-use App\Http\Controllers\CustomerService\ConferenceCallController;
-use App\Http\Controllers\CustomerService\ServiceVisitController;
-use App\Http\Controllers\CustomerService\ServiceFeedbackController;
 use App\Http\Controllers\ClientDirectoryController;
 use App\Http\Controllers\CostingApprovalController;
 use App\Http\Controllers\EmployeeImprestController;
@@ -72,14 +68,28 @@ use App\Http\Controllers\EmployeePerformanceController;
 use App\Http\Controllers\LocationPerformanceController;
 use App\Http\Controllers\PrivateCostingSheetController;
 use App\Http\Controllers\OperationPerformanceController;
+use App\Http\Controllers\CustomerService\ServiceVisitController;
+use App\Http\Controllers\CustomerService\ConferenceCallController;
+use App\Http\Controllers\CustomerService\CustomerServiceController;
+use App\Http\Controllers\CustomerService\ServiceFeedbackController;
 
-Route::view('/', 'auth.login')->name('/');
+Route::get('/', function () {
+    if (Auth::check()) {
+        return redirect()->intended('dashboard')->with('success', 'You are already logged in!');
+    }
+    return view('auth.login');
+})->name('/');
+
 Route::get('repeat-email/{bgId}', [EmdsController::class, 'repeatEmail'])->name('repeat-email');
 
 // Public routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login.form');
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Google OAuth routes
+Route::get('/google/connect', [LoginController::class, 'connectGoogle'])->name('google.connect');
+Route::get('/google/oauth/callback', [LoginController::class, 'googleOAuthCallback'])->name('google.oauth.callback');
 
 // Routes requiring authentication
 Route::middleware('auth')->group(function () {

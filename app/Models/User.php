@@ -26,4 +26,9 @@ class User extends Authenticatable
         'app_password',
         'sign'
     ];
+
+    public function oauth()
+    {
+        return $this->hasOne(Tbl_google_access_token::class, 'userid', 'id');
+    }
 }

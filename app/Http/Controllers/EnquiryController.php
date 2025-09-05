@@ -73,7 +73,11 @@ class EnquiryController extends Controller
 
     public function create(Lead $lead = null)
     {
+<<<<<<< HEAD
+        return view('enquiry.create', [
+=======
         return view('crm.enquiry.create', [
+>>>>>>> upstream/main
             'lead' => $lead,
             'organisations' => Organization::orderBy('name')->get(),
             'items' => Item::orderBy('name')->get(),

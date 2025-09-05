@@ -70,7 +70,7 @@ class EnquiryController extends Controller
 
     public function create(Lead $lead = null)
     {
-        return view('enquiries.create', [
+        return view('enquiry.create', [
             'lead' => $lead,
             'organisations' => Organization::orderBy('name')->get(),
             'items' => Item::orderBy('name')->get(),

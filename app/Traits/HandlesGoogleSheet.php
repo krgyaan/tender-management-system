@@ -2,16 +2,13 @@
 
 namespace App\Traits;
 
-use Carbon\Carbon;
 use Google\Client;
-use Google\Service\Docs;
 use Google\Service\Drive;
 use Google\Service\Sheets;
 use Google\Service\Drive\DriveFile;
 use Google\Service\Sheets\Spreadsheet;
 use App\Models\Tbl_google_access_token;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
@@ -21,9 +18,12 @@ trait HandlesGoogleSheet
     private $sheetsService;
     private $driveService;
 
-    /**
-     * Create a Google Sheet with complete setup
-     */
+    public function setGoogleRedirectUri(string $uri)
+    {
+        $this->googleRedirectUri = $uri;
+        Log::info("OAuth Redirect URI from Controller: $uri");
+    }
+
     public function createGoogleSheetOld(string $title, string $type = '', ?string $folderId = null): ?array
     {
         try {
@@ -32,7 +32,7 @@ trait HandlesGoogleSheet
             if (!$this->initializeGoogleClient($type)) {
                 return null;
             }
-            
+
             $setupResult = $this->setupGoogleServices();
             Log::info("setupGoogleServices: ", ["response" => json_encode($setupResult)]);
 
@@ -42,11 +42,11 @@ trait HandlesGoogleSheet
                     'auth_url' => $setupResult['auth_url']
                 ];
             }
-            
+
             if ($setupResult !== true) {
                 return back()->with('error', 'Failed to initialize Google Services.');
             }
-            
+
             // Create spreadsheet
             $spreadsheet = new Spreadsheet(['properties' => ['title' => $title]]);
             $createdSpreadsheet = $this->sheetsService->spreadsheets->create($spreadsheet, [
@@ -64,7 +64,6 @@ trait HandlesGoogleSheet
                 'sheet_id' => $spreadsheetId,
                 'sheet_url' => $createdSpreadsheet->spreadsheetUrl
             ];
-
         } catch (Exception $e) {
             Log::error("Exception occurred: " . $e->getMessage());
             if (app()->environment('local')) {
@@ -78,34 +77,34 @@ trait HandlesGoogleSheet
     {
         try {
             Log::info("Starting creation for title: $title");
-    
+
             if (!$this->initializeGoogleClient($type)) {
                 return ['status' => false, 'message' => 'Google client initialization failed.'];
             }
-    
+
             $setupResult = $this->setupGoogleServices();
-    
+
             // If OAuth required → pass redirect up the chain
             if ($setupResult['status'] === 'redirect') {
                 return $setupResult;
             }
-    
+
             if ($setupResult['status'] !== true) {
                 return ['status' => false, 'message' => 'Failed to initialize Google services.'];
             }
-    
+
             // Create spreadsheet
             $spreadsheet = new Spreadsheet(['properties' => ['title' => $title]]);
             $createdSpreadsheet = $this->sheetsService->spreadsheets->create($spreadsheet, [
                 'fields' => 'spreadsheetId,spreadsheetUrl'
             ]);
-    
+
             $spreadsheetId = $createdSpreadsheet->spreadsheetId;
             Log::info("Created spreadsheet with ID: $spreadsheetId");
-    
+
             // Move to folder
             $this->moveToTeamFolder($spreadsheetId, $folderId);
-    
+
             return [
                 'status' => true,
                 'sheet_id' => $spreadsheetId,
@@ -149,14 +148,12 @@ trait HandlesGoogleSheet
             $this->googleClient->setScopes($scopes);
             $this->googleClient->setAccessType('offline');
             $this->googleClient->setPrompt('consent');
-            $this->googleClient->setRedirectUri(
-                config('app.url') . 'admin/google/sheets/callback'
-            );
+            $redirectUri = $this->googleRedirectUri ?? (config('app.url') . 'admin/google/sheets/callback');
+            $this->googleClient->setRedirectUri($redirectUri);
             $this->googleClient->setAuthConfig(storage_path('app/google/credentials.json'));
 
             Log::info('Google Client initialized successfully');
             return true;
-
         } catch (Exception $e) {
             Log::error('Failed to initialize - ' . $e->getMessage());
             return false;
@@ -174,9 +171,9 @@ trait HandlesGoogleSheet
                 Log::error('No authenticated user found');
                 return ['status' => false, 'message' => 'No authenticated user found.'];
             }
-    
+
             $integrationCheck = $this->checkGoogleIntegration($user->id);
-    
+
             // If integration not ready → return OAuth redirect info
             if (!$integrationCheck['status']) {
                 if ($integrationCheck['action'] === 'connect_google') {
@@ -192,7 +189,7 @@ trait HandlesGoogleSheet
                             'updated_at'    => now(),
                         ]
                     );
-    
+
                     Log::info("OAuth required for user {$user->id}");
                     Log::info("integrationCheck: " . json_encode($integrationCheck));
                     return [
@@ -201,17 +198,17 @@ trait HandlesGoogleSheet
                         'message' => $integrationCheck['message']
                     ];
                 }
-    
+
                 return ['status' => false, 'message' => $integrationCheck['message']];
             }
-    
+
             // Valid token found → refresh if needed
             $this->validateAndRefreshToken($integrationCheck['record']);
-    
+
             // Initialize services
             $this->sheetsService = new Sheets($this->googleClient);
             $this->driveService  = new Drive($this->googleClient);
-    
+
             Log::info('Google Services setup completed');
             return ['status' => true];
         } catch (Exception $e) {
@@ -284,64 +281,63 @@ trait HandlesGoogleSheet
 
             Log::info("Moved sheet to folder: $parentFolder");
             return true;
-
         } catch (Exception $e) {
             Log::error('Failed to move sheet - ' . $e->getMessage());
             return false;
         }
     }
-    
+
     /**
      * Ensure user has a valid Google connection or auto-initiate OAuth
      */
     private function checkGoogleIntegration(?int $userId = null)
     {
         $userId = $userId ?? Auth::id();
-    
+
         if (!$userId) {
             Log::error('Google integration check failed - no authenticated user');
             return ['status' => false, 'action' => 'error', 'message' => 'No authenticated user found.'];
         }
-    
+
         $tokenRecord = Tbl_google_access_token::where('userid', $userId)->first();
-    
+
         if (!$tokenRecord || empty($tokenRecord->refresh_token)) {
-                Log::warning("No valid Google integration for user {$userId}. Starting OAuth connection.");
-        
-                $oauthClient = new Client();
-                $oauthClient->setApplicationName('TMS - VolksEnergie Tender Management System');
-                $oauthClient->setAuthConfig(storage_path('app/google/credentials.json'));
-        
-                $oauthClient->setScopes([
-                    Sheets::SPREADSHEETS,
-                    Drive::DRIVE,
-                    Drive::DRIVE_FILE,
-                    Drive::DRIVE_METADATA,
-                    'email',
-                    'profile',
-                ]);
-        
-                $oauthClient->setAccessType('offline');
-                $oauthClient->setPrompt('consent');
-                
-                // Add the redirect URI here too!
-                $redirectUri = config('app.url') . 'admin/google/sheets/callback';
-                $oauthClient->setRedirectUri($redirectUri);
-                
-                // Debug logging
-                Log::info('Trait OAuth Redirect URI set to: ' . $redirectUri);
-        
-                $authUrl = $oauthClient->createAuthUrl();
-                Log::info('Trait Generated auth URL: ' . $authUrl);
-        
-                return [
-                    'status' => false,
-                    'action' => 'connect_google',
-                    'auth_url' => $authUrl,
-                    'message' => 'Redirecting to Google account connection...'
-                ];
-            }
-        
-            return ['status' => true, 'message' => 'Google integration found.', 'record' => $tokenRecord];
+            Log::warning("No valid Google integration for user {$userId}. Starting OAuth connection.");
+
+            $oauthClient = new Client();
+            $oauthClient->setApplicationName('TMS - VolksEnergie Tender Management System');
+            $oauthClient->setAuthConfig(storage_path('app/google/credentials.json'));
+
+            $oauthClient->setScopes([
+                Sheets::SPREADSHEETS,
+                Drive::DRIVE,
+                Drive::DRIVE_FILE,
+                Drive::DRIVE_METADATA,
+                'email',
+                'profile',
+            ]);
+
+            $oauthClient->setAccessType('offline');
+            $oauthClient->setPrompt('consent');
+
+            // Add the redirect URI here too!
+            $redirectUri = $this->googleRedirectUri ?? (config('app.url') . 'admin/google/sheets/callback');
+            $oauthClient->setRedirectUri($redirectUri);
+
+            // Debug logging
+            Log::info('Trait OAuth Redirect URI set to: ' . $redirectUri);
+
+            $authUrl = $oauthClient->createAuthUrl();
+            Log::info('Trait Generated auth URL: ' . $authUrl);
+
+            return [
+                'status' => false,
+                'action' => 'connect_google',
+                'auth_url' => $authUrl,
+                'message' => 'Redirecting to Google account connection...'
+            ];
+        }
+
+        return ['status' => true, 'message' => 'Google integration found.', 'record' => $tokenRecord];
     }
 }

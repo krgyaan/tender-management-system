@@ -19,7 +19,7 @@ class AdminController extends Controller
         'Sales' => 'Sales',
         'Common' => 'Common',
     ];
-    
+
     public $designations = [
         'CEO' => 'CEO',
         'coo' => 'COO',
@@ -41,7 +41,7 @@ class AdminController extends Controller
         'accountant' => 'Accountant',
         'field' => 'Field',
     ];
-    
+
     public $roles = [
         'admin' => 'Admin',
         'coordinator' => 'Team Coordinator',
@@ -57,7 +57,6 @@ class AdminController extends Controller
         'field' => 'Field',
     ];
 
-    
     public $permissions = [
         'all' => 'All',
         'tender-create' => 'Tender Create',
@@ -116,7 +115,15 @@ class AdminController extends Controller
         'business-dashboard' => 'Business Dashboard',
         'customer-dashboard' => 'Customer Dashboard',
         'location-dashboard' => 'Location Dashboard',
+        'customer-service' => 'Customer Service',
+        'service-visit' => 'Service Visit',
+        'conference-call' => 'Conference Call',
+        'amc' => 'AMC',
+        'amc-billing' => 'AMC Billing',
         'leads' => 'Leads',
+        'enquiries' => 'Enquiry',
+        'pvt-costing' => 'Private Costing Approval',
+        'pvt-quotes' => 'Private Quotation',
     ];
 
     public function index()

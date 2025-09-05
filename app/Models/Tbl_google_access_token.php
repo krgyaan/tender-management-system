@@ -7,12 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Tbl_google_access_token extends Model
 {
     protected $fillable = [
+        'userid',
         'access_token',
         'refresh_token',
-        'userid',
-        'status',
+        'expires_in',
+        'token_type',
+        'scope',
         'ip',
-        'created_at',
-        'updated_at',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'userid');
+    }
 }

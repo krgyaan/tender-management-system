@@ -27,4 +27,8 @@ class VendorOrg extends Model
     {
         return $this->hasMany(VendorGst::class, 'org');
     }
+    public function files()
+    {
+        return $this->hasMany(VendorFiles::class, 'vendor_id');
+    }
 }

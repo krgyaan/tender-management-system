@@ -9,7 +9,7 @@
                 View Enquiry
             </a>
         </li>
-        @if (optional($enquiry->siteVisits)->isEmpty())
+        @if (optional($enquiry->siteVisits)->isEmpty() && $enquiry->site_visit_required == 1)
             <li>
                 <button class="dropdown-item allocate-visit-btn" type="button" data-bs-toggle="offcanvas"
                     data-bs-target="#allocateSiteVisitPanel" data-enquiry-id="{{ $enquiry->id }}">
@@ -17,7 +17,7 @@
                 </button>
             </li>
         @endif
-        @if (optional($enquiry->siteVisits)->isNotEmpty())
+        @if (optional($enquiry->siteVisits)->isNotEmpty() && $enquiry->site_visit_required == 1)
             <li>
                 <button class="dropdown-item record-visit-btn" type="button" data-bs-toggle="offcanvas"
                     data-bs-target="#siteVisitDetailsPanel" data-visit-id="{{ $enquiry->siteVisits->first()->id }}"

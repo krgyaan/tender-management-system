@@ -63,6 +63,8 @@ class LoginController extends Controller
             $tokenType = $tokenData['token_type'] ?? null;
             $scope = $tokenData['scope'] ?? null;
 
+            $expiresAt = $expiresIn ? now()->addSeconds($expiresIn) : null;
+
             if (!$accessToken) {
                 return false;
             }
@@ -73,6 +75,7 @@ class LoginController extends Controller
                     'access_token'  => json_encode($tokenData),
                     'refresh_token' => $refreshToken,
                     'expires_in'    => $expiresIn,
+                    'expires_at'    => $expiresAt,
                     'token_type'    => $tokenType,
                     'scope'         => $scope,
                     'ip'            => request()->ip(),
@@ -95,6 +98,7 @@ class LoginController extends Controller
                     'access_token'  => null,
                     'refresh_token' => null,
                     'expires_in'    => null,
+                    'expires_at'    => null,
                     'token_type'    => null,
                     'scope'         => null,
                     'updated_at'    => now(),
@@ -106,10 +110,6 @@ class LoginController extends Controller
         }
     }
 
-    /**
-     * Initiate Google OAuth flow with extended scopes for Gmail and offline access.
-     * Redirects user to Google consent screen.
-     */
     public function connectGoogle()
     {
         $client = new \Google\Client();
@@ -135,9 +135,6 @@ class LoginController extends Controller
         return redirect()->away($client->createAuthUrl());
     }
 
-    /**
-     * Callback endpoint to handle Google OAuth response and store tokens.
-     */
     public function googleOAuthCallback(Request $request)
     {
         if ($request->has('error')) {

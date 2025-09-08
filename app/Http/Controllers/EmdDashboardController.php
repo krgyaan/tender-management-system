@@ -60,7 +60,7 @@ class EmdDashboardController extends Controller
         '5' => 'Twice a Week (every Mon & Thu)',
         '6' => 'Stop',
     ];
-    
+
     private $instrumentType = [
         '0' => 'NA',
         '1' => 'Demand Draft',
@@ -70,7 +70,7 @@ class EmdDashboardController extends Controller
         '5' => 'Bank Transfer',
         '6' => 'Pay on Portal',
     ];
-    
+
     private $bgStatus = [
         1 => 'Accounts Form 1 - Request to Bank',
         2 => 'Accounts Form 2 - After BG Creation',
@@ -82,7 +82,7 @@ class EmdDashboardController extends Controller
         8 => 'BG Cancellation Confirmation',
         9 => 'FDR Cancellation Confirmation',
     ];
-    
+
     private $banks = [
         'SBI' => 'State Bank of India',
         'HDFC_0026' => 'HDFC Bank',
@@ -92,7 +92,7 @@ class EmdDashboardController extends Controller
         'PNB_6011' => 'Punjab National Bank',
         'BGLIMIT_0771' => 'BG Limit'
     ];
-    
+
     private $ddStatus = [
         1 => 'Accounts Form (DD)',
         2 => 'Initiate Followup',
@@ -140,7 +140,7 @@ class EmdDashboardController extends Controller
                     ->whereIn('action', [1, 2, 3, 4, 5, 6, 7])
                     ->where('bg_req', 'Accepted')
                     ->orderBy('bg_expiry')->get();
-                    
+
                 $groupedBg = $data['emdBg']->groupBy('bg_bank');
                 $totalBgCount = $data['emdBg']->count();
                 $totalBgAmount = $data['emdBg']->sum('bg_amount');
@@ -449,7 +449,7 @@ class EmdDashboardController extends Controller
                     $query->where('action', '4');
                     break;
             }
-            
+
             // Order by date
             if (!$request->filled('order')) {
                 $query->orderByDesc('created_at');
@@ -572,7 +572,7 @@ class EmdDashboardController extends Controller
             if (!$request->filled('order')) {
                 $query->orderByDesc('created_at');
             }
-    
+
             $dataTable = DataTables::of($query)
                 ->filter(function ($query) use ($request) {
                     if ($request->has('search') && !empty($request->search['value'])) {
@@ -2352,7 +2352,7 @@ class EmdDashboardController extends Controller
         $pop = PayOnPortal::all();
         return Excel::download(new PayOnPortalExport($pop), 'pay_on_portals.xlsx');
     }
-    
+
     public function export_bg($type)
     {
         $banks = [
@@ -2364,24 +2364,24 @@ class EmdDashboardController extends Controller
             'icici' => ['ICICI'],
             'sbi' => ['SBI'],
         ];
-        
+
         try {
             Log::info('Export Bg called with type ' . $type);
             if (!in_array($type, array_keys($banks))) {
                 Log::info("Invalid Bank Name Selected. Type: $type");
                 return back()->with('error', 'Invalid Bank Name Selected.');
             }
-            
+
             $bankCodes = $banks[$type];
             $bg = EmdBg::whereIn('bg_bank', $bankCodes)->whereNotNull('bg_no')->whereIn('action', ['2', '3', '4', '5', '6', '7'])->get();
             Log::info("SQL Query: " . EmdBg::where('bg_bank', $bankCodes)->toSql() . " Bindings: " . json_encode($bankCodes));
             Log::info("BGs: " . json_encode($bg));
-            
+
             if ($bg->isEmpty()) {
                 Log::info("No Bank Guarantee records found for the selected type: $type.");
                 return back()->with('error', 'No Bank Guarantee records found for the selected type.');
             }
-            
+
             Log::info('Bank Guarantee records found, exporting to excel...');
             return Excel::download(new BgExport($bg), "bank_guarantees_$type.xlsx");
         } catch (\Throwable $th) {
@@ -2901,7 +2901,7 @@ class EmdDashboardController extends Controller
             $tender = TenderInfo::find($emd->tender_id);
 
             if ($tender) {
-                $teamMember = User::find($tender->team_member)->where('status', '1');
+                $teamMember = User::find($tender->team_member)->where('status', '1')->first();
             } else {
                 $teamMember = User::where('name', 'LIKE', $emd->requested_by . '%')->where('status', '1')->first();
             }
@@ -2913,7 +2913,7 @@ class EmdDashboardController extends Controller
             if (!$teamLeader) {
                 $teamLeader = User::where('role', 'team-leader')->where('status', '1')->first();
             }
-            
+
             $userRoles = User::where('team', $teamMember->team)
                 ->where('status', '1')
                 ->whereIn('role', ['admin', 'team-leader'])

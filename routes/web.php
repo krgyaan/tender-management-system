@@ -72,6 +72,7 @@ use App\Http\Controllers\CustomerService\ServiceVisitController;
 use App\Http\Controllers\CustomerService\ConferenceCallController;
 use App\Http\Controllers\CustomerService\CustomerServiceController;
 use App\Http\Controllers\CustomerService\ServiceFeedbackController;
+use App\Http\Controllers\QueueManagerController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -103,6 +104,18 @@ Route::middleware('auth')->group(function () {
     Route::any('/location/performance', [LocationPerformanceController::class, 'performance'])->name('location/performance');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // routes/web.php
+    Route::prefix('admin/queue')->middleware('auth')->group(function () {
+        Route::get('/', [QueueManagerController::class, 'dashboard'])->name('queue.dashboard');
+        Route::get('/failed', [QueueManagerController::class, 'failedJobs'])->name('queue.failed-jobs');
+        Route::get('/process', [QueueManagerController::class, 'processQueue'])->name('queue.process');
+        Route::get('/retry/{uuid}', [QueueManagerController::class, 'retryJob'])->name('queue.retry-job');
+        Route::get('/retry-all', [QueueManagerController::class, 'retryAllFailed'])->name('queue.retry-all');
+        Route::get('/delete/{uuid}', [QueueManagerController::class, 'deleteFailedJob'])->name('queue.delete-job');
+        Route::get('/clear-all', [QueueManagerController::class, 'clearAllFailed'])->name('queue.clear-all');
+    });
+
     Route::middleware('role:admin,coordinator')->group(function () {
         Route::get('/dashboard/admin', [AdminController::class, 'index'])->name('dashboard.admin');
         Route::any('/admin/user/all', [AdminController::class, 'allUsers'])->name('admin/user/all');
@@ -167,6 +180,7 @@ Route::middleware('auth')->group(function () {
             Route::delete('followups/followup-categories/delete/{id}', [FollowUpsController::class, 'FollowupForDelete'])->name('followup-categories-destroy');
         });
     });
+
     Route::prefix('admin')->group(function () {
         Route::resource('projects', ProjectController::class);
         Route::get('download-projects', function (Request $request) {
@@ -176,6 +190,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/admin/cache-optimize', [CacheOptimizeController::class, 'optimize']);
     });
+
     Route::get('tender-vendor/oem-files', [VendorController::class, 'oemFiles'])->name('vendors.oem-files');
     Route::post('/vendors/{vendor}/files', [VendorController::class, 'uploadFiles'])->name('vendors.uploadFiles');
 

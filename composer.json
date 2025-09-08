@@ -16,6 +16,7 @@
     "laravel/tinker": "^2.9",
     "maatwebsite/excel": "^3.1",
     "mpdf/mpdf": "^8.2",
+    "ramsey/uuid": "^4.9",
     "swiftmailer/swiftmailer": "^5.4",
     "yajra/laravel-datatables-oracle": "11.0"
   },

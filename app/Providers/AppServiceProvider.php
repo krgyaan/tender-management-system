@@ -11,7 +11,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // AppServiceProvider::register()
+        $this->app->singleton(\App\Services\GmailSendService::class, function ($app) {
+            return new \App\Services\GmailSendService(
+                $app->make(\App\Services\GmailTokenGuard::class)
+            );
+        });
     }
 
     /**

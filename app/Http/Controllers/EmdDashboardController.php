@@ -3153,7 +3153,6 @@ class EmdDashboardController extends Controller
         }
     }
 
-
     public function DdChqReject($id)
     {
         try {
@@ -3349,7 +3348,7 @@ class EmdDashboardController extends Controller
                 'favor' => $bg->bg_favour,
                 'amount' => format_inr($bg->bg_amt),
                 'form_link' => route('bg-action', $bg->id),
-                'soft_copy' => optional($bg->courier)->courier_docs ?? '',
+                'soft_copy' => optional($bg->courier)->courier_docs ?? $bg->bg_soft_copy,
             ];
             Log::info('BG Claim Period Mail Data: ' . json_encode($data));
 
@@ -3413,7 +3412,7 @@ class EmdDashboardController extends Controller
                         'favor' => $bg->bg_favour,
                         'amount' => format_inr($bg->bg_amt),
                         'form_link' => route('bg-action', $bg->id),
-                        'soft_copy' => optional($bg->courier)->courier_docs ?? '',
+                        'soft_copy' => optional($bg->courier)->courier_docs ?? $bg->bg_soft_copy,
                     ];
                     Log::info('BG Reminder Mail Data: ' . json_encode($data));
 

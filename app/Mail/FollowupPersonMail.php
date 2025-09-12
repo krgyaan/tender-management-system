@@ -39,32 +39,6 @@ class FollowupPersonMail extends Mailable
     }
     public function attachments(): array
     {
-        $attachments = [];
-        try {
-            Log::info('Attempting to attach files...');
-            if (!empty($this->data['files']) && is_array($this->data['files'])) {
-                foreach ($this->data['files'] as $file) {
-                    Log::info('Attaching file: ' . $file);
-                    $filePath = public_path('uploads/accounts/' . $file);
-                    if (file_exists($filePath)) {
-                        Log::info('File exists: ' . $filePath);
-                        try {
-                            $attachments[] = Attachment::fromPath($filePath);
-                            Log::info('Attached file: ' . json_encode($attachments));
-                        } catch (\Exception $e) {
-                            Log::error("Failed to open file at path: " . $filePath . " - Error: " . $e->getMessage());
-                        }
-                    } else {
-                        Log::warning('File does not exist: ' . $filePath);
-                    }
-                }
-            } else {
-                Log::info('No files to attach.');
-            }
-            return $attachments;
-        } catch (\Throwable $th) {
-            Log::error('Error in attachments: ' . $th->getMessage());
-            return [];
-        }
+        return [];
     }
 }

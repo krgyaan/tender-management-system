@@ -465,46 +465,6 @@ class FollowUpsController extends Controller
         }
     }
 
-    public function mailToAssigneeOld($id)
-    {
-        try {
-            $fup = FollowUps::find($id);
-            $user = User::where('id', $fup->assigned_to)->first();
-            $assignee = $user->name;
-            $mail = $user->email;
-            $initiator = User::where('id', $fup->created_by)->first();
-            $cc_name = $initiator->name;
-            $cc = $initiator->email;
-            $appPass = $initiator->app_password;
-            $admin = User::where('role', 'admin')->first();
-            $admin_mail = $admin->email;
-            $cooMail = User::where('role', 'coordinator')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $data = [
-                'team_member' => $assignee,
-                'organization_name' => $fup->party_name,
-                'follow_up_for' => $fup->followup_for,
-                'form_link' => route('followups.edit', $fup->id),
-                'follow_up_initiator' => $cc_name,
-            ];
-            Log::info('data: ' . json_encode($data));
-            Log::info('To: ' . $mail . ' From: ' . $cc);
-            MailHelper::configureMailer($cc, $appPass, $cc_name);
-            $mailer = Config::has('mail.mailers.dynamic') ?  'dynamic' : 'smtp';
-            Mail::mailer($mailer)->to($mail)
-                ->cc([$admin_mail, $cooMail])
-                ->send(new FollowupAssigned($data));
-            if ($mail) {
-                Log::info('Created Followup Mail sent to assignee successfully');
-            } else {
-                Log::error('Created Followup Mail not sent to assignee' . $mail);
-            }
-            return response()->json(['success' => true]);
-        } catch (\Throwable $th) {
-            Log::error('Error followup mail: ' . $th);
-            return redirect()->back()->with('error', $th->getMessage());
-        }
-    }
-
     public function followupMail(int $id): JsonResponse
     {
         try {
@@ -625,26 +585,25 @@ class FollowUpsController extends Controller
             $html    = (new $class($data))->render();
             $subject = 'Follow Up for ' . ($data['for'] ?? 'Update');
 
-            // Gmail limits:
-            // - Total attachment payload ≈ 25 MB (pre-base64)
-            // - Gmail API raw payload hard limit ≈ 35 MB (base64 inflates by ~33%)
-            // We'll greedily add attachments until the encoded size budget is nearly full.
-            $MAX_RAW_BYTES  = 35 * 1024 * 1024;         // 35 MB raw API limit
-            $SAFETY_MARGIN  = 2 * 1024 * 1024;          // 2 MB headroom for headers/body
-            $B64_FACTOR     = 4 / 3;                    // base64 expansion
+            $MAX_RAW_BYTES  = 35 * 1024 * 1024;
+            $SAFETY_MARGIN  = 2 * 1024 * 1024;
+            $B64_FACTOR     = 4 / 3;
             $budget         = $MAX_RAW_BYTES - $SAFETY_MARGIN;
 
             $attachmentsInput = $data['files'] ?? [];
             $attachments      = [];
             $skipped          = [];
-            $encodedSoFar     = strlen(base64_encode($html)) + 4096; // rough body+headers cushion
+            $encodedSoFar     = strlen(base64_encode($html)) + 4096;
 
             foreach ($attachmentsInput as $file) {
+                Log::info("Processing attachment: {$file}");
                 $path = public_path("uploads/accounts/$file");
                 if (!is_file($path)) {
                     Log::warning("Attachment not found: {$path}");
                     $skipped[] = ['file' => $file, 'reason' => 'missing'];
                     continue;
+                } else {
+                    Log::info("Attachment found: {$path}");
                 }
 
                 $content = file_get_contents($path);
@@ -652,6 +611,8 @@ class FollowUpsController extends Controller
                     Log::warning("Attachment unreadable: {$path}");
                     $skipped[] = ['file' => $file, 'reason' => 'unreadable'];
                     continue;
+                } else {
+                    Log::info("Attachment read successfully: {$path}");
                 }
 
                 // Estimate base64 size increment for this part
@@ -672,11 +633,12 @@ class FollowUpsController extends Controller
                 $encodedSoFar += $encodedSize;
             }
 
+            Log::info("Total attachments included: " . count($attachments) . ", skipped: " . count($skipped));
+
             // If we skipped any, append a short note to the HTML so recipients know
             if (!empty($skipped)) {
                 $skippedList = implode(', ', array_map(fn($s) => $s['file'], $skipped));
                 $note = "<p><em>Note:</em> Some attachments were omitted due to size limits: {$skippedList}</p>";
-                // Gentle injection at the end
                 $html .= $note;
             }
 
@@ -686,7 +648,6 @@ class FollowUpsController extends Controller
             $result = $gmail->send([
                 'user_id'          => $assignee->id,
                 'to'               => $recipients,
-                'cc'               => array_filter([$adminMail, $cooMail, $creator->email]),
                 'bcc'              => [],
                 'subject'          => $subject,
                 'html'             => $html,
@@ -695,12 +656,18 @@ class FollowUpsController extends Controller
                 'idempotency_key'  => (string) Str::uuid(),
             ]);
 
-            Log::info('Followup mail sent', ['to' => $recipients, 'result' => $result, 'skipped' => $skipped]);
+            Log::info('Followup mail sent', [
+                'to' => $recipients,
+                'result' => $result,
+                'attachments' => $result['attachments'] ?? [],
+                'skipped' => $skipped
+            ]);
 
             return response()->json([
                 'success' => true,
                 'threadId' => $result['threadId'] ?? null,
                 'messageId' => $result['messageId'] ?? null,
+                'attachments' => $result['attachments'] ?? [],
                 'skipped_attachments' => $skipped,
             ]);
         } catch (\Throwable $th) {
@@ -708,7 +675,6 @@ class FollowUpsController extends Controller
             return response()->json(['success' => false, 'error' => $th->getMessage()], 500);
         }
     }
-
 
     public function followupMailOld($id)
     {
@@ -952,6 +918,7 @@ class FollowUpsController extends Controller
             }
         }
     }
+
 
     public function AlternateFollowupMail()
     {

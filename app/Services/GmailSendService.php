@@ -20,20 +20,27 @@ class GmailSendService
     {
         $userId = $payload['user_id'];
 
-        // 1) Resolve threadId via ConversationMap
+        $map = null;
         $threadId = null;
-        $prevMsgId = null;
+        $prevRfcId = null;
+        $referencesChain = [];
+
         if (!empty($payload['conversation_key'])) {
             $map = ConversationMap::where('user_id', $userId)
-                ->where('conversation_key', $payload['conversation_key'])->first();
+                ->where('conversation_key', $payload['conversation_key'])
+                ->with('references:id,conversation_map_id,rfc_message_id')
+                ->first();
+
             if ($map) {
-                $threadId = $map->thread_id;
-                $prevMsgId = $map->last_message_id;
+                $threadId   = $map->thread_id;
+                $prevRfcId  = $map->last_message_rfc_id;
+                $referencesChain = $map->references
+                    ->pluck('rfc_message_id')
+                    ->all();
             }
         }
 
-        // 2) Build MIME (simple alt mime; use a library if you prefer)
-        $raw = $this->buildRawMime(
+        $mime = $this->buildRawMime(
             to: $payload['to'] ?? [],
             cc: $payload['cc'] ?? [],
             bcc: $payload['bcc'] ?? [],
@@ -41,34 +48,73 @@ class GmailSendService
             text: $payload['text'] ?? null,
             html: $payload['html'] ?? null,
             conversationKey: $payload['conversation_key'] ?? null,
-            inReplyTo: $prevMsgId
+            inReplyTo: $prevRfcId,
+            references: $referencesChain,
+            attachments: $payload['attachments'] ?? []
         );
 
-        // 3) Send via Gmail API
         $client = $this->guard->clientForUser($userId);
         $gmail  = new GmailService($client);
-
         $msg = new GmailMessage();
-        $msg->setRaw($raw);
+
+        $msg->setRaw($mime['raw']);
         if ($threadId) $msg->setThreadId($threadId);
 
         $resp = $gmail->users_messages->send('me', $msg);
 
-        // 4) Upsert ConversationMap
         if (!empty($payload['conversation_key'])) {
-            ConversationMap::updateOrCreate(
-                ['user_id' => $userId, 'conversation_key' => $payload['conversation_key']],
-                ['thread_id' => $resp->getThreadId(), 'last_message_id' => $resp->getId()]
-            );
+            if (!$map) {
+                $map = ConversationMap::create([
+                    'user_id'           => $userId,
+                    'conversation_key'  => $payload['conversation_key'],
+                    'thread_id'         => $resp->getThreadId(),
+                    'last_message_api_id' => $resp->getId(),
+                    'last_message_rfc_id' => $mime['message_id'],
+                ]);
+            } else {
+                $map->update([
+                    'thread_id'           => $resp->getThreadId(),
+                    'last_message_api_id' => $resp->getId(),
+                    'last_message_rfc_id' => $mime['message_id'],
+                ]);
+            }
+
+            $map->references()->create(['rfc_message_id' => $mime['message_id']]);
         }
 
-        return ['status' => 'SENT', 'threadId' => $resp->getThreadId(), 'messageId' => $resp->getId()];
+        return [
+            'status'     => 'SENT',
+            'threadId'   => $resp->getThreadId(),
+            'messageId'  => $resp->getId(),
+            'rfcMessageId' => $mime['message_id'],
+        ];
     }
 
-    private function buildRawMime(array $to, array $cc, array $bcc, string $subject, ?string $text, ?string $html, ?string $conversationKey, ?string $inReplyTo): string
-    {
-        $boundary = 'b_' . bin2hex(random_bytes(8));
-        $alt      = 'alt_' . bin2hex(random_bytes(8));
+    private function buildRawMime(
+        array $to,
+        array $cc,
+        array $bcc,
+        string $subject,
+        ?string $text,
+        ?string $html,
+        ?string $conversationKey,
+        ?string $inReplyTo,
+        array $references = [],
+        array $attachments = []
+    ): array {
+        $boundaryMixed = 'mixed_' . bin2hex(random_bytes(8));
+        $boundaryAlt   = 'alt_' . bin2hex(random_bytes(8));
+
+        // Always generate a fresh RFC Message-ID
+        $messageId = sprintf('<%s@volksenergie.in>', bin2hex(random_bytes(16)));
+
+        // Build References header: full chain + last
+        $refsHeader = null;
+        if ($inReplyTo) {
+            // Gmail is happy with just the last id, but the full chain is more robust
+            $chain = array_values(array_unique(array_filter(array_merge($references, [$inReplyTo]))));
+            $refsHeader = 'References: ' . implode(' ', $chain);
+        }
 
         $headers = array_values(array_filter([
             'MIME-Version: 1.0',
@@ -77,19 +123,47 @@ class GmailSendService
             $bcc ? 'Bcc: ' . implode(', ', $bcc) : null,
             'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
             $conversationKey ? "X-MyApp-Conversation-Key: $conversationKey" : null,
-            $inReplyTo ? "In-Reply-To: <$inReplyTo>" : null,
-            $inReplyTo ? "References: <$inReplyTo>" : null,
-            "Content-Type: multipart/alternative; boundary=\"$alt\"",
+            $inReplyTo ? "In-Reply-To: $inReplyTo" : null,   // NOTE: already contains <...>
+            $refsHeader,
+            "Message-ID: $messageId",
+            "Content-Type: multipart/mixed; boundary=\"$boundaryMixed\"",
         ]));
-
+        // --- Alternative part (text + html) ---
         $parts = [];
-        if ($text) $parts[] = "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . rtrim(base64_encode($text));
-        if ($html) $parts[] = "Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . rtrim(base64_encode($html));
+        if ($text) {
+            $parts[] = "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+                . chunk_split(base64_encode($text));
+        }
+        if ($html) {
+            $parts[] = "Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+                . chunk_split(base64_encode($html));
+        }
 
-        $altBody = "--$alt\r\n" . implode("\r\n--$alt\r\n", $parts) . "\r\n--$alt--";
-        $raw = implode("\r\n", $headers) . "\r\n\r\n" . $altBody;
+        $altBody = "--$boundaryAlt\r\n" . implode("\r\n--$boundaryAlt\r\n", $parts) . "\r\n--$boundaryAlt--";
 
-        // Base64url
-        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+        $body = "--$boundaryMixed\r\n"
+            . "Content-Type: multipart/alternative; boundary=\"$boundaryAlt\"\r\n\r\n"
+            . $altBody . "\r\n";
+
+        // --- Attachments ---
+        foreach ($attachments as $attachment) {
+            $filename = $attachment['filename'] ?? 'file.bin';
+            $mimeType = $attachment['mime'] ?? 'application/octet-stream';
+            $content  = $attachment['content'] ?? '';
+
+            $body .= "--$boundaryMixed\r\n";
+            $body .= "Content-Type: $mimeType; name=\"$filename\"\r\n";
+            $body .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
+            $body .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $body .= chunk_split(base64_encode($content)) . "\r\n";
+        }
+        $body .= "--$boundaryMixed--";
+
+        $raw = implode("\r\n", $headers) . "\r\n\r\n" . $body;
+
+        return [
+            'raw'        => rtrim(strtr(base64_encode($raw), '+/', '-_'), '='),
+            'message_id' => $messageId,
+        ];
     }
 }

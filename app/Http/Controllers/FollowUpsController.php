@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Swift_Mailer;
 use Carbon\Carbon;
-use Swift_Message;
 use App\Models\Emds;
 use App\Models\User;
-use Swift_Attachment;
 use App\Models\FollowUps;
 use App\Mail\FollowupStop;
 use App\Helpers\MailHelper;
@@ -30,7 +27,6 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Validator;
-use Swift_SmtpTransport as EsmtpTransport;
 use App\Services\GmailSendService;
 use App\Support\MailRender;
 use Illuminate\Support\Str;
@@ -673,183 +669,6 @@ class FollowUpsController extends Controller
         } catch (\Throwable $th) {
             Log::error('Error during followupMail process: ' . $th->getMessage());
             return response()->json(['success' => false, 'error' => $th->getMessage()], 500);
-        }
-    }
-
-    public function followupMailOld($id)
-    {
-        try {
-
-            $fu = FollowUps::find($id);
-            if (!$fu) {
-                Log::error("FollowUp not found for ID: $id");
-                return response()->json(['error' => 'FollowUp not found'], 404);
-            }
-
-            $creator = User::where('id', $fu->created_by)->first();
-            $creatorMail = $creator->email;
-            Log::info("Creator found: {$creator->name}, Email: $creatorMail");
-
-            $adminMail = User::where('role', 'admin')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $cooMail = User::where('role', 'coordinator')->first()->email ?? 'gyanprakashk55@gmail.com';
-            $email = FollowUpPersons::where('follwup_id', $id)
-                ->whereNotNull('email')
-                ->pluck('email')
-                ->toArray();
-            Log::info('Collected emails for followup: ' . json_encode($email));
-
-            $start_date = Carbon::parse($fu->start_from);
-            $today = Carbon::now()->format('Y-m-d');
-            $diff_in_days = $start_date->diffInDays($today, false);
-            $day = max(1, round($diff_in_days));
-
-            Log::info("Start date: $start_date - Today: $today = Days since start: $day");
-
-            if ($start_date->lte($today)) {
-                $data = [
-                    'for' => $fu->followup_for,
-                    'since' => $day,
-                    'reminder' => $fu->reminder_no,
-                    'mail' => $fu->details,
-                    'files' => json_decode($fu->attachments),
-                ];
-                $emdClassMap = [
-                    1 => DdFollowupMail::class,
-                    2 => FdrFollowupMail::class,
-                    3 => ChqFollowupMail::class,
-                    4 => BgFollowupMail::class,
-                    5 => BtFollowupMail::class,
-                    6 => PopFollowupMail::class,
-                ];
-
-                if ($fu->emd_id) {
-                    $emd = Emds::find($fu->emd_id);
-                    if ($emd) {
-                        $ins = $emd->instrument_type;
-                        Log::info('EMD found: ' . json_encode($emd));
-                        Log::info('EMD: ' . json_encode($fu));
-                    } else {
-                        Log::warning('Invalid EMD ID: ' . $fu->emd_id);
-                        return response()->json(['error' => 'Invalid EMD ID'], 400);
-                    }
-
-                    $class = $emdClassMap[$ins] ?? FollowupPersonMail::class;
-
-                    switch ($ins) {
-                        case 1:
-                            $data['for'] = $fu->followup_for;
-                            $data['name'] = $fu->party_name;
-                            $data['tenderNo'] = $fu->dd->emd->tender->tender_no;
-                            $data['projectName'] = $fu->dd->emd->project_name;
-                            $data['status'] = $fu->dd->emd->tender->statuses->name;
-                            $data['amount'] = format_inr($fu->dd->dd_amt);
-                            $data['date'] = date('d-m-Y', strtotime($fu->dd->dd_date));
-                            $data['ddNo'] = $fu->dd->dd_no;
-                            $data['accountNo'] = '1234567890';
-                            $data['ifscCode'] = 'SBIN0000001';
-                            break;
-                        case 2:
-                            break;
-                        case 3:
-                            $data['for'] = $fu->followup_for;
-                            $data['name'] = $fu->party_name;
-                            $data['chequeNo'] = $fu->chq->cheque_no;
-                            $data['status'] = $fu->chq->status;
-                            $data['date'] = date('d-m-Y', strtotime($fu->chq->cheque_date));
-                            $data['chequeNo'] = $fu->chq->cheque_no;
-                            $data['amount'] = format_inr($fu->chq->cheque_amt);
-                            break;
-                        case 4:
-                            $data['for'] = $fu->followup_for;
-                            $data['name'] = $fu->party_name;
-                            $data['tenderNo'] = $fu->bg->emds->tender_no ?? null;
-                            $data['projectName'] = $fu->bg->emds->project_name;
-                            $data['status'] = $fu->bg->emds->tender->statuses->name ?? null;
-                            $data['amount'] = format_inr($fu->bg->bg_amt);
-                            $data['bg_no'] = $fu->bg->bg_no;
-                            $data['purpose'] = $fu->bg->bg_purpose ? $bg_purpose[$fu->bg->bg_purpose] : '';
-                            $data['bg_validity'] = date('d-m-Y', strtotime($fu->bg->bg_expiry));
-                            $data['bg_claim_period_expiry'] = date('d-m-Y', strtotime($fu->bg->bg_claim));
-                            $data['favor'] = $fu->bg->bg_favor;
-                            break;
-                        case 5:
-                            $data['for'] = $fu->followup_for;
-                            $data['name'] = $fu->party_name;
-                            $data['tenderNo'] = $fu->bt->emd->tender->tender_no;
-                            $data['projectName'] = $fu->bt->emd->project_name;
-                            $data['status'] = $fu->bt->emd->tender->statuses->name;
-                            $data['amount'] = format_inr($fu->bt->bt_amount);
-                            $data['date'] = date('d-m-Y', strtotime($fu->bt->transfer_date));
-                            $data['utr'] = $fu->bt->utr;
-                            break;
-                        case 6:
-                            $data['for'] = $fu->followup_for;
-                            $data['name'] = $fu->party_name;
-                            $data['tenderNo'] = $fu->pop->emd->tender->tender_no;
-                            $data['projectName'] = $fu->pop->emd->project_name;
-                            $data['status'] = $fu->pop->emd->tender->statuses->name;
-                            $data['amount'] = format_inr($fu->pop->amount);
-                            $data['date'] = date('d-m-Y', strtotime($fu->pop->transfer_date));
-                            $data['utr'] = $fu->pop->utr;
-                            $data['accountNo'] = '1234567890';
-                            $data['ifsc'] = 'SBIN0000001';
-                            break;
-                    }
-                } else {
-                    $class =  FollowupPersonMail::class;
-                }
-                Log::info('Data: ' . json_encode($data));
-
-                $user = User::where('id', $fu->assigned_to)->first();
-                $assignee = $user->name;
-                $userMail = $user->email;
-                $appPass = $user->app_password;
-                Log::info("Assignee found: $assignee, Email:  $userMail");
-
-                Artisan::call('config:clear');
-                app('cache')->forget('laravel.config.cache');
-
-                $transport = (new EsmtpTransport('smtp.gmail.com', 587, 'tls'))
-                    ->setUsername($userMail)
-                    ->setPassword($appPass);
-
-                $swift = new Swift_Mailer($transport);
-                Log::error('Failed to send mail from class error:yyyyyyyyy ' . $class);
-                $message = (new Swift_Message())
-                    ->setFrom([$userMail => $assignee . ' From ' . config('app.name')])
-                    ->setTo($email)
-                    ->setCc([$adminMail, $cooMail, $creatorMail])
-                    ->setSubject('Follow Up for ' . $data['for'])
-                    ->setBody((new $class($data))->render(), 'text/html');
-
-                if (!empty($data['files'])) {
-                    foreach ($data['files'] as $file) {
-                        $filePath = public_path('uploads/accounts/' . $file);
-                        if (file_exists($filePath)) {
-                            $message->attach(
-                                Swift_Attachment::fromPath($filePath)
-                                    ->setFilename($file)
-                            );
-                            Log::info('Attached file: ' . $file);
-                        } else {
-                            Log::warning('File not found: ' . $filePath);
-                        }
-                    }
-                }
-                $result = $swift->send($message);
-
-                if ($result) {
-                    Log::info('Mail sent successfully from: ' . $userMail . ' to: ' . json_encode($email));
-                } else {
-                    Log::error('Failed to send mail from: ' . $userMail);
-                }
-            } else {
-                Log::info('No followup mail sent as the start date is in the future');
-            }
-            return response()->json(['success' => true]);
-        } catch (\Throwable $th) {
-            Log::error('Error during followupMail process: ' . $th->getMessage());
-            return redirect()->back()->with('error', $th->getMessage());
         }
     }
 

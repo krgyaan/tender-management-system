@@ -10,6 +10,27 @@ use Carbon\Carbon;
 
 class QueueManagerController extends Controller
 {
+    /**
+     * Lightweight cron endpoint to process a batch of jobs.
+     * Secured via QUEUE_CRON_TOKEN token from .env
+     */
+    public function cronProcess(Request $request)
+    {
+        $token     = (string) ($request->query('token') ?? $request->header('X-Queue-Token'));
+        $expected  = (string) env('QUEUE_CRON_TOKEN', '');
+
+        if (!$expected || !hash_equals($expected, $token)) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $limit = (int) ($request->query('limit', 10));
+        if ($limit < 1) { $limit = 1; }
+        if ($limit > 50) { $limit = 50; }
+
+        $this->processJobs($limit);
+
+        return response()->json(['ok' => true, 'processed' => $limit]);
+    }
     public function dashboard()
     {
         $stats = [

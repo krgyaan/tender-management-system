@@ -7731,7 +7731,6 @@ fieldset:disabled .btn {
   flex-direction: column;
   max-width: 100%;
   visibility: hidden;
-  background-color: var(--bs-gray-900);
   background-clip: padding-box;
   outline: 0;
   box-shadow: 0 0.125rem 0.25rem rgba(var(--bs-black-rgb), 0.15);

@@ -45,8 +45,8 @@
                                         @if ($rfq->scopes)
                                             @foreach ($rfq->scopes as $item)
                                                 <li>
-                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}" 
-                                                       target="_blank" rel="noopener noreferrer">
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}"
+                                                        target="_blank" rel="noopener noreferrer">
                                                         {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
                                                     </a>
                                                 </li>
@@ -60,7 +60,7 @@
                                         @if ($rfq->technicals)
                                             @foreach ($rfq->technicals as $item)
                                                 <li>
-                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}" 
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}"
                                                         target="_blank" rel="noopener noreferrer">
                                                         {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
                                                     </a>
@@ -77,9 +77,9 @@
                                         @if ($rfq->boqs)
                                             @foreach ($rfq->boqs as $item)
                                                 <li>
-                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}" 
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}"
                                                         target="_blank" rel="noopener noreferrer">
-                                                            {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
+                                                        {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
                                                     </a>
                                                 </li>
                                             @endforeach
@@ -92,7 +92,7 @@
                                         @if ($rfq->mafs)
                                             @foreach ($rfq->mafs as $item)
                                                 <li>
-                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}" 
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}"
                                                         target="_blank" rel="noopener noreferrer">
                                                         {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
                                                     </a>
@@ -109,9 +109,9 @@
                                         @if ($rfq->miis)
                                             @foreach ($rfq->miis as $item)
                                                 <li>
-                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}" 
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $item->file_path) }}"
                                                         target="_blank" rel="noopener noreferrer">
-                                                            {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
+                                                        {!! nl2br(wordwrap($item->name, 50, "\n")) !!}
                                                     </a>
                                                 </li>
                                             @endforeach
@@ -127,7 +127,7 @@
                             </tr>
                         </tbody>
                     </table>
-                    
+
                     @if ($rfq && $rfq->rfqVendors)
                         <table class="table-bordered w-100">
                             <thead class="bg-light text-dark">
@@ -138,7 +138,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if($rfq->rfqVendors)
+                                @if ($rfq->rfqVendors)
                                     @foreach ($rfq->rfqVendors as $vendor)
                                         <tr>
                                             <td>{{ optional($vendor->vendorss)->name }}</td>
@@ -150,7 +150,7 @@
                             </tbody>
                         </table>
                     @endif
-                    
+
                     @if ($rfq->rfqResponse)
                         <div class="text-center text-white fw-bold mt-5">
                             <h5 class="card-title text-center">Quotation Section</h5>
@@ -199,43 +199,97 @@
                                 <tr>
                                     <th>Quotation</th>
                                     <td>
-                                        @if ($rfq->rfqResponse->quotation_document)
-                                            <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->quotation_document) }}"
-                                                target="_blank">View</a>
+                                        @php
+                                            $quotationDocs = $rfq->rfqResponse->quotation_document;
+                                            $quotationDocs = $quotationDocs ? json_decode($quotationDocs, true) : null;
+                                        @endphp
+
+                                        @if ($quotationDocs)
+                                            {{-- If stored as JSON (multiple files) --}}
+                                            @if (is_array($quotationDocs))
+                                                @foreach ($quotationDocs as $doc)
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $doc) }}" target="_blank">View -
+                                                        {{ $loop->iteration }}</a><br>
+                                                @endforeach
+                                            @else
+                                                {{-- If stored as single file --}}
+                                                <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->quotation_document) }}"
+                                                    target="_blank">View</a>
+                                            @endif
                                         @else
                                             Not uploaded
                                         @endif
                                     </td>
+
                                     <th>Technical documents</th>
                                     <td>
-                                        @if ($rfq->rfqResponse->technical_documents)
-                                            <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->technical_documents) }}"
-                                                target="_blank">View</a>
+                                        @php
+                                            $techDocs = $rfq->rfqResponse->technical_documents;
+                                            $techDocs = $techDocs ? json_decode($techDocs, true) : null;
+                                        @endphp
+
+                                        @if ($techDocs)
+                                            @if (is_array($techDocs))
+                                                @foreach ($techDocs as $doc)
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $doc) }}" target="_blank">View -
+                                                        {{ $loop->iteration }}</a><br>
+                                                @endforeach
+                                            @else
+                                                <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->technical_documents) }}"
+                                                    target="_blank">View</a>
+                                            @endif
                                         @else
                                             Not uploaded
                                         @endif
                                     </td>
                                 </tr>
+
                                 <tr>
                                     <th>Signed MAF</th>
                                     <td>
-                                        @if ($rfq->rfqResponse->maf_document)
-                                            <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->maf_document) }}"
-                                                target="_blank">View</a>
+                                        @php
+                                            $mafDocs = $rfq->rfqResponse->maf_document;
+                                            $mafDocs = $mafDocs ? json_decode($mafDocs, true) : null;
+                                        @endphp
+
+                                        @if ($mafDocs)
+                                            @if (is_array($mafDocs))
+                                                @foreach ($mafDocs as $doc)
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $doc) }}" target="_blank">View -
+                                                        {{ $loop->iteration }}</a><br>
+                                                @endforeach
+                                            @else
+                                                <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->maf_document) }}"
+                                                    target="_blank">View</a>
+                                            @endif
                                         @else
                                             Not uploaded
                                         @endif
                                     </td>
+
                                     <th>Signed MII</th>
                                     <td>
-                                        @if ($rfq->rfqResponse->mii_document)
-                                            <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->mii_document) }}"
-                                                target="_blank">View</a>
+                                        @php
+                                            $miiDocs = $rfq->rfqResponse->mii_document;
+                                            $miiDocs = $miiDocs ? json_decode($miiDocs, true) : null;
+                                        @endphp
+
+                                        @if ($miiDocs)
+                                            @if (is_array($miiDocs))
+                                                @foreach ($miiDocs as $doc)
+                                                    <a href="{{ asset('uploads/rfqdocs/' . $doc) }}" target="_blank">View -
+                                                        {{ $loop->iteration }}</a><br>
+                                                @endforeach
+                                            @else
+                                                <a href="{{ asset('uploads/rfqdocs/' . $rfq->rfqResponse->mii_document) }}"
+                                                    target="_blank">View</a>
+                                            @endif
                                         @else
                                             Not uploaded
                                         @endif
                                     </td>
                                 </tr>
+
                             </tbody>
                         </table>
                     @endif

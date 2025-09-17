@@ -284,11 +284,12 @@ Route::middleware('auth')->group(function () {
         Route::any('emds/bg/ott-entry', [EmdsController::class, 'BgOTTEntry'])->name('bg-ott-entry');
         Route::any('emds/dd/ott-entry', [EmdsController::class, 'DdOTTEntry'])->name('dd-ott-entry');
 
-        Route::resource('results', ResultController::class);
         Route::post('/results/technical', [ResultController::class, 'storeTechnicalResult'])->name('results.storeTechnical');
         Route::post('/results/final', [ResultController::class, 'storeFinalResult'])->name('results.storeFinal');
-        Route::resource('checklist', ChecklistController::class);
+        Route::resource('results', ResultController::class)->except('store', 'update', 'destroy');
 
+        Route::resource('checklist', ChecklistController::class);
+        
         Route::resource('followups', FollowUpsController::class);
         Route::delete('followups/person-delete/{id}', [FollowUpsController::class, 'deletePerson'])->name('followups.person-delete');
         Route::post('followups/status-update/{id}', [FollowUpsController::class, 'updateFollowup'])->name('updateFollowup');

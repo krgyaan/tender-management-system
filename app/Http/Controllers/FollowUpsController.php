@@ -9,6 +9,8 @@ use App\Models\FollowUps;
 use App\Mail\FollowupStop;
 use App\Helpers\MailHelper;
 use App\Models\FollowupFor;
+use App\Support\MailRender;
+use Illuminate\Support\Str;
 use App\Mail\BgFollowupMail;
 use App\Mail\BtFollowupMail;
 use App\Mail\DdFollowupMail;
@@ -16,22 +18,21 @@ use Illuminate\Http\Request;
 use App\Mail\ChqFollowupMail;
 use App\Mail\FdrFollowupMail;
 use App\Mail\PopFollowupMail;
+use App\Jobs\SendFollowupMail;
 use App\Mail\FollowupAssigned;
 use App\Models\Clintdirectory;
 use App\Models\FollowUpPersons;
 use App\Mail\FollowupPersonMail;
+use Illuminate\Http\JsonResponse;
+use App\Services\GmailSendService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Validator;
-use App\Services\GmailSendService;
-use App\Support\MailRender;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
+use App\Jobs\SendAssigneeFollowupMail;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Validator;
 
 
 class FollowUpsController extends Controller
@@ -138,13 +139,10 @@ class FollowUpsController extends Controller
                 Log::info('Followup Persons while Assign: ' . json_encode($request->fp));
             }
 
-            if ($this->mailToAssignee($followup->id)) {
-                Log::info('Mail sent to assignee successfully');
-                return redirect()->route('followups.index')->with('success', 'Followup created and mail sent to assignee successfully');
-            } else {
-                Log::error('Mail not sent to assignee');
-                return redirect()->route('followups.index')->with('error', 'Followup created successfully but mail not sent to assignee');
-            }
+            // Queue mail to assignee instead of sending synchronously
+            SendAssigneeFollowupMail::dispatch($followup->id)->onQueue('mail');
+            Log::info('Mail to assignee queued', ['followup_id' => $followup->id]);
+            return redirect()->route('followups.index')->with('success', 'Followup created; mail queued to assignee');
         } catch (\Throwable $th) {
             Log::error('Error followup store: ' . $th);
             return redirect()->back()->with('error', $th->getMessage());
@@ -415,260 +413,24 @@ class FollowUpsController extends Controller
 
     public function mailToAssignee($id)
     {
-        $gmail = app(GmailSendService::class);
+        // Queue the assignee mail and return immediately
         try {
-            $fup = FollowUps::findOrFail($id);
-
-            $assigneeUser = User::findOrFail($fup->assigned_to);
-            $initiator    = User::findOrFail($fup->created_by);
-            $admin        = User::where('role', 'admin')->first();
-            $cooMail      = optional(User::where('role', 'coordinator')->first())->email ?? 'gyanprakashk55@gmail.com';
-
-            $to   = [$assigneeUser->email];
-            $cc   = array_filter([$admin?->email, $cooMail]);
-            $bcc  = []; // keep empty unless needed
-
-            $data = [
-                'team_member'       => $assigneeUser->name,
-                'organization_name' => $fup->party_name,
-                'follow_up_for'     => $fup->followup_for,
-                'form_link'         => route('followups.edit', $fup->id),
-                'follow_up_initiator' => $initiator->name,
-            ];
-
-            $html = MailRender::html(new FollowupAssigned($data));
-            $subject = "Follow Up Assigned — {$fup->followup_for}";
-
-            // Stable thread key for this follow-up stream
-            $conversationKey = "followup:{$fup->id}:assigned";
-
-            $result = $gmail->send([
-                'user_id'         => $initiator->id, // send AS the initiator
-                'to'              => $to,
-                'cc'              => $cc,
-                'bcc'             => $bcc,
-                'subject'         => $subject,
-                'html'            => $html,
-                'conversation_key' => $conversationKey,
-                'idempotency_key' => (string) Str::uuid(),
-            ]);
-
-            Log::info('Created Followup Mail sent', $result);
-            return response()->json(['success' => true]);
-        } catch (\Throwable $th) {
-            Log::error('Error followup mail: ' . $th->getMessage());
-            return response()->json(['success' => false, 'error' => $th->getMessage()], 500);
+            SendAssigneeFollowupMail::dispatch((int) $id)->onQueue('mail');
+            return response()->json(['queued' => true]);
+        } catch (\Throwable $e) {
+            Log::error('Error queuing assignee mail: ' . $e->getMessage());
+            return response()->json(['queued' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     public function followupMail(int $id): JsonResponse
     {
         try {
-            $gmail = app(GmailSendService::class);
-
-            $fu = FollowUps::find($id);
-            if (!$fu) {
-                Log::error("FollowUp not found for ID: {$id}");
-                return response()->json(['error' => 'FollowUp not found'], 404);
-            }
-
-            $creator   = User::findOrFail($fu->created_by);
-            $assignee  = User::findOrFail($fu->assigned_to);
-            $adminMail = optional(User::where('role', 'admin')->first())->email ?? 'gyanprakashk55@gmail.com';
-            $cooMail   = optional(User::where('role', 'coordinator')->first())->email ?? 'gyanprakashk55@gmail.com';
-
-            $recipients = FollowUpPersons::where('follwup_id', $id)
-                ->whereNotNull('email')
-                ->pluck('email')
-                ->toArray();
-
-            $startDate = Carbon::parse($fu->start_from)->startOfDay();
-            $today     = Carbon::now()->startOfDay();
-            if ($startDate->gt($today)) {
-                Log::info("No followup mail sent; start date {$startDate->toDateString()} is in the future.");
-                return response()->json(['success' => true, 'skipped' => true]);
-            }
-            $day = max(1, $startDate->diffInDays($today, false));
-
-            $data = [
-                'for'      => $fu->followup_for,
-                'since'    => $day,
-                'reminder' => $fu->reminder_no,
-                'mail'     => $fu->details,
-                'files'    => json_decode($fu->attachments, true) ?: [],
-            ];
-
-            // Map to your Mailable class (reuse your switch/cases)
-            $class = FollowupPersonMail::class; // default
-            if ($fu->emd_id) {
-                $emd = Emds::find($fu->emd_id);
-                if (!$emd) {
-                    Log::warning('Invalid EMD ID: ' . $fu->emd_id);
-                    return response()->json(['error' => 'Invalid EMD ID'], 400);
-                }
-                $ins = $emd->instrument_type;
-                switch ($ins) {
-                    case 1:
-                        $class = DdFollowupMail::class;
-                        $data['for'] = $fu->followup_for;
-                        $data['name'] = $fu->party_name;
-                        $data['tenderNo'] = $fu->dd->emd->tender->tender_no ?? null;
-                        $data['projectName'] = $fu->dd->emd->project_name ?? null;
-                        $data['status'] = $fu->dd->emd->tender->statuses->name ?? null;
-                        $data['amount'] = format_inr($fu->dd->dd_amt);
-                        $data['date'] = date('d-m-Y', strtotime($fu->dd->dd_date));
-                        $data['ddNo'] = $fu->dd->dd_no;
-                        $data['accountNo'] = '1234567890';
-                        $data['ifscCode'] = 'SBIN0000001';
-                        break;
-                    case 2:
-                        $class = FdrFollowupMail::class;
-                        // fill as needed
-                        break;
-                    case 3:
-                        $class = ChqFollowupMail::class;
-                        $data['for'] = $fu->followup_for;
-                        $data['name'] = $fu->party_name;
-                        $data['chequeNo'] = $fu->chq->cheque_no ?? null;
-                        $data['status'] = $fu->chq->status ?? null;
-                        $data['date'] = date('d-m-Y', strtotime($fu->chq->cheque_date ?? now()));
-                        $data['amount'] = format_inr($fu->chq->cheque_amt ?? 0);
-                        break;
-                    case 4:
-                        $class = BgFollowupMail::class;
-                        $bg_purpose = $bg_purpose ?? []; // ensure defined if you use it
-                        $data['for'] = $fu->followup_for;
-                        $data['name'] = $fu->party_name;
-                        $data['tenderNo'] = $fu->bg->emds->tender_no ?? null;
-                        $data['projectName'] = $fu->bg->emds->project_name ?? null;
-                        $data['status'] = $fu->bg->emds->tender->statuses->name ?? null;
-                        $data['amount'] = format_inr($fu->bg->bg_amt ?? 0);
-                        $data['bg_no'] = $fu->bg->bg_no ?? null;
-                        $data['purpose'] = isset($fu->bg->bg_purpose) ? ($bg_purpose[$fu->bg->bg_purpose] ?? '') : '';
-                        $data['bg_validity'] = date('d-m-Y', strtotime($fu->bg->bg_expiry ?? now()));
-                        $data['bg_claim_period_expiry'] = date('d-m-Y', strtotime($fu->bg->bg_claim ?? now()));
-                        $data['favor'] = $fu->bg->bg_favor ?? null;
-                        break;
-                    case 5:
-                        $class = BtFollowupMail::class;
-                        $data['for'] = $fu->followup_for;
-                        $data['name'] = $fu->party_name;
-                        $data['tenderNo'] = $fu->bt->emd->tender->tender_no ?? null;
-                        $data['projectName'] = $fu->bt->emd->project_name ?? null;
-                        $data['status'] = $fu->bt->emd->tender->statuses->name ?? null;
-                        $data['amount'] = format_inr($fu->bt->bt_amount ?? 0);
-                        $data['date'] = date('d-m-Y', strtotime($fu->bt->transfer_date ?? now()));
-                        $data['utr'] = $fu->bt->utr ?? null;
-                        break;
-                    case 6:
-                        $class = PopFollowupMail::class;
-                        $data['for'] = $fu->followup_for;
-                        $data['name'] = $fu->party_name;
-                        $data['tenderNo'] = $fu->pop->emd->tender->tender_no ?? null;
-                        $data['projectName'] = $fu->pop->emd->project_name ?? null;
-                        $data['status'] = $fu->pop->emd->tender->statuses->name ?? null;
-                        $data['amount'] = format_inr($fu->pop->amount ?? 0);
-                        $data['date'] = date('d-m-Y', strtotime($fu->pop->transfer_date ?? now()));
-                        $data['utr'] = $fu->pop->utr ?? null;
-                        $data['accountNo'] = '1234567890';
-                        $data['ifsc'] = 'SBIN0000001';
-                        break;
-                    default:
-                        $class = FollowupPersonMail::class;
-                }
-            }
-
-            $html    = (new $class($data))->render();
-            $subject = 'Follow Up for ' . ($data['for'] ?? 'Update');
-
-            $MAX_RAW_BYTES  = 35 * 1024 * 1024;
-            $SAFETY_MARGIN  = 2 * 1024 * 1024;
-            $B64_FACTOR     = 4 / 3;
-            $budget         = $MAX_RAW_BYTES - $SAFETY_MARGIN;
-
-            $attachmentsInput = $data['files'] ?? [];
-            $attachments      = [];
-            $skipped          = [];
-            $encodedSoFar     = strlen(base64_encode($html)) + 4096;
-
-            foreach ($attachmentsInput as $file) {
-                Log::info("Processing attachment: {$file}");
-                $path = public_path("uploads/accounts/$file");
-                if (!is_file($path)) {
-                    Log::warning("Attachment not found: {$path}");
-                    $skipped[] = ['file' => $file, 'reason' => 'missing'];
-                    continue;
-                } else {
-                    Log::info("Attachment found: {$path}");
-                }
-
-                $content = file_get_contents($path);
-                if ($content === false) {
-                    Log::warning("Attachment unreadable: {$path}");
-                    $skipped[] = ['file' => $file, 'reason' => 'unreadable'];
-                    continue;
-                } else {
-                    Log::info("Attachment read successfully: {$path}");
-                }
-
-                // Estimate base64 size increment for this part
-                $plainSize   = strlen($content);
-                $encodedSize = (int) ceil($plainSize * $B64_FACTOR) + 1024; // + MIME headers cushion
-
-                if (($encodedSoFar + $encodedSize) > $budget) {
-                    Log::warning("Skipping attachment (size limit): {$file}");
-                    $skipped[] = ['file' => $file, 'reason' => 'size_limit'];
-                    continue;
-                }
-
-                $attachments[] = [
-                    'filename' => basename($path),
-                    'content'  => $content,
-                    'mime'     => File::mimeType($path) ?: 'application/octet-stream',
-                ];
-                $encodedSoFar += $encodedSize;
-            }
-
-            Log::info("Total attachments included: " . count($attachments) . ", skipped: " . count($skipped));
-
-            // If we skipped any, append a short note to the HTML so recipients know
-            if (!empty($skipped)) {
-                $skippedList = implode(', ', array_map(fn($s) => $s['file'], $skipped));
-                $note = "<p><em>Note:</em> Some attachments were omitted due to size limits: {$skippedList}</p>";
-                $html .= $note;
-            }
-
-            // All reminders for the same followup append to one Gmail thread.
-            $conversationKey = "followup:{$fu->id}:main";
-
-            $result = $gmail->send([
-                'user_id'          => $assignee->id,
-                'to'               => $recipients,
-                'bcc'              => [],
-                'subject'          => $subject,
-                'html'             => $html,
-                'attachments'      => $attachments,
-                'conversation_key' => $conversationKey,
-                'idempotency_key'  => (string) Str::uuid(),
-            ]);
-
-            Log::info('Followup mail sent', [
-                'to' => $recipients,
-                'result' => $result,
-                'attachments' => $result['attachments'] ?? [],
-                'skipped' => $skipped
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'threadId' => $result['threadId'] ?? null,
-                'messageId' => $result['messageId'] ?? null,
-                'attachments' => $result['attachments'] ?? [],
-                'skipped_attachments' => $skipped,
-            ]);
+            SendFollowupMail::dispatch($id)->onQueue('mail');
+            return response()->json(['queued' => true]);
         } catch (\Throwable $th) {
-            Log::error('Error during followupMail process: ' . $th->getMessage());
-            return response()->json(['success' => false, 'error' => $th->getMessage()], 500);
+            Log::error('Error queuing followup mail: ' . $th->getMessage());
+            return response()->json(['queued' => false, 'error' => $th->getMessage()], 500);
         }
     }
 
@@ -720,41 +482,25 @@ class FollowUpsController extends Controller
     public function DailyFollowupMail()
     {
         $dailyMail = FollowUps::where('frequency', '1')->get();
-        // Log::info('Daily Followup Mail: ' . json_encode($dailyMail));
-        foreach ($dailyMail as $key => $value) {
-            Log::info('Daily Followup Mail: ' . json_encode($value));
+        foreach ($dailyMail as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Daily Followup Mail queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Daily Followup Mail: ' . $th->getMessage());
+                Log::error('Error queueing Daily Followup Mail: ' . $th->getMessage());
             }
         }
     }
 
-
     public function AlternateFollowupMail()
     {
         $alternateMail = FollowUps::where('frequency', '2')->get();
-        foreach ($alternateMail as $key => $value) {
-            Log::info('Alternate Followup Mail: ' . json_encode($value));
+        foreach ($alternateMail as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Alternate Followup Mail queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Daily Followup Mail: ' . $th->getMessage());
+                Log::error('Error queueing Alternate Followup Mail: ' . $th->getMessage());
             }
         }
     }
@@ -762,19 +508,12 @@ class FollowUpsController extends Controller
     public function TwiceADayFollowupMail()
     {
         $twiceADayMail = FollowUps::where('frequency', '3')->get();
-        foreach ($twiceADayMail as $key => $value) {
-            Log::info('Twice A Day Followup Mail: ' . json_encode($value));
+        foreach ($twiceADayMail as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Twice A Day Followup Mail queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Daily Followup Mail: ' . $th->getMessage());
+                Log::error('Error queueing Twice A Day Followup Mail: ' . $th->getMessage());
             }
         }
     }
@@ -782,19 +521,12 @@ class FollowUpsController extends Controller
     public function WeeklyFollowupMail()
     {
         $weeklyMail = FollowUps::where('frequency', '4')->get();
-        foreach ($weeklyMail as $key => $value) {
-            Log::info('Weekly Followup Mail: ' . json_encode($value));
+        foreach ($weeklyMail as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Weekly Followup Mail queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Daily Followup Mail: ' . $th->getMessage());
+                Log::error('Error queueing Weekly Followup Mail: ' . $th->getMessage());
             }
         }
     }
@@ -802,19 +534,12 @@ class FollowUpsController extends Controller
     public function TwiceAWeekFollowupMail()
     {
         $twiceAWeekMail = FollowUps::where('frequency', '5')->get();
-        foreach ($twiceAWeekMail as $key => $value) {
-            Log::info('Twice A Week Followup Mail: ' . json_encode($value));
+        foreach ($twiceAWeekMail as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Twice A Week Followup Mail queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Daily Followup Mail: ' . $th->getMessage());
+                Log::error('Error queueing Twice A Week Followup Mail: ' . $th->getMessage());
             }
         }
     }
@@ -822,19 +547,12 @@ class FollowUpsController extends Controller
     public function AutoMailNow()
     {
         $mails = FollowUps::where('assigned_to', '13')->get();
-        foreach ($mails as $key => $value) {
-            Log::info('Auto Mail Now: ' . json_encode($value));
+        foreach ($mails as $value) {
             try {
-                $sent = $this->followupMail($value->id);
-                if ($sent->original['success'] ?? false) {
-                    $reminder_no = $value->reminder_no + 1;
-                    FollowUps::where('id', $value->id)->update(['reminder_no' => $reminder_no]);
-                    Log::info('Reminder updated for ID: ' . $value->id . ' Reminder: ' . $reminder_no);
-                } else {
-                    Log::error('Mail not sent for ID: ' . $value->id);
-                }
+                SendFollowupMail::dispatch($value->id)->onQueue('mail');
+                Log::info('Auto Mail Now queued', ['followup_id' => $value->id]);
             } catch (\Throwable $th) {
-                Log::error('Error during Auto Mail Now: ' . $th->getMessage());
+                Log::error('Error queueing Auto Mail Now: ' . $th->getMessage());
             }
         }
     }

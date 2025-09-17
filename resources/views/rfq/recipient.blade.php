@@ -104,22 +104,24 @@
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">Quotation Document</label>
-                                    <input type="file" id="quotation_document" name="quotation_document"
-                                        class="form-control" required>
+                                    <input type="file" id="quotation_document" name="quotation_document[]"
+                                        class="form-control" required multiple>
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">Technical Documents</label>
-                                    <input type="file" id="technical_documents" name="technical_documents"
-                                        class="form-control">
+                                    <input type="file" id="technical_documents" name="technical_documents[]"
+                                        class="form-control" multiple>
                                 </div>
 
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">MAF Document</label>
-                                    <input type="file" id="maf_document" name="maf_document" class="form-control">
+                                    <input type="file" id="maf_document" name="maf_document[]" class="form-control"
+                                        multiple>
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label class="form-label">MII Document</label>
-                                    <input type="file" id="mii_document" name="mii_document" class="form-control">
+                                    <input type="file" id="mii_document[]" name="mii_document" class="form-control"
+                                        multiple>
                                 </div>
                             </div>
 
@@ -195,6 +197,7 @@
                 credits: false,
                 storeAsFile: true,
                 maxTotalFileSize: '10MB',
+                allowMultiple: true,
                 acceptedFileTypes: [
                     'image/*',
                     'text/plain',

@@ -2,7 +2,7 @@
     data-bs-backdrop="false">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="{{ $offcanvasId }}-label">Update EMD Status</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-danger" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
         <form action="" method="POST" enctype="multipart/form-data">

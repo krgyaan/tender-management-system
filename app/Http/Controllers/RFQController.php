@@ -35,7 +35,7 @@ class RFQController extends Controller
     {
         $this->timerService = $timerService;
     }
-    
+
     public function index()
     {
         return view('rfq.index');
@@ -48,7 +48,7 @@ class RFQController extends Controller
 
         $query = TenderInfo::with(['rfqs', 'itemName', 'users'])
             ->where('deleteStatus', '0')
-            ->whereNotIn( 'status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
+            ->whereNotIn('status', ['8', '9', '10', '11', '12', '13', '14', '15', '38', '39'])
             ->whereNot('rfq_to', '0')
             ->where('tlStatus', '1');
 
@@ -58,10 +58,10 @@ class RFQController extends Controller
             } else {
                 $query->where('team_member', $user->id);
             }
-        } else if($team) {
+        } else if ($team) {
             $query->where('team', $team);
         }
-        
+
         // Filter by RFQ status
         if ($type === 'pending') {
             $query->whereDoesntHave('rfqs');
@@ -655,50 +655,79 @@ class RFQController extends Controller
                 ]);
                 Log::info('Created RFQ Response', ['rfq_response_id' => $rfqResponse->id]);
 
-                // Handle file uploads
+                // Handle file uploads - Quotation Documents
                 if ($request->hasFile('quotation_document')) {
-                    $file = $request->file('quotation_document');
-                    $originalName = explode('.', $file->getClientOriginalName())[0];
-                    $fileName = rand() . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/rfqdocs'), $fileName);
+                    $files = $request->file('quotation_document');
+                    $fileNames = [];
+
+                    foreach ($files as $file) {
+                        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                        $fileName = rand() . '_' . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
+                        $file->move(public_path('uploads/rfqdocs'), $fileName);
+                        $fileNames[] = $fileName;
+                        Log::info('Uploaded Quotation Document', ['file_name' => $fileName]);
+                    }
+
+                    // Store as JSON string or comma-separated
                     $rfqResponse->update([
-                        'quotation_document' => $fileName
+                        'quotation_document' => json_encode($fileNames) // ✅ recommended
                     ]);
-                    Log::info('Uploaded Quotation Document', ['file_name' => $fileName]);
                 }
 
+                // Handle Technical Documents
                 if ($request->hasFile('technical_documents')) {
-                    $file = $request->file('technical_documents');
-                    $originalName = explode('.', $file->getClientOriginalName())[0];
-                    $fileName = rand() . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/rfqdocs'), $fileName);
+                    $files = $request->file('technical_documents');
+                    $fileNames = [];
+
+                    foreach ($files as $file) {
+                        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                        $fileName = rand() . '_' . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
+                        $file->move(public_path('uploads/rfqdocs'), $fileName);
+                        $fileNames[] = $fileName;
+                        Log::info('Uploaded Technical Document', ['file_name' => $fileName]);
+                    }
+
                     $rfqResponse->update([
-                        'technical_documents' => $fileName
+                        'technical_documents' => json_encode($fileNames)
                     ]);
-                    Log::info('Uploaded Technical Documents', ['file_name' => $fileName]);
                 }
 
+                // Handle MAF Documents
                 if ($request->hasFile('maf_document')) {
-                    $file = $request->file('maf_document');
-                    $originalName = explode('.', $file->getClientOriginalName())[0];
-                    $fileName = rand() . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/rfqdocs'), $fileName);
+                    $files = $request->file('maf_document');
+                    $fileNames = [];
+
+                    foreach ($files as $file) {
+                        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                        $fileName = rand() . '_' . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
+                        $file->move(public_path('uploads/rfqdocs'), $fileName);
+                        $fileNames[] = $fileName;
+                        Log::info('Uploaded MAF Document', ['file_name' => $fileName]);
+                    }
+
                     $rfqResponse->update([
-                        'maf_document' => $fileName
+                        'maf_document' => json_encode($fileNames)
                     ]);
-                    Log::info('Uploaded MAF Document', ['file_name' => $fileName]);
                 }
 
+                // Handle MII Documents
                 if ($request->hasFile('mii_document')) {
-                    $file = $request->file('mii_document');
-                    $originalName = explode('.', $file->getClientOriginalName())[0];
-                    $fileName = rand() . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
-                    $file->move(public_path('uploads/rfqdocs'), $fileName);
+                    $files = $request->file('mii_document');
+                    $fileNames = [];
+
+                    foreach ($files as $file) {
+                        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+                        $fileName = rand() . '_' . str_replace(' ', '_', $originalName) . '.' . $file->getClientOriginalExtension();
+                        $file->move(public_path('uploads/rfqdocs'), $fileName);
+                        $fileNames[] = $fileName;
+                        Log::info('Uploaded MII Document', ['file_name' => $fileName]);
+                    }
+
                     $rfqResponse->update([
-                        'mii_document' => $fileName
+                        'mii_document' => json_encode($fileNames)
                     ]);
-                    Log::info('Uploaded MII Document', ['file_name' => $fileName]);
                 }
+
 
                 // Store items
                 foreach ($request->items as $item) {
@@ -769,7 +798,7 @@ class RFQController extends Controller
 
             Log::info("RFQ Mail Data: " . json_encode($data));
             Log::info("RFQ Vendors: " . json_encode($vendors));
-            
+
             foreach ($vendors as $vendorGroup) {
                 $org = $vendorGroup['org'];
                 $orgName = VendorOrg::find($org)->name;

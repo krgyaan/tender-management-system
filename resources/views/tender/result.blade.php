@@ -191,7 +191,7 @@
                     <input type="email" name="fp[${fp}][email]" class="form-control" id="email" placeholder="Email">
                 </div>
             `;
-            $('#emd-followups').append(html);
+            $(this).closest('.offcanvas').find('#emd-followups').append(html);
             fp++;
         });
         $(document).on('click', '.update-emd-status-btn', function() {

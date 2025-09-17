@@ -10,7 +10,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             </div>
+        @else
+            <div class="my-3">
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <strong>Google OAuth Connected!</strong> You are connected. You may reconnect if needed.
+                    <a href="{{ route('google.connect') }}" class="btn btn-sm btn-outline-primary ms-3">Reconnect</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            </div>
         @endif
+
         <div class="col-lg-3 {{ $data['role'] != 'Admin' ? 'd-none' : '' }}">
             <div class="card shining-card">
                 <div class="card-body">
@@ -106,12 +115,12 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             var calendarEl = document.getElementById('calendar');
             // Prepare all events with userId
             var allEvents = [
                 @foreach ($data['tender_info'] ?? [] as $data)
-                    {
+                            {
                         title: 'Tender due - {{ $data->tender_name }}',
                         start: '{{ $data->due_date }}',
                         color: '{{ $teamColors[$data->users->name ?? 'Unknown'] ?? '#888' }}',
@@ -121,18 +130,18 @@
                     @php
                         $tq = $data->tq_received->first();
                     @endphp
-                    @if ($tq?->tq_submission_date)
-                        {
-                            title: 'TQ Date - {{ $data->tender_name }}',
-                            start: '{{ $tq->tq_submission_date ?? '' }}',
-                            color: '#ff9800', // Orange for TQ
-                            textColor: '#fff',
-                            userId: '{{ $data->team_member ?? '' }}',
-                        },
-                    @endif
+                            @if ($tq?->tq_submission_date)
+                                            {
+                                    title: 'TQ Date - {{ $data->tender_name }}',
+                                    start: '{{ $tq->tq_submission_date ?? '' }}',
+                                    color: '#ff9800', // Orange for TQ
+                                    textColor: '#fff',
+                                    userId: '{{ $data->team_member ?? '' }}',
+                                },
+                            @endif
                 @endforeach
                 @foreach ($data['follow_ups'] ?? [] as $row)
-                    {
+                            {
                         title: 'Followup - {{ $row->party_name }}',
                         start: '{{ date('Y-m-d', strtotime($row->created_at)) }}',
                         color: '#0000ff',
@@ -140,7 +149,7 @@
                         userId: '{{ $row->assigned_to ?? '' }}',
                     },
                 @endforeach
-            ];
+                ];
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 headerToolbar: {
@@ -165,18 +174,18 @@
             // Filtering logic for admin
             var userFilter = document.getElementById('userFilter');
             if (userFilter) {
-                userFilter.addEventListener('change', function() {
+                userFilter.addEventListener('change', function () {
                     var selectedUser = this.value;
                     var filteredEvents = [];
                     if (selectedUser === 'all') {
                         filteredEvents = allEvents;
                     } else {
-                        filteredEvents = allEvents.filter(function(event) {
+                        filteredEvents = allEvents.filter(function (event) {
                             return event.userId == selectedUser;
                         });
                     }
                     calendar.removeAllEvents();
-                    filteredEvents.forEach(function(event) {
+                    filteredEvents.forEach(function (event) {
                         calendar.addEvent(event);
                     });
                 });

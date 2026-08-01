@@ -63,7 +63,14 @@ class EnquiryController extends Controller
                 'status',
                 fn($enquiry) =>
                 $enquiry->costingSheet ?
-                    ($enquiry->costingSheet->submitted_at ? '<span class="badge bg-primary">Submitted</span>' : '<span class="badge bg-info">Created</span>') : ($enquiry->siteVisit ? '<span class="badge bg-success">Visit Done</span>' : ($enquiry->site_visit_required ? '<span class="badge bg-warning">Visit Needed</span>' : '<span class="badge bg-secondary">New</span>'))
+                    (
+                        $enquiry->costingSheet->submitted_at ? 
+                        '<span class="badge bg-primary">Submitted</span>' : 
+                        '<span class="badge bg-info">Created</span>') : ($enquiry->siteVisit ? 
+                        '<span class="badge bg-success">Visit Done</span>' : ($enquiry->site_visit_required ? 
+                        '<span class="badge bg-warning">Visit Needed</span>' : 
+                        '<span class="badge bg-secondary">New</span>')
+                    )
             )
             ->addColumn('timer', fn($enquiry) => view('partials.enquiry-timer', compact('enquiry'))->render())
             ->addColumn('action', fn($enquiry) => view('partials.enquiry-action', compact('enquiry'))->render())
@@ -73,11 +80,7 @@ class EnquiryController extends Controller
 
     public function create(Lead $lead = null)
     {
-<<<<<<< HEAD
-        return view('enquiry.create', [
-=======
         return view('crm.enquiry.create', [
->>>>>>> upstream/main
             'lead' => $lead,
             'organisations' => Organization::orderBy('name')->get(),
             'items' => Item::orderBy('name')->get(),

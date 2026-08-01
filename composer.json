@@ -16,7 +16,6 @@
     "laravel/tinker": "^2.9",
     "maatwebsite/excel": "^3.1",
     "mpdf/mpdf": "^8.2",
-    "swiftmailer/swiftmailer": "^5.4",
     "yajra/laravel-datatables-oracle": "11.0"
   },
   "require-dev": {
@@ -84,7 +83,11 @@
     "sort-packages": true,
     "allow-plugins": {
       "pestphp/pest-plugin": true,
-      "php-http/discovery": true
+      "php-http/discovery": true,
+      "composer/audit": false
+    },
+    "audit": {
+      "block": false
     }
   },
   "minimum-stability": "stable",
